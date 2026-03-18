@@ -990,7 +990,23 @@ a:hover {
   .hero__subtitle { font-size: 1.05rem; }
   .section { padding: 3rem 0; }
   .section__title { font-size: 1.6rem; }
-  .masthead__nav { gap: 1rem; }
+  .masthead { padding: 0.6rem 1rem; }
+  .masthead__inner { flex-wrap: wrap; gap: 0.5rem; }
+  .masthead__logo-link {
+    position: relative;
+    left: auto;
+    transform: none;
+    order: -1;
+    width: 100%;
+    text-align: center;
+  }
+  .masthead__logo { margin: 0 auto; }
+  .masthead__nav--left,
+  .masthead__nav--right {
+    flex: none;
+    justify-content: center;
+  }
+  .masthead__nav { gap: 1rem; font-size: 0.7rem; }
   .protocol-grid { grid-template-columns: 1fr; }
   .features { grid-template-columns: 1fr; }
   .principles { grid-template-columns: 1fr; }
