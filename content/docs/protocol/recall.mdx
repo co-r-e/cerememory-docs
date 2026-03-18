@@ -1,0 +1,205 @@
+---
+title: "Recall Operations"
+description: "Query and retrieve memories using multimodal cues, association traversal, timelines, and graphs."
+---
+
+## recall.query
+
+The primary retrieval operation. Accepts a multimodal cue and returns ranked memories with relevance scores.
+
+**Endpoint:** `POST /v1/recall/query`
+
+### Request
+
+```json
+{
+  "cue": {
+    "text": "What does the user prefer for their development environment?",
+    "emotion": {
+      "trust": 0.5,
+      "intensity": 0.3,
+      "valence": 0.5
+    }
+  },
+  "stores": ["semantic", "episodic"],
+  "limit": 10,
+  "min_fidelity": 0.1,
+  "include_decayed": false,
+  "reconsolidate": true,
+  "activation_depth": 2,
+  "recall_mode": "human"
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `cue` | RecallCue | Yes | -- | Multimodal query cue |
+| `stores` | StoreType[] | No | All stores | Filter to specific stores |
+| `limit` | u32 | No | 10 | Maximum results to return |
+| `min_fidelity` | f64 | No | None | Exclude records below this fidelity |
+| `include_decayed` | bool | No | false | Include records below prune threshold |
+| `reconsolidate` | bool | No | true | Strengthen retrieved memories |
+| `activation_depth` | u32 | No | 2 | Hops for spreading activation |
+| `recall_mode` | RecallMode | No | human | "human" (with noise) or "perfect" (exact) |
+
+### Recall Cue
+
+The `RecallCue` supports multiple modalities simultaneously:
+
+```json
+{
+  "text": "search query",
+  "image": [/* raw image bytes */],
+  "audio": [/* raw audio bytes */],
+  "emotion": { "joy": 0.8 },
+  "temporal": {
+    "start": "2026-03-01T00:00:00Z",
+    "end": "2026-03-19T23:59:59Z"
+  },
+  "embedding": [0.1, 0.2, 0.3, ...]
+}
+```
+
+### Response
+
+```json
+{
+  "memories": [
+    {
+      "record": { /* full MemoryRecord */ },
+      "relevance_score": 0.9234,
+      "activation_path": ["01916e3a-...", "01916e3b-..."],
+      "rendered_content": {
+        "blocks": [{ "modality": "text", "format": "text/plain", "data": [/* possibly noisy */] }]
+      }
+    }
+  ],
+  "activation_trace": {
+    "source_id": "01916e3a-...",
+    "activations": [
+      { "record_id": "...", "activation_level": 0.85, "hop": 1, "edge_type": "semantic" }
+    ]
+  },
+  "total_candidates": 42
+}
+```
+
+<Callout type="info">
+In **human** mode, `rendered_content` may differ from the original `record.content` -- noise is applied based on the memory's current fidelity and noise level. In **perfect** mode, they are identical.
+</Callout>
+
+## recall.associate
+
+Traverse the association graph starting from a specific record. Returns memories connected by typed edges.
+
+**Endpoint:** `POST /v1/recall/associate/:record_id`
+
+### Request
+
+```json
+{
+  "association_types": ["semantic", "temporal", "causal"],
+  "depth": 3,
+  "min_weight": 0.2,
+  "limit": 20
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `association_types` | AssociationType[] | No | All types | Filter by association type |
+| `depth` | u32 | No | 2 | Maximum traversal depth |
+| `min_weight` | f64 | No | 0.1 | Minimum edge weight to follow |
+| `limit` | u32 | No | 10 | Maximum results |
+
+### Response
+
+```json
+{
+  "memories": [
+    {
+      "record": { /* MemoryRecord */ },
+      "relevance_score": 0.75,
+      "activation_path": ["source-id", "hop1-id", "this-id"]
+    }
+  ],
+  "total_candidates": 8
+}
+```
+
+## recall.timeline
+
+Retrieve memories organized into time buckets within a date range.
+
+**Endpoint:** `POST /v1/recall/timeline`
+
+### Request
+
+```json
+{
+  "range": {
+    "start": "2026-03-01T00:00:00Z",
+    "end": "2026-03-19T23:59:59Z"
+  },
+  "granularity": "day",
+  "min_fidelity": 0.1,
+  "emotion_filter": { "joy": 0.5, "intensity": 0.3 }
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `range` | TemporalRange | Yes | -- | Start and end timestamps |
+| `granularity` | TimeGranularity | No | hour | minute, hour, day, week, month |
+| `min_fidelity` | f64 | No | None | Fidelity floor |
+| `emotion_filter` | EmotionVector | No | None | Filter by emotional similarity |
+
+### Response
+
+```json
+{
+  "buckets": [
+    {
+      "start": "2026-03-18T00:00:00Z",
+      "end": "2026-03-19T00:00:00Z",
+      "memories": [{ /* RecalledMemory */ }],
+      "count": 5
+    }
+  ]
+}
+```
+
+## recall.graph
+
+Retrieve a subgraph of memory nodes and their association edges, suitable for visualization.
+
+**Endpoint:** `POST /v1/recall/graph`
+
+### Request
+
+```json
+{
+  "center_id": "01916e3a-5678-7000-8000-000000000001",
+  "depth": 2,
+  "edge_types": ["semantic", "causal"],
+  "limit_nodes": 50
+}
+```
+
+### Response
+
+```json
+{
+  "nodes": [
+    { "id": "01916e3a-...", "store": "semantic", "summary": "User preferences", "fidelity": 0.92 }
+  ],
+  "edges": [
+    { "source": "01916e3a-...", "target": "01916e3b-...", "edge_type": "semantic", "weight": 0.85 }
+  ],
+  "total_nodes": 12
+}
+```
+
+## Next Steps
+
+<LinkCard href="/docs/protocol/lifecycle" title="Lifecycle Operations" description="Manage decay, consolidation, and data portability" />

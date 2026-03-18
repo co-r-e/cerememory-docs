@@ -1,0 +1,57 @@
+---
+title: "Introduction"
+description: "Learn what Cerememory is and how it gives AI systems persistent, living memory."
+---
+
+## What is Cerememory?
+
+Cerememory is a **living memory database** for the age of AI. Built in Rust, it provides persistent, brain-inspired memory that any LLM can use -- regardless of provider. Memories stored in Cerememory are not static rows in a table; they decay, evolve, form associations, and respond to emotion, just as biological memory does.
+
+## The Problem: LLM Amnesia
+
+Every time an LLM conversation ends, everything learned is lost. Context windows are finite and ephemeral. This creates a fundamental limitation for AI applications that need to remember users, learn from past interactions, or build long-term understanding.
+
+Current workarounds -- RAG databases, vector stores, chat history logs -- treat memory as a search problem. They return exact copies of stored text ranked by similarity. Biological memory works nothing like this. It is **reconstructive**, **associative**, and **alive**.
+
+## Core Principles
+
+### Alive
+
+Memories in Cerememory are living entities. They decay over time following a power-law model, accumulate noise, and can be reactivated through retrieval. Emotional memories persist longer. Frequently accessed memories grow more stable. This is not a feature -- it is the foundation.
+
+### LLM-Agnostic
+
+Cerememory works with any LLM provider through the **Cerememory Protocol (CMP)**. Dedicated adapters for Claude, GPT, and Gemini serialize memory context into each model's preferred format, but the core engine is completely provider-independent.
+
+### User-Sovereign
+
+All memory data belongs to the user. Cerememory runs on your infrastructure, stores data locally using redb (an embedded key-value store), and supports encrypted export/import via CMA archives. There is no cloud dependency, no telemetry, and no vendor lock-in.
+
+## Brain-Inspired Design
+
+Cerememory models its architecture after the human brain's memory systems:
+
+| Store | Brain Analog | Purpose |
+|-------|-------------|---------|
+| **Episodic** | Hippocampus | Personal experiences and events |
+| **Semantic** | Neocortex | Facts, knowledge, and concepts |
+| **Procedural** | Basal Ganglia | Skills, workflows, and how-to knowledge |
+| **Emotional** | Amygdala | Emotionally significant memories |
+| **Working** | Prefrontal Cortex | Active context and short-term memory |
+
+Each store has distinct characteristics for decay rates, consolidation behavior, and retrieval patterns. The **hippocampal coordinator** manages cross-store operations like spreading activation and memory consolidation.
+
+## What Can You Do With Cerememory?
+
+- Store memories with automatic store classification, embedding generation, and association inference
+- Recall memories with human-like fidelity (noise, decay) or perfect retrieval mode
+- Traverse association graphs across all memory stores via spreading activation
+- Run background decay ticks that naturally age and prune stale memories
+- Consolidate episodic memories into semantic knowledge over time
+- Export and import encrypted memory archives for portability
+- Integrate with any LLM via HTTP, gRPC, or MCP transports
+
+## Next Steps
+
+<LinkCard href="/docs/getting-started/installation" title="Installation" description="Install Cerememory via cargo, Docker, pip, or npm" />
+<LinkCard href="/docs/getting-started/quick-start" title="Quick Start" description="Store, recall, and forget your first memory in minutes" />

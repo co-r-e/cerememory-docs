@@ -1,0 +1,154 @@
+---
+title: "Living Dynamics"
+description: "How memories decay, accumulate noise, respond to emotion, and evolve over time."
+---
+
+## Overview
+
+Cerememory's defining feature is that memories are **alive**. They change over time through six mechanisms: decay, noise accumulation, emotional modulation, reactivation, reconsolidation, and consolidation. This page documents the mathematical models behind each.
+
+## Fidelity Decay (Power-Law Model)
+
+Memory fidelity decreases over time following a modified power-law formula:
+
+```
+F(t) = F_0 * (1 + t/S)^(-d) * E_mod
+```
+
+| Parameter | Symbol | Default | Description |
+|-----------|--------|---------|-------------|
+| Initial fidelity | F_0 | 1.0 | Starting fidelity score (0.0 to 1.0) |
+| Elapsed time | t | -- | Seconds since last access or last decay tick |
+| Stability | S | 1.0 | Stability constant; increases with each retrieval |
+| Decay exponent | d | 0.3 | Controls decay speed (per-record, stored in `decay_rate`) |
+| Emotional modulation | E_mod | 1.0 | Scales fidelity; > 1.0 for emotional memories |
+
+The power-law curve means memories decay **rapidly at first** and then **slowly approach zero** -- never quite disappearing, but becoming increasingly unreliable. This matches empirical findings in cognitive science.
+
+<Callout type="info">
+The decay engine is **stateless** and processes records in parallel using rayon. Each record's decay is computed independently, making the engine safe for concurrent use and efficient on multi-core machines.
+</Callout>
+
+## Noise Accumulation
+
+As fidelity drops, memories accumulate noise -- random distortions that represent interference from other memories:
+
+```
+N(t) = N_0 + interference_rate * sqrt(t) * (1 - F(t))
+```
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| N_0 | 0.0 | Initial noise level |
+| interference_rate | 0.1 | Rate of noise accumulation |
+
+Key properties:
+
+- Noise grows with the **square root of time** (sub-linear, bounded)
+- Noise is **inversely proportional to fidelity** -- more decayed memories are noisier
+- Both fidelity and noise are clamped to the [0.0, 1.0] interval
+- In **human recall mode**, noise is applied to retrieved content; in **perfect mode**, it is bypassed
+
+## Emotional Modulation
+
+Emotional intensity modulates the decay rate through the E_mod factor:
+
+```
+E_mod = 1.0 + emotion_intensity * 0.5
+```
+
+The `EmotionVector` uses Plutchik's 8-dimensional model with an overall `intensity` field (0.0 to 1.0) and a `valence` field (-1.0 to +1.0).
+
+At maximum emotional intensity (1.0), E_mod = 1.5, meaning the effective fidelity is 50% higher than a neutral memory at the same age. This causes emotional memories to persist significantly longer.
+
+```rust
+pub struct EmotionVector {
+    pub joy: f64,          // 0.0 to 1.0
+    pub trust: f64,
+    pub fear: f64,
+    pub surprise: f64,
+    pub sadness: f64,
+    pub disgust: f64,
+    pub anger: f64,
+    pub anticipation: f64,
+    pub intensity: f64,    // overall emotional intensity
+    pub valence: f64,      // -1.0 (negative) to 1.0 (positive)
+}
+```
+
+## Reactivation (Retrieval Boost)
+
+When a memory is recalled, its stability constant increases, making future decay slower:
+
+```
+S_new = S_old * (1 + retrieval_boost * S_old^(-0.2))
+```
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| retrieval_boost | 1.5 | Multiplicative boost factor |
+
+This implements a **spaced repetition** effect: the more a memory is accessed, the more stable it becomes. The boost **diminishes with higher stability** (the S^(-0.2) term), modeling the psychological observation that well-established memories benefit less from additional rehearsal.
+
+## Reconsolidation
+
+When a memory is recalled (and `reconsolidate: true` is set in the query), the engine:
+
+1. Increments the record's `access_count`
+2. Updates `last_accessed_at` to the current timestamp
+3. Boosts the stability constant via the retrieval boost formula
+4. Persists these changes back to the store
+
+This means every recall operation **strengthens** the retrieved memory, just as biological reconsolidation does. Memories that are never recalled will naturally decay and eventually be pruned.
+
+## Consolidation
+
+Consolidation migrates mature episodic memories into the semantic store as distilled knowledge. It runs on-demand via the `lifecycle.consolidate` CMP operation.
+
+<Steps>
+
+<div>
+
+**Select candidates** -- Episodic memories that exceed configurable thresholds for age (`min_age_hours`) and access count (`min_access_count`) are selected.
+
+</div>
+
+<div>
+
+**Summarize** -- If an LLM provider is configured, candidate memories are summarized into concise semantic knowledge. Without an LLM, content is truncated.
+
+</div>
+
+<div>
+
+**Create semantic records** -- Summarized content is stored as new semantic memory records with appropriate associations to the source episodic memories.
+
+</div>
+
+<div>
+
+**Prune originals** -- Depending on the consolidation strategy (`full`, `incremental`, or `selective`), the original episodic records may be pruned or left in place.
+
+</div>
+
+</Steps>
+
+## Pruning
+
+Records whose fidelity falls below the **prune threshold** (default: 0.01) are flagged for deletion during decay ticks. This automatic cleanup prevents unbounded storage growth while ensuring that only truly forgotten memories are removed.
+
+## Background Decay
+
+In server mode, the engine runs a background decay task on a configurable interval (default: 3600 seconds). Each tick:
+
+1. Collects all records from all persistent stores
+2. Runs the decay engine in parallel across all records
+3. Writes updated fidelity states back to each store
+4. Prunes records that fall below the threshold
+
+The background task is started with `engine.start_background_decay()` and stopped gracefully during shutdown.
+
+## Next Steps
+
+<LinkCard href="/docs/architecture/data-model" title="Data Model" description="Explore MemoryRecord, FidelityState, and other core types" />
+<LinkCard href="/docs/protocol/lifecycle" title="Lifecycle Operations" description="Learn the CMP operations that control these dynamics" />

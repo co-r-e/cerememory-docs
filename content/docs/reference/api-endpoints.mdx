@@ -1,0 +1,123 @@
+---
+title: "API Endpoints"
+description: "Complete HTTP REST endpoint reference for the Cerememory Protocol."
+---
+
+## Base URL
+
+```
+http://localhost:8420
+```
+
+All API endpoints are prefixed with `/v1/`. Health and metrics endpoints are at the root level.
+
+## Authentication
+
+When `auth.enabled = true`, all `/v1/*` endpoints require a Bearer token in the `Authorization` header:
+
+```
+Authorization: Bearer sk-cerememory-prod-abc123
+```
+
+Health endpoints (`/health`, `/readiness`) and metrics (`/metrics`) bypass authentication.
+
+## Endpoint Reference
+
+### Health & Metrics
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/health` | No | Liveness probe -- returns `{"status": "ok"}` |
+| GET | `/readiness` | No | Readiness probe -- verifies engine is operational |
+| GET | `/metrics` | No | Prometheus metrics (text format) |
+
+### Encode
+
+| Method | Path | Auth | Request Body | Response |
+|--------|------|------|-------------|----------|
+| POST | `/v1/encode` | Yes | `EncodeStoreRequest` | `EncodeStoreResponse` (200) |
+| POST | `/v1/encode/batch` | Yes | `EncodeBatchRequest` | `EncodeBatchResponse` (200) |
+| PATCH | `/v1/encode/:record_id` | Yes | `EncodeUpdateRequest` | 204 No Content |
+
+### Recall
+
+| Method | Path | Auth | Request Body | Response |
+|--------|------|------|-------------|----------|
+| POST | `/v1/recall/query` | Yes | `RecallQueryRequest` | `RecallQueryResponse` (200) |
+| POST | `/v1/recall/associate/:record_id` | Yes | `RecallAssociateRequest` | `RecallAssociateResponse` (200) |
+| POST | `/v1/recall/timeline` | Yes | `RecallTimelineRequest` | `RecallTimelineResponse` (200) |
+| POST | `/v1/recall/graph` | Yes | `RecallGraphRequest` | `RecallGraphResponse` (200) |
+
+### Lifecycle
+
+| Method | Path | Auth | Request Body | Response |
+|--------|------|------|-------------|----------|
+| POST | `/v1/lifecycle/consolidate` | Yes | `ConsolidateRequest` | `ConsolidateResponse` (200) |
+| POST | `/v1/lifecycle/decay-tick` | Yes | `DecayTickRequest` | `DecayTickResponse` (200) |
+| PUT | `/v1/lifecycle/mode` | Yes | `SetModeRequest` | 204 No Content |
+| DELETE | `/v1/lifecycle/forget` | Yes | `ForgetRequest` | `{"records_deleted": N}` (200) |
+
+### Introspect
+
+| Method | Path | Auth | Request Body | Response |
+|--------|------|------|-------------|----------|
+| GET | `/v1/introspect/stats` | Yes | -- | `StatsResponse` (200) |
+| GET | `/v1/introspect/record/:record_id` | Yes | -- | `MemoryRecord` (200) |
+| POST | `/v1/introspect/decay-forecast` | Yes | `DecayForecastRequest` | `DecayForecastResponse` (200) |
+| GET | `/v1/introspect/evolution` | Yes | -- | `EvolutionMetrics` (200) |
+
+## Error Responses
+
+All errors return a `CMPError` JSON envelope:
+
+```json
+{
+  "code": "RECORD_NOT_FOUND",
+  "message": "Record not found: 01916e3a-...",
+  "details": null,
+  "retry_after": null
+}
+```
+
+### HTTP Status Code Mapping
+
+| CMP Error Code | HTTP Status | Description |
+|---------------|-------------|-------------|
+| `RECORD_NOT_FOUND` | 404 | Record does not exist |
+| `STORE_INVALID` | 400 | Unknown store name |
+| `CONTENT_TOO_LARGE` | 413 | Exceeds modality size limit |
+| `VALIDATION_ERROR` | 400 | Malformed request or invalid values |
+| `MODALITY_UNSUPPORTED` | 400 | Provider does not support this modality |
+| `WORKING_MEMORY_FULL` | 429 | Working memory capacity exceeded |
+| `DECAY_ENGINE_BUSY` | 503 | Decay tick already in progress |
+| `CONSOLIDATION_IN_PROGRESS` | 409 | Consolidation already running |
+| `EXPORT_FAILED` | 500 | Archive export failed |
+| `IMPORT_CONFLICT` | 409 | Import conflict detected |
+| `FORGET_UNCONFIRMED` | 400 | Missing `confirm: true` |
+| `VERSION_MISMATCH` | 400 | Optimistic concurrency conflict |
+| `UNAUTHORIZED` | 401 | Missing or invalid API key |
+| `RATE_LIMITED` | 429 | Rate limit exceeded (includes `Retry-After` header) |
+| `INTERNAL_ERROR` | 500 | Unexpected server error |
+
+## Rate Limiting
+
+API endpoints are rate-limited using a token bucket algorithm. When the limit is exceeded, the server returns:
+
+- HTTP status `429 Too Many Requests`
+- `Retry-After` header with the number of seconds to wait
+- CMPError body with `code: "RATE_LIMITED"` and `retry_after` field
+
+Default limits: 100 requests/second with a burst of 50.
+
+## CORS
+
+CORS is configured via `http.cors_origins`. When the list is empty, all origins are allowed. When origins are specified, only those origins receive CORS headers.
+
+## Request Tracing
+
+Every request receives an `X-Request-Id` header (UUID). This ID is propagated through all logging and can be used to correlate requests with server-side logs.
+
+## Next Steps
+
+<LinkCard href="/docs/reference/cli" title="CLI Reference" description="Complete CLI command reference" />
+<LinkCard href="/docs/protocol/overview" title="CMP Protocol" description="Protocol specification details" />

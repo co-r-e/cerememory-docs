@@ -36,8 +36,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${figtree.variable} ${cormorantGaramond.variable} ${jetbrainsMono.variable}`}>
-      <body style={{ fontFamily: 'var(--font-figtree), sans-serif' }}>
+    <html lang="en" suppressHydrationWarning className={`${figtree.variable} ${cormorantGaramond.variable} ${jetbrainsMono.variable}`}>
+      <body className="antialiased" style={{ fontFamily: 'var(--font-figtree), sans-serif' }}>
         {children}
       </body>
     </html>

@@ -1,0 +1,221 @@
+---
+title: "TypeScript SDK"
+description: "Complete reference for the Cerememory TypeScript/JavaScript SDK."
+---
+
+## Installation
+
+```bash
+npm install cerememory
+```
+
+Or with yarn:
+
+```bash
+yarn add cerememory
+```
+
+## Client Setup
+
+```typescript
+import { CerememoryClient } from "cerememory";
+
+const client = new CerememoryClient({
+  baseUrl: "http://localhost:8420",
+  apiKey: "your-api-key",  // optional
+  timeout: 30_000,         // ms
+});
+```
+
+## Methods
+
+### store
+
+Store a new memory record.
+
+```typescript
+const result = await client.store({
+  text: "The user prefers TypeScript over JavaScript for new projects.",
+  store: "semantic",
+  emotion: "trust",
+  metadata: { source: "conversation", topic: "preferences" },
+});
+
+console.log(result.recordId);       // UUID string
+console.log(result.store);          // "semantic"
+console.log(result.initialFidelity); // 1.0
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `text` | string | Yes | -- | Text content |
+| `store` | StoreType | No | auto | Target store |
+| `emotion` | string or EmotionVector | No | undefined | Emotion label or vector |
+| `embedding` | number[] | No | undefined | Pre-computed embedding |
+| `metadata` | Record | No | undefined | Arbitrary metadata |
+| `sessionId` | string | No | undefined | Session context |
+
+### storeBatch
+
+Store multiple records in a single request.
+
+```typescript
+const result = await client.storeBatch({
+  records: [
+    { text: "First memory", store: "episodic" },
+    { text: "Second memory", store: "episodic" },
+  ],
+  inferAssociations: true,
+});
+
+console.log(result.results.length);        // 2
+console.log(result.associationsInferred);  // number of inferred links
+```
+
+### recall
+
+Query memories with a text cue.
+
+```typescript
+const results = await client.recall({
+  text: "What does the user prefer for new projects?",
+  limit: 10,
+  mode: "human",
+  stores: ["semantic", "episodic"],
+  minFidelity: 0.1,
+  reconsolidate: true,
+});
+
+for (const memory of results.memories) {
+  console.log(`[${memory.store}] score=${memory.relevanceScore.toFixed(4)}`);
+  console.log(`  ${memory.textContent}`);
+  console.log(`  fidelity=${memory.fidelity.toFixed(4)}`);
+}
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `text` | string | Yes | -- | Text query cue |
+| `limit` | number | No | 10 | Maximum results |
+| `mode` | "human" or "perfect" | No | "human" | Recall mode |
+| `stores` | StoreType[] | No | all | Filter by store |
+| `minFidelity` | number | No | undefined | Minimum fidelity |
+| `reconsolidate` | boolean | No | true | Strengthen recalled memories |
+| `activationDepth` | number | No | 2 | Association traversal depth |
+
+### associate
+
+Traverse the association graph from a specific record.
+
+```typescript
+const associations = await client.associate({
+  recordId: "01916e3a-5678-7000-8000-000000000001",
+  types: ["semantic", "temporal"],
+  depth: 3,
+  minWeight: 0.2,
+  limit: 20,
+});
+
+for (const memory of associations.memories) {
+  console.log(`${memory.recordId} via ${memory.activationPath.join(" -> ")}`);
+}
+```
+
+### forget
+
+Permanently delete records.
+
+```typescript
+await client.forget({
+  recordIds: ["01916e3a-5678-7000-8000-000000000001"],
+  cascade: false,
+  confirm: true,  // required
+});
+```
+
+### stats
+
+Get system statistics.
+
+```typescript
+const stats = await client.stats();
+console.log(`Total records: ${stats.totalRecords}`);
+console.log(`Avg fidelity: ${stats.avgFidelity.toFixed(3)}`);
+console.log(`By store:`, stats.recordsByStore);
+```
+
+### inspect
+
+Get full details for a specific record.
+
+```typescript
+const record = await client.inspect("01916e3a-5678-7000-8000-000000000001");
+console.log(`Fidelity: ${record.fidelity.score}`);
+console.log(`Noise: ${record.fidelity.noiseLevel}`);
+console.log(`Access count: ${record.accessCount}`);
+```
+
+### decayTick
+
+Trigger a manual decay cycle.
+
+```typescript
+const result = await client.decayTick({ durationSeconds: 3600 });
+console.log(`Updated: ${result.recordsUpdated}, Pruned: ${result.recordsPruned}`);
+```
+
+### consolidate
+
+Trigger memory consolidation.
+
+```typescript
+const result = await client.consolidate({
+  strategy: "incremental",
+  minAgeHours: 24,
+  minAccessCount: 3,
+  dryRun: true,
+});
+```
+
+## Error Handling
+
+```typescript
+import {
+  CerememoryError,
+  RecordNotFoundError,
+  RateLimitedError,
+} from "cerememory";
+
+try {
+  await client.inspect("nonexistent-id");
+} catch (error) {
+  if (error instanceof RecordNotFoundError) {
+    console.error(`Not found: ${error.recordId}`);
+  } else if (error instanceof RateLimitedError) {
+    console.error(`Rate limited, retry after ${error.retryAfter}s`);
+  } else if (error instanceof CerememoryError) {
+    console.error(`CMP error [${error.code}]: ${error.message}`);
+  }
+}
+```
+
+## Type Definitions
+
+The SDK exports full TypeScript types for all CMP structures:
+
+```typescript
+import type {
+  MemoryRecord,
+  FidelityState,
+  EmotionVector,
+  Association,
+  StoreType,
+  RecallMode,
+  RecalledMemory,
+} from "cerememory";
+```
+
+## Next Steps
+
+<LinkCard href="/docs/sdk/native-bindings" title="Native Bindings" description="Zero-overhead napi-rs bindings for Node.js" />
+<LinkCard href="/docs/reference/api-endpoints" title="API Endpoints" description="Full HTTP REST endpoint reference" />

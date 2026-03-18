@@ -1,0 +1,210 @@
+---
+title: "Introspect Operations"
+description: "Observe system state, inspect records, forecast decay, and monitor evolution."
+---
+
+## introspect.stats
+
+Retrieve system-wide statistics including record counts, average fidelity, and background decay status.
+
+**Endpoint:** `GET /v1/introspect/stats`
+
+### Response
+
+```json
+{
+  "total_records": 342,
+  "records_by_store": {
+    "episodic": 150,
+    "semantic": 120,
+    "procedural": 35,
+    "emotional": 25,
+    "working": 12
+  },
+  "total_associations": 890,
+  "avg_fidelity": 0.742,
+  "avg_fidelity_by_store": {
+    "episodic": 0.68,
+    "semantic": 0.89,
+    "procedural": 0.91,
+    "emotional": 0.82,
+    "working": 0.45
+  },
+  "oldest_record": "2026-01-15T08:30:00Z",
+  "newest_record": "2026-03-19T09:45:00Z",
+  "total_recall_count": 1567,
+  "background_decay_enabled": true
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `total_records` | u32 | Total records across all stores |
+| `records_by_store` | Map | Record count per store |
+| `total_associations` | u32 | Total association edges |
+| `avg_fidelity` | f64 | Average fidelity score across all records |
+| `avg_fidelity_by_store` | Map | Average fidelity per store |
+| `oldest_record` | DateTime | Timestamp of the oldest record |
+| `newest_record` | DateTime | Timestamp of the newest record |
+| `total_recall_count` | u64 | Total recall operations performed |
+| `background_decay_enabled` | bool | Whether background decay is running |
+
+## introspect.record
+
+Inspect a specific memory record with full detail including fidelity state, associations, and access history.
+
+**Endpoint:** `GET /v1/introspect/record/:record_id`
+
+### Request Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `record_id` | UUID (path) | The record to inspect |
+
+The following query parameters are available for the CMP-level request:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `include_history` | bool | false | Include access history |
+| `include_associations` | bool | false | Include association details |
+| `include_versions` | bool | false | Include version history |
+
+### Response
+
+Returns the full `MemoryRecord` as JSON:
+
+```json
+{
+  "id": "01916e3a-5678-7000-8000-000000000001",
+  "store": "episodic",
+  "created_at": "2026-03-15T14:30:00Z",
+  "updated_at": "2026-03-15T14:30:00Z",
+  "last_accessed_at": "2026-03-18T10:00:00Z",
+  "access_count": 5,
+  "content": {
+    "blocks": [
+      {
+        "modality": "text",
+        "format": "text/plain",
+        "data": [72, 101, 108, 108, 111],
+        "embedding": [0.1, 0.2, 0.3]
+      }
+    ],
+    "summary": "User greeting"
+  },
+  "fidelity": {
+    "score": 0.847,
+    "noise_level": 0.12,
+    "decay_rate": 0.3,
+    "emotional_anchor": 1.0,
+    "reinforcement_count": 5,
+    "stability": 8.42,
+    "last_decay_tick": "2026-03-19T09:00:00Z"
+  },
+  "emotion": {
+    "joy": 0.0,
+    "trust": 0.8,
+    "fear": 0.0,
+    "surprise": 0.0,
+    "sadness": 0.0,
+    "disgust": 0.0,
+    "anger": 0.0,
+    "anticipation": 0.0,
+    "intensity": 0.6,
+    "valence": 0.7
+  },
+  "associations": [
+    {
+      "target_id": "01916e3a-9999-7000-8000-000000000002",
+      "association_type": "semantic",
+      "weight": 0.85,
+      "created_at": "2026-03-15T14:30:00Z",
+      "last_co_activation": "2026-03-18T10:00:00Z"
+    }
+  ],
+  "metadata": {},
+  "version": 1
+}
+```
+
+## introspect.decay_forecast
+
+Predict the future fidelity of specific records at a given point in time.
+
+**Endpoint:** `POST /v1/introspect/decay-forecast`
+
+### Request
+
+```json
+{
+  "record_ids": [
+    "01916e3a-5678-7000-8000-000000000001",
+    "01916e3a-5678-7000-8000-000000000002"
+  ],
+  "forecast_at": "2026-04-19T00:00:00Z"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `record_ids` | Uuid[] | Yes | Records to forecast |
+| `forecast_at` | DateTime | Yes | Target date for the forecast |
+
+### Response
+
+```json
+{
+  "forecasts": [
+    {
+      "record_id": "01916e3a-5678-7000-8000-000000000001",
+      "current_fidelity": 0.847,
+      "forecasted_fidelity": 0.312,
+      "estimated_threshold_date": "2026-06-15T00:00:00Z"
+    },
+    {
+      "record_id": "01916e3a-5678-7000-8000-000000000002",
+      "current_fidelity": 0.923,
+      "forecasted_fidelity": 0.671,
+      "estimated_threshold_date": null
+    }
+  ]
+}
+```
+
+The `estimated_threshold_date` is the projected date when fidelity will drop below the prune threshold. A `null` value means the memory is projected to remain above threshold indefinitely (high stability or emotional anchoring).
+
+## introspect.evolution
+
+View the evolution engine's adaptive parameter adjustments, detected usage patterns, and schema adaptations.
+
+**Endpoint:** `GET /v1/introspect/evolution`
+
+### Response
+
+```json
+{
+  "parameter_adjustments": [
+    {
+      "store": "episodic",
+      "parameter": "decay_rate",
+      "original_value": 0.3,
+      "current_value": 0.25,
+      "reason": "High recall frequency detected"
+    }
+  ],
+  "detected_patterns": [
+    "frequent_semantic_recall",
+    "low_working_memory_usage"
+  ],
+  "schema_adaptations": []
+}
+```
+
+<Callout type="info">
+The evolution engine is optional and runs only when sufficient usage data has been collected. Early in a Cerememory instance's lifecycle, this endpoint may return empty arrays.
+</Callout>
+
+## Next Steps
+
+<LinkCard href="/docs/sdk/python" title="Python SDK" description="Use these operations from Python" />
+<LinkCard href="/docs/sdk/typescript" title="TypeScript SDK" description="Use these operations from TypeScript" />

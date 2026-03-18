@@ -1,0 +1,109 @@
+---
+title: "CMP Protocol Overview"
+description: "Introduction to the Cerememory Protocol (CMP) -- the transport-agnostic API for living memory."
+---
+
+## What is CMP?
+
+The **Cerememory Protocol (CMP)** is a versioned, transport-agnostic protocol that defines all operations for interacting with Cerememory's living memory system. CMP messages can be carried over HTTP/REST, gRPC, MCP, or any future transport binding.
+
+Every CMP message includes a protocol header with versioning:
+
+```json
+{
+  "protocol": "cmp",
+  "version": "1.0",
+  "request_id": "01916e3a-1234-7000-8000-000000000001",
+  "timestamp": "2026-03-19T10:00:00Z"
+}
+```
+
+<Callout type="info">
+The header is optional in requests -- the server generates one if omitted. Version compatibility follows semver: any `1.x` version is compatible with `1.0`.
+</Callout>
+
+## Four Operation Categories
+
+CMP organizes all operations into four categories:
+
+| Category | Prefix | Purpose |
+|----------|--------|---------|
+| **Encode** | `encode.*` | Store and update memories |
+| **Recall** | `recall.*` | Query and retrieve memories |
+| **Lifecycle** | `lifecycle.*` | Manage memory dynamics (decay, consolidation, forget) |
+| **Introspect** | `introspect.*` | Observe system state and memory metadata |
+
+## Operation Summary
+
+### Encode (CMP Spec Section 3)
+
+| Operation | Description |
+|-----------|-------------|
+| `encode.store` | Store a new memory record |
+| `encode.batch` | Store multiple records with optional association inference |
+| `encode.update` | Update an existing record's content, emotion, or metadata |
+
+### Recall (CMP Spec Section 4)
+
+| Operation | Description |
+|-----------|-------------|
+| `recall.query` | Multimodal cue-based retrieval with Human/Perfect modes |
+| `recall.associate` | Traverse the association graph from a given record |
+| `recall.timeline` | Time-bucketed retrieval within a date range |
+| `recall.graph` | Retrieve a subgraph of memory nodes and edges |
+
+### Lifecycle (CMP Spec Section 5)
+
+| Operation | Description |
+|-----------|-------------|
+| `lifecycle.consolidate` | Migrate mature episodic memories to semantic store |
+| `lifecycle.decay_tick` | Manually trigger a decay computation cycle |
+| `lifecycle.set_mode` | Switch between Human and Perfect recall modes |
+| `lifecycle.forget` | Permanently delete records (requires confirmation) |
+| `lifecycle.export` | Export records to a CMA archive |
+| `lifecycle.import` | Import records from a CMA archive |
+
+### Introspect (CMP Spec Section 6)
+
+| Operation | Description |
+|-----------|-------------|
+| `introspect.stats` | System-wide statistics (record counts, avg fidelity, etc.) |
+| `introspect.record` | Detailed view of a single record |
+| `introspect.decay_forecast` | Predict future fidelity for given records |
+| `introspect.evolution` | View adaptive parameter adjustments |
+
+## Error Handling (CMP Spec Section 7)
+
+All errors are returned as a standardized `CMPError` envelope:
+
+```json
+{
+  "code": "RECORD_NOT_FOUND",
+  "message": "Record not found: 01916e3a-...",
+  "details": null,
+  "retry_after": null
+}
+```
+
+Error codes:
+
+| Code | HTTP Status | Description |
+|------|-------------|-------------|
+| `RECORD_NOT_FOUND` | 404 | Record does not exist |
+| `STORE_INVALID` | 400 | Invalid store name |
+| `CONTENT_TOO_LARGE` | 413 | Content exceeds size limit |
+| `VALIDATION_ERROR` | 400 | Request validation failed |
+| `MODALITY_UNSUPPORTED` | 400 | Modality not supported by provider |
+| `WORKING_MEMORY_FULL` | 429 | Working memory at capacity |
+| `DECAY_ENGINE_BUSY` | 503 | Decay computation in progress |
+| `CONSOLIDATION_IN_PROGRESS` | 409 | Consolidation already running |
+| `FORGET_UNCONFIRMED` | 400 | Missing `confirm: true` |
+| `VERSION_MISMATCH` | 400 | Optimistic concurrency conflict |
+| `UNAUTHORIZED` | 401 | Invalid or missing API key |
+| `RATE_LIMITED` | 429 | Too many requests (includes `retry_after`) |
+| `INTERNAL_ERROR` | 500 | Unexpected server error |
+
+## Next Steps
+
+<LinkCard href="/docs/protocol/encode" title="Encode Operations" description="Store and update memories" />
+<LinkCard href="/docs/protocol/recall" title="Recall Operations" description="Query and retrieve memories" />

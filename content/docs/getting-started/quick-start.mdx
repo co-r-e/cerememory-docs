@@ -1,0 +1,244 @@
+---
+title: "Quick Start"
+description: "Store, recall, and forget your first memory with Cerememory."
+---
+
+This guide walks you through the basic Cerememory workflow: starting the server, storing a memory, recalling it, and forgetting it.
+
+## Start the Server
+
+<Tabs items="CLI,Docker">
+
+<div>
+
+```bash
+cerememory serve --port 8420
+```
+
+Output:
+
+```
+Cerememory v0.1.0
+HTTP  listening on 0.0.0.0:8420
+```
+
+</div>
+
+<div>
+
+```bash
+docker run -d --name cerememory -p 8420:8420 ghcr.io/co-r-e/cerememory:latest
+```
+
+</div>
+
+</Tabs>
+
+The server is now running with default settings: in-memory working store, persistent redb-backed stores for episodic/semantic/procedural/emotional, and background decay ticks every hour.
+
+## Store a Memory
+
+<Tabs items="Python,TypeScript,curl,CLI">
+
+<div>
+
+```python
+from cerememory import CerememoryClient
+
+client = CerememoryClient("http://localhost:8420")
+
+result = client.store(
+    text="The user prefers dark mode and uses vim keybindings.",
+    store="semantic",
+    emotion="trust",
+)
+print(f"Stored: {result.record_id}")
+```
+
+</div>
+
+<div>
+
+```typescript
+import { CerememoryClient } from "cerememory";
+
+const client = new CerememoryClient("http://localhost:8420");
+
+const result = await client.store({
+  text: "The user prefers dark mode and uses vim keybindings.",
+  store: "semantic",
+  emotion: "trust",
+});
+console.log(`Stored: ${result.recordId}`);
+```
+
+</div>
+
+<div>
+
+```bash
+curl -X POST http://localhost:8420/v1/encode \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": {
+      "blocks": [{
+        "modality": "text",
+        "format": "text/plain",
+        "data": [84,104,101,32,117,115,101,114,32,112,114,101,102,101,114,115,32,100,97,114,107,32,109,111,100,101],
+        "embedding": null
+      }],
+      "summary": null
+    },
+    "store": "semantic"
+  }'
+```
+
+</div>
+
+<div>
+
+```bash
+cerememory store "The user prefers dark mode and uses vim keybindings." \
+  --store semantic
+```
+
+Output:
+
+```
+Stored: 01916e3a-1234-7000-8000-000000000001 (store: semantic, fidelity: 1.0)
+```
+
+</div>
+
+</Tabs>
+
+## Recall Memories
+
+<Tabs items="Python,TypeScript,curl,CLI">
+
+<div>
+
+```python
+results = client.recall(
+    text="What are the user's preferences?",
+    limit=5,
+    mode="human",  # applies fidelity decay and noise
+)
+
+for memory in results.memories:
+    print(f"[{memory.store}] score={memory.relevance_score:.4f}")
+    print(f"  {memory.text_content}")
+```
+
+</div>
+
+<div>
+
+```typescript
+const results = await client.recall({
+  text: "What are the user's preferences?",
+  limit: 5,
+  mode: "human",
+});
+
+for (const memory of results.memories) {
+  console.log(`[${memory.store}] score=${memory.relevanceScore.toFixed(4)}`);
+  console.log(`  ${memory.textContent}`);
+}
+```
+
+</div>
+
+<div>
+
+```bash
+curl -X POST http://localhost:8420/v1/recall/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cue": { "text": "What are the user preferences?" },
+    "limit": 5,
+    "recall_mode": "human"
+  }'
+```
+
+</div>
+
+<div>
+
+```bash
+cerememory recall "What are the user's preferences?" --limit 5 --mode human
+```
+
+</div>
+
+</Tabs>
+
+<Callout type="info">
+In **human** mode, recalled content is filtered through fidelity and noise -- older or less-accessed memories may be slightly distorted, just like biological recall. Use **perfect** mode when exact reproduction is needed.
+</Callout>
+
+## Forget a Memory
+
+<Tabs items="Python,TypeScript,CLI">
+
+<div>
+
+```python
+client.forget(
+    record_ids=["01916e3a-1234-7000-8000-000000000001"],
+    confirm=True,
+)
+```
+
+</div>
+
+<div>
+
+```typescript
+await client.forget({
+  recordIds: ["01916e3a-1234-7000-8000-000000000001"],
+  confirm: true,
+});
+```
+
+</div>
+
+<div>
+
+```bash
+cerememory forget 01916e3a-1234-7000-8000-000000000001 --confirm
+```
+
+</div>
+
+</Tabs>
+
+<Callout type="warning">
+The `--confirm` flag is required for all forget operations. Forgetting is permanent and cannot be undone. Use `--cascade` to also delete associated records.
+</Callout>
+
+## Check System Stats
+
+```bash
+cerememory stats
+```
+
+```json
+{
+  "total_records": 42,
+  "records_by_store": {
+    "episodic": 18,
+    "semantic": 15,
+    "procedural": 5,
+    "emotional": 4
+  },
+  "total_associations": 23,
+  "avg_fidelity": 0.847,
+  "total_recall_count": 156
+}
+```
+
+## Next Steps
+
+<LinkCard href="/docs/architecture/overview" title="Architecture" description="Understand the engine, stores, and memory lifecycle" />
+<LinkCard href="/docs/protocol/overview" title="CMP Protocol" description="Learn the full Cerememory Protocol specification" />

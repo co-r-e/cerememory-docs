@@ -1,0 +1,125 @@
+---
+title: "Installation"
+description: "Install Cerememory via cargo, Docker, pip, or npm."
+---
+
+## Requirements
+
+- **Rust 1.88+** (for building from source)
+- No external database required -- Cerememory uses embedded redb for storage
+
+## Installation Methods
+
+<Tabs items="cargo,Docker,pip,npm">
+
+<div>
+
+Install directly from crates.io:
+
+```bash
+cargo install cerememory-cli
+```
+
+This compiles the binary with default features (all LLM adapters enabled). To build with only specific adapters:
+
+```bash
+cargo install cerememory-cli --no-default-features --features llm-claude
+```
+
+</div>
+
+<div>
+
+Pull the official Docker image:
+
+```bash
+docker pull ghcr.io/co-r-e/cerememory:latest
+```
+
+Run with a persistent data volume:
+
+```bash
+docker run -d \
+  --name cerememory \
+  -p 8420:8420 \
+  -v cerememory-data:/data \
+  ghcr.io/co-r-e/cerememory:latest
+```
+
+</div>
+
+<div>
+
+Install the Python SDK (includes the server binary):
+
+```bash
+pip install cerememory
+```
+
+Or install only the client library:
+
+```bash
+pip install cerememory-client
+```
+
+</div>
+
+<div>
+
+Install the TypeScript/JavaScript SDK:
+
+```bash
+npm install cerememory
+```
+
+Or with yarn:
+
+```bash
+yarn add cerememory
+```
+
+</div>
+
+</Tabs>
+
+## Build from Source
+
+```bash
+git clone https://github.com/co-r-e/cerememory.git
+cd cerememory
+cargo build --release
+```
+
+The binary will be located at `target/release/cerememory`.
+
+<Callout type="info">
+Cerememory requires Rust edition 2021 with resolver v2. The workspace includes over 20 crates -- an incremental build after the first compile is fast.
+</Callout>
+
+## Feature Flags
+
+The CLI binary supports feature flags for LLM provider adapters:
+
+| Feature | Description | Default |
+|---------|-------------|---------|
+| `llm-openai` | OpenAI / GPT adapter | Enabled |
+| `llm-claude` | Anthropic / Claude adapter | Enabled |
+| `llm-gemini` | Google / Gemini adapter | Enabled |
+
+Disable unused adapters to reduce binary size and compile time.
+
+## Verify Installation
+
+```bash
+cerememory --version
+```
+
+You should see output like:
+
+```
+cerememory 0.1.0
+```
+
+## Next Steps
+
+<LinkCard href="/docs/getting-started/quick-start" title="Quick Start" description="Store, recall, and forget your first memory" />

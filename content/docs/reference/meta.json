@@ -1,0 +1,5 @@
+{
+  "title": "Reference",
+  "icon": "book",
+  "pages": ["api-endpoints", "cli", "llm-adapters"]
+}

@@ -1,0 +1,132 @@
+---
+title: "Contributing Guide"
+description: "How to contribute to Cerememory: PR process, commit conventions, and code style."
+---
+
+## Getting Started
+
+We welcome contributions to Cerememory. Before submitting a pull request, please read this guide to understand our workflow and expectations.
+
+## Pull Request Process
+
+<Steps>
+
+<div>
+
+**Fork and branch** -- Fork the repository and create a feature branch from `main`:
+
+```bash
+git checkout -b feat/your-feature-name
+```
+
+</div>
+
+<div>
+
+**Make your changes** -- Implement your feature or fix. Ensure all tests pass locally.
+
+</div>
+
+<div>
+
+**Write tests** -- New features require tests. Bug fixes should include a regression test. Aim for coverage of both success paths and failure modes.
+
+</div>
+
+<div>
+
+**Submit a PR** -- Open a pull request against `main`. Fill out the PR template with a clear description of the change and its motivation.
+
+</div>
+
+<div>
+
+**Address review feedback** -- Respond to review comments and push additional commits as needed.
+
+</div>
+
+</Steps>
+
+## Commit Convention
+
+We use [Conventional Commits](https://www.conventionalcommits.org/) with the following prefixes:
+
+| Prefix | Use Case |
+|--------|----------|
+| `feat:` | New feature or capability |
+| `fix:` | Bug fix |
+| `refactor:` | Code restructuring without behavior change |
+| `test:` | Adding or updating tests |
+| `docs:` | Documentation changes |
+| `perf:` | Performance improvement |
+| `chore:` | Build, CI, dependency updates |
+| `breaking:` | Breaking API change |
+
+Examples:
+
+```
+feat: add recall.timeline endpoint
+fix: correct noise accumulation for zero-fidelity records
+refactor: extract decay math into pure functions
+test: add batch processing test for 10k records
+docs: add architecture overview to mdx docs
+```
+
+Scope is optional but encouraged for crate-specific changes:
+
+```
+feat(engine): implement spreading activation with depth limit
+fix(decay): clamp noise level to [0.0, 1.0]
+```
+
+## Code Style
+
+### Rust
+
+- Follow standard Rust idioms and the Rust API guidelines
+- Run `cargo fmt` before committing -- the CI enforces formatting
+- Run `cargo clippy` and address all warnings
+- Prefer `impl Future` over boxed futures for trait methods (except where dyn-compatibility requires boxing)
+- Use `thiserror` for error types; avoid `anyhow` in library crates (OK in CLI/binary crates)
+- Document public APIs with `///` doc comments
+
+### Testing
+
+- Use `#[test]` for unit tests and `#[tokio::test]` for async tests
+- Place unit tests in a `mod tests` at the bottom of each file
+- Integration tests go in the `tests/integration` crate
+- Use descriptive test names: `fidelity_decreases_after_1h`, not `test_decay`
+
+### Documentation
+
+- MDX files use frontmatter with `title` and `description`
+- Use components: `Callout`, `Tabs`, `Steps`, `Terminal`, `FileTree`, `LinkCard`
+- Keep code examples accurate and runnable
+
+## Branch Naming
+
+| Pattern | Example |
+|---------|---------|
+| `feat/*` | `feat/timeline-query` |
+| `fix/*` | `fix/decay-negative-fidelity` |
+| `refactor/*` | `refactor/store-trait-simplify` |
+| `docs/*` | `docs/cmp-spec-update` |
+
+## Issue Labels
+
+| Label | Description |
+|-------|-------------|
+| `bug` | Something is broken |
+| `enhancement` | New feature request |
+| `good first issue` | Suitable for newcomers |
+| `help wanted` | Community contributions welcome |
+| `breaking` | Involves breaking API changes |
+| `performance` | Performance-related |
+
+## License
+
+By contributing to Cerememory, you agree that your contributions will be licensed under the MIT License.
+
+## Next Steps
+
+<LinkCard href="/docs/contributing/development" title="Development Setup" description="Set up your local development environment" />

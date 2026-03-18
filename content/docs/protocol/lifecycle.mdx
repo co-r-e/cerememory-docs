@@ -1,0 +1,197 @@
+---
+title: "Lifecycle Operations"
+description: "Manage memory dynamics: consolidation, decay, mode switching, forgetting, export, and import."
+---
+
+## lifecycle.consolidate
+
+Trigger memory consolidation -- migrating mature episodic memories into the semantic store as distilled knowledge.
+
+**Endpoint:** `POST /v1/lifecycle/consolidate`
+
+### Request
+
+```json
+{
+  "strategy": "incremental",
+  "min_age_hours": 24,
+  "min_access_count": 3,
+  "dry_run": false
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `strategy` | ConsolidationStrategy | No | incremental | `full`, `incremental`, or `selective` |
+| `min_age_hours` | u32 | No | 0 | Minimum age of episodic records to consider |
+| `min_access_count` | u32 | No | 0 | Minimum access count to qualify |
+| `dry_run` | bool | No | false | Preview without making changes |
+
+### Response
+
+```json
+{
+  "records_processed": 150,
+  "records_migrated": 12,
+  "records_compressed": 8,
+  "records_pruned": 5,
+  "semantic_nodes_created": 12
+}
+```
+
+<Callout type="info">
+Use `dry_run: true` to preview which records would be consolidated without making any changes. This is useful for tuning the `min_age_hours` and `min_access_count` thresholds.
+</Callout>
+
+## lifecycle.decay_tick
+
+Manually trigger a decay computation cycle. In server mode, this runs automatically in the background, but you can trigger it explicitly for testing or manual control.
+
+**Endpoint:** `POST /v1/lifecycle/decay-tick`
+
+### Request
+
+```json
+{
+  "tick_duration_seconds": 3600
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `tick_duration_seconds` | u32 | No | None | Simulated time to add (for testing) |
+
+### Response
+
+```json
+{
+  "records_updated": 342,
+  "records_below_threshold": 15,
+  "records_pruned": 8
+}
+```
+
+The decay tick processes all records across all persistent stores in parallel. Records whose fidelity falls below the prune threshold (default: 0.01) are automatically deleted.
+
+## lifecycle.set_mode
+
+Switch the global recall mode between Human and Perfect.
+
+**Endpoint:** `PUT /v1/lifecycle/mode`
+
+### Request
+
+```json
+{
+  "mode": "perfect",
+  "scope": ["episodic", "semantic"]
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `mode` | RecallMode | Yes | -- | `human` or `perfect` |
+| `scope` | StoreType[] | No | All stores | Limit mode change to specific stores |
+
+### Response
+
+Returns `204 No Content` on success.
+
+## lifecycle.forget
+
+Permanently delete memory records. Requires explicit confirmation to prevent accidental data loss.
+
+**Endpoint:** `DELETE /v1/lifecycle/forget`
+
+### Request
+
+```json
+{
+  "record_ids": ["01916e3a-5678-7000-8000-000000000001"],
+  "store": null,
+  "temporal_range": null,
+  "cascade": true,
+  "confirm": true
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `record_ids` | Uuid[] | No | None | Specific records to delete |
+| `store` | StoreType | No | None | Delete all records in a store |
+| `temporal_range` | TemporalRange | No | None | Delete records within a time range |
+| `cascade` | bool | No | false | Also delete associated records |
+| `confirm` | bool | Yes | -- | Must be `true` to proceed |
+
+### Response
+
+```json
+{
+  "records_deleted": 3
+}
+```
+
+<Callout type="warning">
+Forget is irreversible. Without `confirm: true`, the server returns a `FORGET_UNCONFIRMED` error. With `cascade: true`, all records linked by associations are also deleted.
+</Callout>
+
+## lifecycle.export
+
+Export memory records to a CMA (Cerememory Archive) file for backup or portability.
+
+**Endpoint:** `POST /v1/lifecycle/export` (via CLI: `cerememory export`)
+
+### Request
+
+```json
+{
+  "format": "cma",
+  "stores": ["episodic", "semantic"],
+  "encrypt": true,
+  "encryption_key": "base64-encoded-key"
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `format` | string | No | cma | Archive format |
+| `stores` | StoreType[] | No | All stores | Filter to specific stores |
+| `encrypt` | bool | No | false | Encrypt the archive with ChaCha20-Poly1305 |
+| `encryption_key` | string | No | None | Base64-encoded encryption key |
+
+### Response
+
+```json
+{
+  "archive_id": "export_20260319_100000",
+  "size_bytes": 1048576,
+  "record_count": 342,
+  "checksum": "sha256:abc123..."
+}
+```
+
+## lifecycle.import
+
+Import memory records from a CMA archive.
+
+### Request
+
+```json
+{
+  "archive_id": "export_20260319_100000",
+  "strategy": "merge",
+  "conflict_resolution": "keep_newer",
+  "decryption_key": "base64-encoded-key"
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `archive_id` | string | Yes | -- | Archive identifier |
+| `strategy` | ImportStrategy | No | merge | `merge` or `replace` |
+| `conflict_resolution` | ConflictResolution | No | keep_newer | `keep_existing`, `keep_imported`, or `keep_newer` |
+| `decryption_key` | string | No | None | Required if archive is encrypted |
+
+## Next Steps
+
+<LinkCard href="/docs/protocol/introspect" title="Introspect Operations" description="Observe system state and memory metadata" />

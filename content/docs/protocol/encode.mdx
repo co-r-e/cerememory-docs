@@ -1,0 +1,178 @@
+---
+title: "Encode Operations"
+description: "Store and update memories using CMP encode operations."
+---
+
+## encode.store
+
+Store a new memory record. This is the primary way to add memories to Cerememory.
+
+**Endpoint:** `POST /v1/encode`
+
+### Request
+
+```json
+{
+  "content": {
+    "blocks": [
+      {
+        "modality": "text",
+        "format": "text/plain",
+        "data": [72, 101, 108, 108, 111],
+        "embedding": null
+      }
+    ],
+    "summary": null
+  },
+  "store": "episodic",
+  "emotion": {
+    "joy": 0.0,
+    "trust": 0.8,
+    "intensity": 0.6,
+    "valence": 0.7
+  },
+  "context": {
+    "source": "chat-session-42",
+    "session_id": "sess_abc123"
+  },
+  "associations": [
+    {
+      "target_id": "01916e3a-0000-7000-8000-000000000001",
+      "association_type": "semantic",
+      "weight": 0.75
+    }
+  ]
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `content` | MemoryContent | Yes | -- | The memory payload (blocks + optional summary) |
+| `store` | StoreType | No | Engine auto-selects | Target store (episodic, semantic, procedural, emotional, working) |
+| `emotion` | EmotionVector | No | Neutral | Emotional context for this memory |
+| `context` | EncodeContext | No | None | Source, session, spatial, and temporal context |
+| `associations` | ManualAssociation[] | No | None | Explicit associations to existing records |
+
+### Response
+
+```json
+{
+  "record_id": "01916e3a-5678-7000-8000-000000000002",
+  "store": "episodic",
+  "initial_fidelity": 1.0,
+  "associations_created": 1
+}
+```
+
+<Callout type="info">
+When `store` is omitted, the engine selects the most appropriate store based on content analysis. Text that looks like a fact goes to semantic; narratives go to episodic; step-by-step instructions go to procedural.
+</Callout>
+
+## encode.batch
+
+Store multiple records in a single request with optional automatic association inference between the batch members.
+
+**Endpoint:** `POST /v1/encode/batch`
+
+### Request
+
+```json
+{
+  "records": [
+    {
+      "content": {
+        "blocks": [{ "modality": "text", "format": "text/plain", "data": [65, 66, 67] }]
+      },
+      "store": "episodic"
+    },
+    {
+      "content": {
+        "blocks": [{ "modality": "text", "format": "text/plain", "data": [68, 69, 70] }]
+      },
+      "store": "episodic"
+    }
+  ],
+  "infer_associations": true
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `records` | EncodeStoreRequest[] | Yes | -- | Array of individual store requests |
+| `infer_associations` | bool | No | false | Automatically create associations between batch members |
+
+### Response
+
+```json
+{
+  "results": [
+    {
+      "record_id": "01916e3a-aaaa-7000-8000-000000000001",
+      "store": "episodic",
+      "initial_fidelity": 1.0,
+      "associations_created": 1
+    },
+    {
+      "record_id": "01916e3a-bbbb-7000-8000-000000000002",
+      "store": "episodic",
+      "initial_fidelity": 1.0,
+      "associations_created": 1
+    }
+  ],
+  "associations_inferred": 2
+}
+```
+
+When `infer_associations` is true, the engine creates temporal and sequential associations between consecutive records in the batch. If an LLM provider is configured, semantic associations are also inferred.
+
+## encode.update
+
+Update an existing record's content, emotion, or metadata. Uses optimistic concurrency control via the record's `version` field.
+
+**Endpoint:** `PATCH /v1/encode/:record_id`
+
+### Request
+
+```json
+{
+  "content": {
+    "blocks": [
+      {
+        "modality": "text",
+        "format": "text/plain",
+        "data": [85, 112, 100, 97, 116, 101, 100]
+      }
+    ],
+    "summary": "Updated memory content"
+  },
+  "emotion": {
+    "trust": 1.0,
+    "intensity": 0.9,
+    "valence": 0.7
+  },
+  "metadata": {
+    "reviewed": true,
+    "source": "manual-correction"
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `content` | MemoryContent | No | Replace content entirely |
+| `emotion` | EmotionVector | No | Replace emotion vector |
+| `metadata` | JSON | No | Replace metadata object |
+
+All fields are optional -- only provided fields are updated. The record's `updated_at` timestamp and `version` are automatically incremented.
+
+### Response
+
+Returns `204 No Content` on success.
+
+<Callout type="warning">
+Updating a record does **not** reset its fidelity or decay state. The memory continues to age from its original creation time. If you need to "refresh" a memory, recall it (which triggers reconsolidation) rather than updating it.
+</Callout>
+
+## Next Steps
+
+<LinkCard href="/docs/protocol/recall" title="Recall Operations" description="Query and retrieve memories with multimodal cues" />

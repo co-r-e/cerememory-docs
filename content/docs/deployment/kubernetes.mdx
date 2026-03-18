@@ -1,0 +1,231 @@
+---
+title: "Kubernetes"
+description: "Deploy Cerememory to Kubernetes with probes, persistent storage, and scaling."
+---
+
+## Deployment Manifest
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cerememory
+  labels:
+    app: cerememory
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cerememory
+  template:
+    metadata:
+      labels:
+        app: cerememory
+    spec:
+      containers:
+        - name: cerememory
+          image: ghcr.io/co-r-e/cerememory:latest
+          args: ["serve", "--config", "/etc/cerememory/cerememory.toml"]
+          ports:
+            - name: http
+              containerPort: 8420
+              protocol: TCP
+            - name: grpc
+              containerPort: 50051
+              protocol: TCP
+          env:
+            - name: CEREMEMORY_AUTH_API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: cerememory-secrets
+                  key: api-keys
+            - name: CEREMEMORY_LLM__API_KEY_RAW
+              valueFrom:
+                secretKeyRef:
+                  name: cerememory-secrets
+                  key: llm-api-key
+            - name: CEREMEMORY_LOG__FORMAT
+              value: "json"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            failureThreshold: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: config
+              mountPath: /etc/cerememory
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: cerememory-data
+        - name: config
+          configMap:
+            name: cerememory-config
+```
+
+## PersistentVolumeClaim
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cerememory-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+```
+
+<Callout type="warning">
+Cerememory uses redb, an embedded database that requires `ReadWriteOnce` access. Do not use `ReadWriteMany` as concurrent access to the same redb file from multiple pods will cause data corruption.
+</Callout>
+
+## Service
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: cerememory
+spec:
+  selector:
+    app: cerememory
+  ports:
+    - name: http
+      port: 8420
+      targetPort: http
+    - name: grpc
+      port: 50051
+      targetPort: grpc
+  type: ClusterIP
+```
+
+## ConfigMap
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cerememory-config
+data:
+  cerememory.toml: |
+    data_dir = "/data"
+
+    [http]
+    port = 8420
+
+    [grpc]
+    port = 50051
+
+    [auth]
+    enabled = true
+
+    [decay]
+    background_interval_secs = 3600
+
+    [rate_limit]
+    requests_per_second = 100
+    burst = 50
+
+    [log]
+    level = "info"
+    format = "json"
+```
+
+## Secrets
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cerememory-secrets
+type: Opaque
+stringData:
+  api-keys: "sk-cerememory-prod-abc123"
+  llm-api-key: "sk-ant-..."
+```
+
+<Callout type="info">
+In production, use a secrets manager (Vault, AWS Secrets Manager, etc.) instead of Kubernetes Secrets. The example above is for demonstration purposes.
+</Callout>
+
+## Probes
+
+Cerememory provides three probe endpoints:
+
+| Probe | Endpoint | Behavior |
+|-------|----------|----------|
+| **Liveness** | `GET /health` | Returns 200 if the process is alive |
+| **Readiness** | `GET /readiness` | Returns 200 if the engine can serve requests; 503 otherwise |
+| **Startup** | `GET /health` | Same as liveness; use a higher `failureThreshold` |
+
+Both `/health` and `/readiness` bypass authentication and rate limiting, so they work even when auth is enabled.
+
+## Scaling Considerations
+
+Cerememory uses an embedded database (redb), which means:
+
+- **Horizontal scaling is not supported** -- Each replica needs its own data volume. Memories are not shared between replicas.
+- **Vertical scaling works well** -- The decay engine uses rayon for parallel computation and benefits from additional CPU cores.
+- **Read replicas are not available** -- Use a single replica with appropriate resource limits.
+
+For high-availability scenarios, consider:
+
+1. Running a single replica with a restart policy
+2. Using PersistentVolumeClaims with a durable storage class
+3. Regular CMA archive exports for backup
+
+## Prometheus ServiceMonitor
+
+If you use the Prometheus Operator:
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cerememory
+spec:
+  selector:
+    matchLabels:
+      app: cerememory
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+```
+
+## Next Steps
+
+<LinkCard href="/docs/deployment/configuration" title="Configuration" description="Full configuration reference" />
+<LinkCard href="/docs/reference/api-endpoints" title="API Endpoints" description="Complete HTTP endpoint reference" />

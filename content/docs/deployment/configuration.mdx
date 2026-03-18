@@ -1,0 +1,134 @@
+---
+title: "Configuration"
+description: "Configure Cerememory via TOML file, environment variables, and CLI flags."
+---
+
+## Configuration Precedence
+
+Cerememory loads configuration from three sources, in order of precedence (highest wins):
+
+1. **Environment variables** -- `CEREMEMORY_` prefix with `__` separator
+2. **TOML configuration file** -- Specified via `--config` flag
+3. **Hard-coded defaults** -- Sensible defaults for all settings
+
+## TOML Configuration File
+
+Create a `cerememory.toml` file:
+
+```toml
+# Data directory for persistent storage (redb files, text index, vector index)
+data_dir = "./data"
+
+[http]
+port = 8420
+cors_origins = ["http://localhost:3000", "https://app.example.com"]
+
+[grpc]
+port = 50051                          # omit to disable gRPC
+tls_cert_path = "/etc/certs/cert.pem" # optional
+tls_key_path = "/etc/certs/key.pem"   # optional
+
+[auth]
+enabled = true
+api_keys_raw = ["sk-cerememory-prod-abc123", "sk-cerememory-prod-def456"]
+
+[llm]
+provider = "claude"   # "openai", "claude", "gemini", or "none"
+api_key_raw = "sk-ant-..."
+model = "claude-sonnet-4-20250514"       # optional model override
+base_url = null       # optional base URL override
+
+[decay]
+background_interval_secs = 3600  # background decay tick interval
+
+[rate_limit]
+requests_per_second = 100
+burst = 50
+
+[log]
+level = "info"    # trace, debug, info, warn, error
+format = "pretty" # "pretty" or "json"
+```
+
+Pass the config file to the CLI:
+
+```bash
+cerememory serve --config ./cerememory.toml
+```
+
+## Environment Variables
+
+All configuration options can be overridden via environment variables with the `CEREMEMORY_` prefix. Nested keys use `__` (double underscore) as the separator.
+
+| Environment Variable | Config Key | Default | Description |
+|---------------------|-----------|---------|-------------|
+| `CEREMEMORY_DATA_DIR` | `data_dir` | `./data` | Data directory path |
+| `CEREMEMORY_HTTP__PORT` | `http.port` | `8420` | HTTP server port |
+| `CEREMEMORY_HTTP__CORS_ORIGINS` | `http.cors_origins` | `[]` | Allowed CORS origins |
+| `CEREMEMORY_GRPC__PORT` | `grpc.port` | None | gRPC port (disabled if unset) |
+| `CEREMEMORY_GRPC__TLS_CERT_PATH` | `grpc.tls_cert_path` | None | TLS certificate path |
+| `CEREMEMORY_GRPC__TLS_KEY_PATH` | `grpc.tls_key_path` | None | TLS key path |
+| `CEREMEMORY_AUTH__ENABLED` | `auth.enabled` | `false` | Enable Bearer token auth |
+| `CEREMEMORY_AUTH_API_KEYS` | `auth.api_keys_raw` | `[]` | Comma-separated API keys |
+| `CEREMEMORY_LLM__PROVIDER` | `llm.provider` | `none` | LLM provider name |
+| `CEREMEMORY_LLM__API_KEY_RAW` | `llm.api_key_raw` | None | LLM API key |
+| `CEREMEMORY_LLM__MODEL` | `llm.model` | None | Model name override |
+| `CEREMEMORY_LLM__BASE_URL` | `llm.base_url` | None | API base URL override |
+| `CEREMEMORY_DECAY__BACKGROUND_INTERVAL_SECS` | `decay.background_interval_secs` | `3600` | Decay tick interval (seconds) |
+| `CEREMEMORY_RATE_LIMIT__REQUESTS_PER_SECOND` | `rate_limit.requests_per_second` | `100` | Rate limit RPS |
+| `CEREMEMORY_RATE_LIMIT__BURST` | `rate_limit.burst` | `50` | Rate limit burst |
+| `CEREMEMORY_LOG__LEVEL` | `log.level` | `info` | Log level |
+| `CEREMEMORY_LOG__FORMAT` | `log.format` | `pretty` | Log format |
+
+<Callout type="info">
+`CEREMEMORY_AUTH_API_KEYS` is a special case -- it accepts a comma-separated string since environment variables cannot natively represent arrays. Example: `CEREMEMORY_AUTH_API_KEYS=key1,key2,key3`
+</Callout>
+
+## CLI Flag Overrides
+
+CLI flags take the highest precedence for the specific options they cover:
+
+```bash
+cerememory serve --port 9000 --grpc-port 50051 --data-dir /var/cerememory --config ./cerememory.toml
+```
+
+| Flag | Overrides |
+|------|-----------|
+| `--port` | `http.port` |
+| `--grpc-port` | `grpc.port` |
+| `--data-dir` | `data_dir` |
+| `--config` | Path to TOML config file |
+
+## Validation
+
+The configuration is validated at startup. The following rules are enforced:
+
+- HTTP port must be non-zero
+- gRPC port (if set) must be non-zero and different from HTTP port
+- If auth is enabled, at least one API key must be configured
+- TLS cert and key must be provided together (both or neither)
+- Rate limit values must be greater than zero
+
+<Callout type="warning">
+API keys and LLM keys are stored as `SecretString` at runtime to prevent accidental logging. The `Debug` implementation for `AuthConfig` and `LlmConfig` redacts sensitive values.
+</Callout>
+
+## Data Directory Structure
+
+When Cerememory starts, it creates the following structure inside `data_dir`:
+
+<FileTree>
+  <FileTree.Folder name="data" defaultOpen>
+    <FileTree.File name="episodic.redb" />
+    <FileTree.File name="semantic.redb" />
+    <FileTree.File name="procedural.redb" />
+    <FileTree.File name="emotional.redb" />
+    <FileTree.File name="vectors.redb" />
+    <FileTree.Folder name="text_index" />
+  </FileTree.Folder>
+</FileTree>
+
+## Next Steps
+
+<LinkCard href="/docs/deployment/docker" title="Docker" description="Run Cerememory in Docker containers" />
+<LinkCard href="/docs/deployment/kubernetes" title="Kubernetes" description="Deploy to Kubernetes with proper probes and scaling" />

@@ -1,0 +1,154 @@
+---
+title: "Native Bindings"
+description: "Zero-overhead PyO3 and napi-rs native bindings for Python and Node.js."
+---
+
+## Overview
+
+In addition to the HTTP-based SDKs, Cerememory provides **native bindings** that embed the Rust engine directly in your Python or Node.js process. These bindings eliminate network overhead and provide the fastest possible access to the memory engine.
+
+Native bindings are built using:
+
+- **PyO3** for Python -- compiles to a native Python extension module
+- **napi-rs** for Node.js -- compiles to a native Node.js addon
+
+<Callout type="info">
+Native bindings run the Cerememory engine **in-process**. There is no HTTP server involved. This is ideal for single-process applications, testing, and high-throughput scenarios.
+</Callout>
+
+## Python Native (PyO3)
+
+### Installation
+
+```bash
+pip install cerememory
+```
+
+The `cerememory` package includes pre-built wheels for Linux (x86_64, aarch64) and macOS (x86_64, aarch64). If no pre-built wheel is available, pip will compile from source (requires Rust toolchain).
+
+### Usage
+
+```python
+from cerememory.native import CerememoryEngine
+
+# Create an in-memory engine (no disk persistence)
+engine = CerememoryEngine.in_memory()
+
+# Or with persistent storage
+engine = CerememoryEngine(data_dir="./my-memories")
+
+# Store a memory
+record_id = engine.store(
+    text="Important fact about the user",
+    store="semantic",
+)
+
+# Recall memories
+results = engine.recall(text="user facts", limit=5)
+for result in results:
+    print(f"{result.record_id}: {result.text_content}")
+
+# Inspect a record
+record = engine.inspect(record_id)
+print(f"Fidelity: {record.fidelity.score}")
+
+# Run a decay tick
+stats = engine.decay_tick(duration_seconds=3600)
+print(f"Records updated: {stats.records_updated}")
+```
+
+### API Differences from HTTP Client
+
+The native API is slightly different from the HTTP client:
+
+| HTTP Client | Native Binding | Notes |
+|-------------|---------------|-------|
+| `client.store(text=...)` | `engine.store(text=...)` | Same signature |
+| `client.recall(text=...)` | `engine.recall(text=...)` | Returns list, not wrapper object |
+| `client.forget(record_ids=[...], confirm=True)` | `engine.forget(record_ids=[...])` | Confirm not required (no accidental HTTP calls) |
+| `client.stats()` | `engine.stats()` | Same structure |
+| Async client available | Always sync (GIL released) | Use `asyncio.to_thread` for async |
+
+<Callout type="info">
+The native binding releases the Python GIL during Rust operations, so it is safe to use from multiple threads. For asyncio applications, wrap calls with `asyncio.to_thread()`.
+</Callout>
+
+## Node.js Native (napi-rs)
+
+### Installation
+
+```bash
+npm install cerememory-native
+```
+
+Pre-built binaries are included for Linux (x86_64, aarch64), macOS (x86_64, aarch64), and Windows (x86_64).
+
+### Usage
+
+```typescript
+import { CerememoryEngine } from "cerememory-native";
+
+// Create an in-memory engine
+const engine = CerememoryEngine.inMemory();
+
+// Or with persistent storage
+const engine = new CerememoryEngine({ dataDir: "./my-memories" });
+
+// Store a memory
+const recordId = await engine.store({
+  text: "User prefers dark mode",
+  store: "semantic",
+});
+
+// Recall memories
+const results = await engine.recall({ text: "user preferences", limit: 5 });
+for (const result of results) {
+  console.log(`${result.recordId}: ${result.textContent}`);
+}
+
+// Inspect a record
+const record = await engine.inspect(recordId);
+console.log(`Fidelity: ${record.fidelity.score}`);
+```
+
+### napi-rs Features
+
+The napi-rs binding provides:
+
+- **Async/await support** -- All operations return Promises and run on the Rust tokio runtime
+- **Serde JSON bridging** -- Automatic conversion between Rust types and JavaScript objects
+- **TypeScript types** -- Full `.d.ts` type definitions included
+
+## When to Use Native Bindings
+
+| Scenario | Recommended |
+|----------|-------------|
+| Embedded in a single application | Native bindings |
+| Multiple clients sharing one memory store | HTTP server |
+| Testing and development | Native bindings (simpler setup) |
+| Production with health checks and metrics | HTTP server |
+| High-throughput batch processing | Native bindings |
+| Multi-language polyglot architecture | HTTP server |
+
+## Building from Source
+
+### Python
+
+```bash
+cd bindings/python-native
+pip install maturin
+maturin develop --release
+```
+
+### Node.js
+
+```bash
+cd bindings/typescript-native
+npm install
+npm run build
+```
+
+## Next Steps
+
+<LinkCard href="/docs/sdk/python" title="Python SDK" description="HTTP-based Python client" />
+<LinkCard href="/docs/sdk/typescript" title="TypeScript SDK" description="HTTP-based TypeScript client" />

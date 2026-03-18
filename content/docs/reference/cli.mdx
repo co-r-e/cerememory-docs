@@ -1,0 +1,258 @@
+---
+title: "CLI Reference"
+description: "Complete reference for all Cerememory CLI commands and flags."
+---
+
+## Global Flags
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--data-dir` | path | `./data` | Data directory for persistent storage |
+| `--config` | path | None | Path to TOML configuration file |
+
+---
+
+## serve
+
+Start the HTTP server (and optionally gRPC).
+
+```bash
+cerememory serve [OPTIONS]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--port` | u16 | 8420 | HTTP port |
+| `--grpc-port` | u16 | None | gRPC port (disabled if not set) |
+
+<Terminal title="Example: Start with both HTTP and gRPC">
+```bash
+cerememory serve --port 8420 --grpc-port 50051 --config ./cerememory.toml
+```
+</Terminal>
+
+The server starts with:
+- Background decay enabled (configurable interval)
+- Graceful shutdown on SIGINT/SIGTERM
+- Prometheus metrics at `/metrics`
+- Health probes at `/health` and `/readiness`
+
+---
+
+## store
+
+Store a new memory record.
+
+```bash
+cerememory store <TEXT> [OPTIONS]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `<TEXT>` | string | -- | Required. Text content to store |
+| `--store` | string | episodic | Target store (episodic, semantic, procedural, emotional, working) |
+| `--embedding` | string | None | Comma-separated embedding vector (e.g., "0.1,0.2,0.3") |
+
+<Terminal title="Example: Store a semantic memory">
+```bash
+cerememory store "The user prefers dark mode" --store semantic
+```
+</Terminal>
+
+Output:
+
+```
+Stored: 01916e3a-5678-7000-8000-000000000001 (store: semantic, fidelity: 1.0)
+```
+
+<Callout type="warning">
+Storing to the working store prints a warning: working memory is in-memory only and will not persist across restarts.
+</Callout>
+
+---
+
+## recall
+
+Recall memories by text query.
+
+```bash
+cerememory recall <QUERY> [OPTIONS]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `<QUERY>` | string | -- | Required. Text query |
+| `--limit` | u32 | 10 | Maximum results |
+| `--mode` | string | human | Recall mode: "human" or "perfect" |
+
+<Terminal title="Example: Recall with perfect mode">
+```bash
+cerememory recall "user preferences" --limit 5 --mode perfect
+```
+</Terminal>
+
+Output:
+
+```
+Found 3 memories (total candidates: 42)
+
+1. [semantic] score=0.9234 fidelity=0.8470
+   ID: 01916e3a-5678-7000-8000-000000000001
+   The user prefers dark mode
+```
+
+---
+
+## inspect
+
+Inspect a specific record with full detail.
+
+```bash
+cerememory inspect <RECORD_ID>
+```
+
+| Flag | Type | Description |
+|------|------|-------------|
+| `<RECORD_ID>` | UUID | Required. Record UUID to inspect |
+
+<Terminal title="Example: Inspect a record">
+```bash
+cerememory inspect 01916e3a-5678-7000-8000-000000000001
+```
+</Terminal>
+
+Outputs the full MemoryRecord as pretty-printed JSON, including fidelity state, emotion vector, associations, and metadata.
+
+---
+
+## stats
+
+Display system-wide statistics.
+
+```bash
+cerememory stats
+```
+
+Outputs JSON with total records, per-store counts, average fidelity, total associations, and recall count.
+
+---
+
+## decay-tick
+
+Manually trigger a decay computation cycle.
+
+```bash
+cerememory decay-tick [OPTIONS]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--duration` | u32 | 3600 | Simulated duration in seconds |
+
+<Terminal title="Example: Run a decay tick">
+```bash
+cerememory decay-tick --duration 7200
+```
+</Terminal>
+
+Output:
+
+```
+Decay tick completed:
+  Records updated: 342
+  Below threshold: 15
+  Pruned: 8
+```
+
+---
+
+## forget
+
+Permanently delete a memory record.
+
+```bash
+cerememory forget <RECORD_ID> [OPTIONS]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `<RECORD_ID>` | UUID | -- | Required. Record to delete |
+| `--cascade` | bool | false | Also delete associated records |
+| `--confirm` | bool | false | Required confirmation flag |
+
+<Callout type="warning">
+The `--confirm` flag is mandatory. Without it, the operation is rejected. This prevents accidental deletion.
+</Callout>
+
+<Terminal title="Example: Forget with cascade">
+```bash
+cerememory forget 01916e3a-5678-7000-8000-000000000001 --cascade --confirm
+```
+</Terminal>
+
+---
+
+## export
+
+Export all records to a CMA archive file.
+
+```bash
+cerememory export [OPTIONS]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--output` | path | `./backup.cma` | Output file path |
+
+<Terminal title="Example: Export to a file">
+```bash
+cerememory export --output ./memories-backup.cma
+```
+</Terminal>
+
+---
+
+## import
+
+Import records from a CMA archive file.
+
+```bash
+cerememory import <PATH>
+```
+
+| Flag | Type | Description |
+|------|------|-------------|
+| `<PATH>` | path | Required. Path to the CMA archive file |
+
+---
+
+## healthcheck
+
+Lightweight HTTP health check (useful for Docker HEALTHCHECK).
+
+```bash
+cerememory healthcheck [OPTIONS]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--port` | u16 | 8420 | HTTP port to check |
+
+Returns exit code 0 on success, non-zero on failure.
+
+---
+
+## mcp
+
+Start the MCP (Model Context Protocol) server on stdio for direct LLM integration.
+
+```bash
+cerememory mcp
+```
+
+This starts a stdio-based MCP server using the rmcp library, enabling MCP-compatible AI agents to interact with Cerememory directly.
+
+## Next Steps
+
+<LinkCard href="/docs/reference/api-endpoints" title="API Endpoints" description="HTTP REST endpoint reference" />
+<LinkCard href="/docs/reference/llm-adapters" title="LLM Adapters" description="Configure Claude, GPT, and Gemini" />

@@ -1,0 +1,208 @@
+---
+title: "Development Setup"
+description: "Set up your local development environment for Cerememory development."
+---
+
+## Prerequisites
+
+- **Rust 1.88+** -- Install via [rustup](https://rustup.rs/)
+- **Protobuf compiler** -- Required for gRPC code generation
+- **Node.js 18+** -- Required for TypeScript native bindings (optional)
+- **Python 3.10+** -- Required for Python native bindings (optional)
+- **maturin** -- Required for building Python native bindings (optional)
+
+## Clone and Build
+
+```bash
+git clone https://github.com/co-r-e/cerememory.git
+cd cerememory
+cargo build
+```
+
+The first build downloads and compiles all dependencies. Subsequent incremental builds are fast.
+
+<Callout type="info">
+The workspace contains over 20 crates. Use `cargo build -p cerememory-core` to build a specific crate during focused development.
+</Callout>
+
+## Running Tests
+
+### All Tests
+
+```bash
+cargo test
+```
+
+### Specific Crate
+
+```bash
+cargo test -p cerememory-decay
+cargo test -p cerememory-core
+cargo test -p cerememory-transport-http
+```
+
+### Integration Tests
+
+```bash
+cargo test -p integration
+```
+
+### With Output
+
+```bash
+cargo test -- --nocapture
+```
+
+## Linting and Formatting
+
+### Format Check
+
+```bash
+cargo fmt --check
+```
+
+### Format Fix
+
+```bash
+cargo fmt
+```
+
+### Clippy
+
+```bash
+cargo clippy --all-targets --all-features -- -D warnings
+```
+
+<Callout type="warning">
+CI runs both `cargo fmt --check` and `cargo clippy -D warnings`. PRs that fail either check will not be merged.
+</Callout>
+
+## Development Workflow
+
+### Running the Server Locally
+
+```bash
+cargo run -p cerememory-cli -- serve --port 8420
+```
+
+With an LLM provider:
+
+```bash
+CEREMEMORY_LLM__PROVIDER=claude \
+CEREMEMORY_LLM__API_KEY_RAW=sk-ant-... \
+cargo run -p cerememory-cli -- serve
+```
+
+### Testing with curl
+
+```bash
+# Store a memory
+curl -X POST http://localhost:8420/v1/encode \
+  -H "Content-Type: application/json" \
+  -d '{"content":{"blocks":[{"modality":"text","format":"text/plain","data":[72,101,108,108,111]}]},"store":"episodic"}'
+
+# Check stats
+curl http://localhost:8420/v1/introspect/stats
+
+# Health check
+curl http://localhost:8420/health
+```
+
+### Running Benchmarks
+
+```bash
+cargo bench -p cerememory-decay
+```
+
+## Project Structure
+
+Key directories for development:
+
+| Path | Purpose |
+|------|---------|
+| `crates/cerememory-core/` | Types, traits, protocol -- start here for data model changes |
+| `crates/cerememory-engine/` | Central engine -- start here for behavior changes |
+| `crates/cerememory-decay/` | Decay math and engine -- isolated, easy to test |
+| `crates/cerememory-transport-http/` | HTTP endpoints -- start here for API changes |
+| `crates/cerememory-config/` | Configuration loading and validation |
+| `crates/cerememory-store-*/` | Individual store implementations |
+| `adapters/adapter-*/` | LLM provider adapters |
+| `bindings/` | PyO3 and napi-rs native bindings |
+| `tests/integration/` | End-to-end integration tests |
+
+## Adding a New Store Operation
+
+<Steps>
+
+<div>
+
+**Define the protocol types** in `cerememory-core/src/protocol.rs` -- add request and response structs.
+
+</div>
+
+<div>
+
+**Add the trait method** to `cerememory-core/src/traits.rs` if the operation involves a new store capability.
+
+</div>
+
+<div>
+
+**Implement in the engine** in `cerememory-engine/src/lib.rs`.
+
+</div>
+
+<div>
+
+**Add the HTTP handler** in `cerememory-transport-http/src/lib.rs` -- add the route and handler function.
+
+</div>
+
+<div>
+
+**Add the CLI command** in `cerememory-cli/src/main.rs` -- add a new variant to the `Commands` enum.
+
+</div>
+
+<div>
+
+**Write tests** at each layer: unit tests in the crate, integration tests in `tests/integration`.
+
+</div>
+
+</Steps>
+
+## Adding a New LLM Adapter
+
+1. Create a new crate under `adapters/adapter-<name>/`
+2. Implement the `LLMProvider` trait from `cerememory-core`
+3. Add the crate to the workspace `Cargo.toml`
+4. Add a feature flag to `cerememory-cli` (e.g., `llm-<name>`)
+5. Wire the provider in `cerememory-cli/src/main.rs` under `build_llm_provider()`
+
+## Debugging Tips
+
+### Enable Trace Logging
+
+```bash
+RUST_LOG=cerememory_engine=trace cargo run -p cerememory-cli -- serve
+```
+
+### Per-Crate Logging
+
+```bash
+RUST_LOG=cerememory_decay=debug,cerememory_transport_http=trace cargo run -p cerememory-cli -- serve
+```
+
+### JSON Log Format
+
+For structured logging (useful with log aggregation tools):
+
+```bash
+CEREMEMORY_LOG__FORMAT=json cargo run -p cerememory-cli -- serve
+```
+
+## Next Steps
+
+<LinkCard href="/docs/contributing/guide" title="Contributing Guide" description="PR process, commit conventions, and code style" />
+<LinkCard href="/docs/architecture/overview" title="Architecture" description="Understand the system architecture" />

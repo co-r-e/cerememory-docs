@@ -1,0 +1,188 @@
+---
+title: "Data Model"
+description: "Core data structures: MemoryRecord, FidelityState, EmotionVector, and more."
+---
+
+## MemoryRecord
+
+The fundamental unit of storage in Cerememory. Every memory -- regardless of which store it resides in -- is a `MemoryRecord`.
+
+```rust
+pub struct MemoryRecord {
+    pub id: Uuid,                       // UUIDv7 (time-ordered)
+    pub store: StoreType,               // episodic | semantic | procedural | emotional | working
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub last_accessed_at: DateTime<Utc>,
+    pub access_count: u32,
+    pub content: MemoryContent,
+    pub fidelity: FidelityState,
+    pub emotion: EmotionVector,
+    pub associations: Vec<Association>,
+    pub metadata: serde_json::Value,    // arbitrary key-value pairs
+    pub version: u32,                   // optimistic concurrency control
+}
+```
+
+<Callout type="info">
+Record IDs use UUIDv7, which embeds a timestamp prefix. This ensures IDs are both globally unique and naturally time-ordered, enabling efficient range scans.
+</Callout>
+
+## StoreType
+
+Identifies which memory store a record belongs to:
+
+```rust
+pub enum StoreType {
+    Episodic,
+    Semantic,
+    Procedural,
+    Emotional,
+    Working,
+}
+```
+
+## MemoryContent
+
+The payload of a memory record. Content is organized as a list of modality-typed blocks, supporting multimodal memories.
+
+```rust
+pub struct MemoryContent {
+    pub blocks: Vec<ContentBlock>,
+    pub summary: Option<String>,   // LLM-generated or truncated summary
+}
+
+pub struct ContentBlock {
+    pub modality: Modality,        // text, image, audio, video, structured, ...
+    pub format: String,            // MIME type (e.g., "text/plain", "image/png")
+    pub data: Vec<u8>,             // raw content bytes
+    pub embedding: Option<Vec<f32>>, // optional embedding vector
+}
+```
+
+Supported modalities:
+
+| Modality | Format Examples | Max Size | Notes |
+|----------|----------------|----------|-------|
+| `text` | text/plain | 1 MB | Must be valid UTF-8 |
+| `image` | image/png, image/jpeg | 10 MB | Auto-detected format |
+| `audio` | audio/wav, audio/mp3 | 50 MB | Auto-detected format |
+| `video` | video/mp4 | 50 MB | -- |
+| `structured` | application/json | 1 MB | Must be valid JSON |
+| `spatial` | application/json | 1 MB | Location/coordinate data |
+| `temporal` | application/json | 1 MB | Time-series data |
+| `interoceptive` | application/json | 1 MB | Internal state data |
+
+## FidelityState
+
+Tracks the current decay state of a memory record. This is the core data structure that makes memories "alive."
+
+```rust
+pub struct FidelityState {
+    pub score: f64,              // 0.0 (fully decayed) to 1.0 (pristine)
+    pub noise_level: f64,        // 0.0 (no noise) to 1.0 (fully noisy)
+    pub decay_rate: f64,         // per-record decay exponent (default: 0.3)
+    pub emotional_anchor: f64,   // emotional modulation factor (>= 1.0)
+    pub reinforcement_count: u32, // times reactivated via retrieval
+    pub stability: f64,          // stability constant S (increases with retrieval)
+    pub last_decay_tick: DateTime<Utc>,
+}
+```
+
+Default values for a new record:
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `score` | 1.0 | Fresh memories start at full fidelity |
+| `noise_level` | 0.0 | No noise initially |
+| `decay_rate` | 0.3 | Standard power-law exponent |
+| `emotional_anchor` | 1.0 | Neutral (no emotional boost) |
+| `stability` | 1.0 | Base stability |
+| `reinforcement_count` | 0 | Never recalled |
+
+## EmotionVector
+
+Multi-dimensional affective representation based on Plutchik's wheel of emotions.
+
+```rust
+pub struct EmotionVector {
+    pub joy: f64,
+    pub trust: f64,
+    pub fear: f64,
+    pub surprise: f64,
+    pub sadness: f64,
+    pub disgust: f64,
+    pub anger: f64,
+    pub anticipation: f64,
+    pub intensity: f64,   // overall emotional intensity (0.0 to 1.0)
+    pub valence: f64,     // -1.0 (negative) to 1.0 (positive)
+}
+```
+
+Emotion vectors can be created from string labels for convenience:
+
+```rust
+let emotion: EmotionVector = "joy".parse().unwrap();
+// joy=1.0, intensity=1.0, valence=1.0, all others=0.0
+```
+
+Supported labels: `joy` (or `happy`/`happiness`), `trust`, `fear`, `surprise`, `sadness` (or `sad`), `disgust`, `anger` (or `angry`), `anticipation` (or `anticipatory`).
+
+## Association
+
+A weighted, typed, bidirectional link between two memory records. Associations enable the spreading activation engine to traverse the memory graph.
+
+```rust
+pub struct Association {
+    pub target_id: Uuid,
+    pub association_type: AssociationType,
+    pub weight: f64,                     // 0.0 to 1.0
+    pub created_at: DateTime<Utc>,
+    pub last_co_activation: DateTime<Utc>,
+}
+
+pub enum AssociationType {
+    Temporal,     // happened around the same time
+    Spatial,      // occurred in the same location
+    Semantic,     // related meaning or topic
+    Emotional,    // shared emotional context
+    Causal,       // cause-and-effect relationship
+    Sequential,   // ordered sequence (A then B)
+    CrossModal,   // links across modalities
+    UserDefined,  // manually created associations
+}
+```
+
+## RecallMode
+
+Controls whether recall applies living dynamics or returns pristine data:
+
+```rust
+pub enum RecallMode {
+    Human,    // apply fidelity/noise (realistic human-like recall)
+    Perfect,  // return original data, no noise applied
+}
+```
+
+## Serialization
+
+All data types support both JSON and MessagePack serialization:
+
+```rust
+// JSON
+let json = serde_json::to_string(&record)?;
+let decoded: MemoryRecord = serde_json::from_str(&json)?;
+
+// MessagePack (compact binary)
+let packed = rmp_serde::to_vec(&record)?;
+let decoded: MemoryRecord = rmp_serde::from_slice(&packed)?;
+```
+
+<Callout type="info">
+MessagePack is used internally for storage in redb. JSON is used for HTTP transport and CMA archive files. Both formats round-trip losslessly.
+</Callout>
+
+## Next Steps
+
+<LinkCard href="/docs/protocol/overview" title="CMP Protocol" description="Learn how these data structures are used in the protocol" />
+<LinkCard href="/docs/protocol/encode" title="Encode Operations" description="Store and update memories via CMP" />

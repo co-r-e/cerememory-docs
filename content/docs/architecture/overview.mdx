@@ -1,0 +1,140 @@
+---
+title: "Architecture Overview"
+description: "Understand Cerememory's layered architecture and crate structure."
+---
+
+## System Overview
+
+Cerememory is organized as a layered system where each layer has a single responsibility. Requests flow from external clients through transport bindings, into the engine, and down to the individual memory stores.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     LLM Applications                         │
+│  (Claude, GPT, Gemini, custom agents)                        │
+└──────────────┬──────────────┬──────────────┬────────────────┘
+               │              │              │
+       ┌───────▼───┐   ┌─────▼─────┐   ┌────▼────┐
+       │  HTTP/REST │   │   gRPC    │   │   MCP   │
+       │  (axum)   │   │  (tonic)  │   │  (rmcp) │
+       └───────┬───┘   └─────┬─────┘   └────┬────┘
+               │              │              │
+               └──────────────┼──────────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │  CerememoryEngine  │
+                    │  (coordinator)     │
+                    └─────────┬─────────┘
+                              │
+          ┌───────────────────┼───────────────────┐
+          │                   │                   │
+   ┌──────▼──────┐   ┌───────▼───────┐   ┌───────▼───────┐
+   │ Decay Engine │   │  Association  │   │   Evolution   │
+   │ (power-law)  │   │  (spreading   │   │   (adaptive)  │
+   │              │   │   activation) │   │               │
+   └──────────────┘   └───────────────┘   └───────────────┘
+          │                   │                   │
+   ┌──────▼───────────────────▼───────────────────▼──────┐
+   │                   Five Stores                        │
+   │  ┌──────────┐ ┌──────────┐ ┌───────────┐           │
+   │  │ Episodic │ │ Semantic │ │ Procedural│           │
+   │  │  (redb)  │ │  (redb)  │ │   (redb)  │           │
+   │  └──────────┘ └──────────┘ └───────────┘           │
+   │  ┌───────────┐ ┌─────────┐                          │
+   │  │ Emotional │ │ Working │                          │
+   │  │  (redb)   │ │ (memory)│                          │
+   │  └───────────┘ └─────────┘                          │
+   └─────────────────────────────────────────────────────┘
+```
+
+## Crate Structure
+
+The codebase is organized as a Cargo workspace with crates separated by responsibility.
+
+<FileTree>
+  <FileTree.Folder name="cerememory" defaultOpen>
+    <FileTree.Folder name="crates" defaultOpen>
+      <FileTree.Folder name="cerememory-core">
+        <FileTree.File name="types.rs" />
+        <FileTree.File name="protocol.rs" />
+        <FileTree.File name="traits.rs" />
+        <FileTree.File name="error.rs" />
+      </FileTree.Folder>
+      <FileTree.Folder name="cerememory-engine" />
+      <FileTree.Folder name="cerememory-config" />
+      <FileTree.Folder name="cerememory-decay" />
+      <FileTree.Folder name="cerememory-association" />
+      <FileTree.Folder name="cerememory-evolution" />
+      <FileTree.Folder name="cerememory-index" />
+      <FileTree.Folder name="cerememory-archive" />
+      <FileTree.Folder name="cerememory-store-episodic" />
+      <FileTree.Folder name="cerememory-store-semantic" />
+      <FileTree.Folder name="cerememory-store-procedural" />
+      <FileTree.Folder name="cerememory-store-emotional" />
+      <FileTree.Folder name="cerememory-store-working" />
+      <FileTree.Folder name="cerememory-transport-http" />
+      <FileTree.Folder name="cerememory-transport-grpc" />
+      <FileTree.Folder name="cerememory-transport-mcp" />
+      <FileTree.Folder name="cerememory-cli" />
+    </FileTree.Folder>
+    <FileTree.Folder name="adapters">
+      <FileTree.Folder name="adapter-claude" />
+      <FileTree.Folder name="adapter-openai" />
+      <FileTree.Folder name="adapter-gemini" />
+    </FileTree.Folder>
+    <FileTree.Folder name="bindings">
+      <FileTree.Folder name="python-native" />
+      <FileTree.Folder name="typescript-native" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+
+## Layer Responsibilities
+
+### Transport Layer
+
+Three transport bindings expose the CMP protocol to external clients:
+
+- **HTTP/REST** (axum) -- Primary transport on port 8420. Includes Bearer token auth, CORS, rate limiting, request tracing, and Prometheus metrics.
+- **gRPC** (tonic) -- Optional transport with TLS support. Enabled by setting `grpc.port` in configuration.
+- **MCP** (rmcp) -- Model Context Protocol server over stdio. Enables direct integration with MCP-compatible AI agents.
+
+### Engine Layer
+
+The `CerememoryEngine` is the central coordinator. It implements all CMP operations (encode, recall, lifecycle, introspect) and orchestrates cross-store interactions. It manages:
+
+- The **hippocampal coordinator** for cross-store recall and spreading activation
+- The **decay engine** for background fidelity decay (runs on a configurable interval)
+- The **text index** (tantivy) and **vector index** (HNSW) for fast retrieval
+- An optional **LLM provider** for embedding generation, summarization, and relation extraction
+
+### Store Layer
+
+Five specialized stores, each backed by redb (except working memory which is in-memory only). All stores implement the `Store` trait, providing a uniform interface for CRUD operations, text search, and fidelity updates.
+
+### Supporting Engines
+
+- **Decay Engine** -- Stateless, rayon-parallel computation of power-law decay across all records
+- **Association Engine** -- Spreading activation over the cross-store association graph
+- **Evolution Engine** -- Adaptive parameter tuning based on usage patterns
+
+## Dependency Direction
+
+```
+cerememory-cli
+├── cerememory-config       ← cerememory-engine
+├── cerememory-engine       ← cerememory-core, all stores, decay, association, index
+├── cerememory-transport-*  ← cerememory-engine, cerememory-core
+├── cerememory-archive      ← cerememory-core
+└── adapter-*              ← cerememory-core
+
+cerememory-core (leaf crate: types, traits, protocol, errors)
+```
+
+<Callout type="info">
+`cerememory-core` is the leaf dependency -- it defines all shared types, traits, and protocol structures. Every other crate depends on it, but it depends on no internal crate.
+</Callout>
+
+## Next Steps
+
+<LinkCard href="/docs/architecture/five-stores" title="Five Stores" description="Deep dive into each brain-inspired memory store" />
+<LinkCard href="/docs/architecture/living-dynamics" title="Living Dynamics" description="Understand decay, noise, emotion, and consolidation" />

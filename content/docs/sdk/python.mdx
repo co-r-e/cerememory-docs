@@ -1,0 +1,197 @@
+---
+title: "Python SDK"
+description: "Complete reference for the Cerememory Python SDK with sync and async clients."
+---
+
+## Installation
+
+```bash
+pip install cerememory-client
+```
+
+For the native PyO3-based bindings (no HTTP overhead):
+
+```bash
+pip install cerememory
+```
+
+## Sync Client
+
+```python
+from cerememory import CerememoryClient
+
+client = CerememoryClient(
+    base_url="http://localhost:8420",
+    api_key="your-api-key",  # optional
+    timeout=30.0,
+)
+```
+
+### store
+
+Store a new memory record.
+
+```python
+result = client.store(
+    text="The user's favorite programming language is Rust.",
+    store="semantic",
+    emotion="trust",
+    metadata={"source": "onboarding"},
+)
+print(result.record_id)    # UUID
+print(result.store)        # "semantic"
+print(result.initial_fidelity)  # 1.0
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `text` | str | Yes | -- | Text content to store |
+| `store` | str | No | auto | Target store |
+| `emotion` | str or dict | No | None | Emotion label or EmotionVector dict |
+| `embedding` | list[float] | No | None | Pre-computed embedding vector |
+| `metadata` | dict | No | None | Arbitrary metadata |
+| `session_id` | str | No | None | Session identifier for context |
+
+### recall
+
+Query memories by text cue.
+
+```python
+results = client.recall(
+    text="What programming language does the user prefer?",
+    limit=5,
+    mode="human",
+    stores=["semantic", "episodic"],
+    min_fidelity=0.1,
+)
+
+for memory in results.memories:
+    print(f"[{memory.store}] {memory.text_content}")
+    print(f"  score={memory.relevance_score:.4f}, fidelity={memory.fidelity:.4f}")
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `text` | str | Yes | -- | Text query |
+| `limit` | int | No | 10 | Maximum results |
+| `mode` | str | No | "human" | "human" or "perfect" |
+| `stores` | list[str] | No | All | Filter by store |
+| `min_fidelity` | float | No | None | Minimum fidelity threshold |
+| `reconsolidate` | bool | No | True | Strengthen retrieved memories |
+
+### forget
+
+Delete records permanently.
+
+```python
+client.forget(
+    record_ids=["01916e3a-5678-7000-8000-000000000001"],
+    cascade=False,
+    confirm=True,
+)
+```
+
+### stats
+
+Get system statistics.
+
+```python
+stats = client.stats()
+print(f"Total records: {stats.total_records}")
+print(f"Avg fidelity: {stats.avg_fidelity:.3f}")
+```
+
+### inspect
+
+Get full details for a specific record.
+
+```python
+record = client.inspect("01916e3a-5678-7000-8000-000000000001")
+print(f"Fidelity: {record.fidelity.score}")
+print(f"Noise: {record.fidelity.noise_level}")
+print(f"Stability: {record.fidelity.stability}")
+print(f"Associations: {len(record.associations)}")
+```
+
+### decay_tick
+
+Trigger a manual decay cycle.
+
+```python
+result = client.decay_tick(duration_seconds=3600)
+print(f"Updated: {result.records_updated}")
+print(f"Pruned: {result.records_pruned}")
+```
+
+### consolidate
+
+Trigger memory consolidation.
+
+```python
+result = client.consolidate(
+    strategy="incremental",
+    min_age_hours=24,
+    min_access_count=3,
+    dry_run=True,
+)
+print(f"Would migrate: {result.records_migrated}")
+```
+
+## Async Client
+
+For asyncio-based applications:
+
+```python
+from cerememory import AsyncCerememoryClient
+
+client = AsyncCerememoryClient(
+    base_url="http://localhost:8420",
+    api_key="your-api-key",
+)
+
+async def main():
+    result = await client.store(
+        text="Async memory storage",
+        store="episodic",
+    )
+
+    results = await client.recall(text="async storage")
+    for memory in results.memories:
+        print(memory.text_content)
+
+    await client.close()
+```
+
+The async client provides the same methods as the sync client, but all return coroutines.
+
+## Error Handling
+
+```python
+from cerememory import CerememoryError, RecordNotFoundError, RateLimitedError
+
+try:
+    record = client.inspect("nonexistent-id")
+except RecordNotFoundError as e:
+    print(f"Not found: {e.record_id}")
+except RateLimitedError as e:
+    print(f"Rate limited, retry after {e.retry_after}s")
+except CerememoryError as e:
+    print(f"CMP error [{e.code}]: {e.message}")
+```
+
+All CMP error codes are mapped to typed exceptions:
+
+| Exception | CMP Code |
+|-----------|----------|
+| `RecordNotFoundError` | RECORD_NOT_FOUND |
+| `ValidationError` | VALIDATION_ERROR |
+| `ContentTooLargeError` | CONTENT_TOO_LARGE |
+| `WorkingMemoryFullError` | WORKING_MEMORY_FULL |
+| `RateLimitedError` | RATE_LIMITED |
+| `UnauthorizedError` | UNAUTHORIZED |
+| `CerememoryError` | All others |
+
+## Next Steps
+
+<LinkCard href="/docs/sdk/typescript" title="TypeScript SDK" description="Use Cerememory from TypeScript" />
+<LinkCard href="/docs/sdk/native-bindings" title="Native Bindings" description="Zero-overhead PyO3 and napi-rs bindings" />

@@ -1,0 +1,177 @@
+---
+title: "LLM Adapters"
+description: "Configure and use Claude, GPT, and Gemini adapters for embedding, summarization, and relation extraction."
+---
+
+## Overview
+
+Cerememory integrates with LLM providers through two trait-based interfaces:
+
+- **LLMProvider** -- Handles embedding generation, summarization, and relation extraction
+- **LLMAdapter** -- Serializes memory context into LLM-consumable format
+
+LLM integration is **optional**. Without a configured provider, Cerememory falls back to manual embeddings, truncation-based summarization, and skips relation extraction.
+
+## Supported Providers
+
+| Provider | Config Value | Crate | Features |
+|----------|-------------|-------|----------|
+| Anthropic Claude | `claude` or `anthropic` | `adapter-claude` | Text embedding, summarization, relation extraction, image embedding (vision) |
+| OpenAI GPT | `openai` | `adapter-openai` | Text embedding, summarization, relation extraction, image embedding, audio transcription |
+| Google Gemini | `gemini` or `google` | `adapter-gemini` | Text embedding, summarization, relation extraction, image embedding |
+
+## Configuration
+
+<Tabs items="Claude,OpenAI,Gemini">
+
+<div>
+
+```toml
+[llm]
+provider = "claude"
+api_key_raw = "sk-ant-api03-..."
+model = "claude-sonnet-4-20250514"  # optional
+base_url = null            # optional, for proxy setups
+```
+
+Environment variables:
+
+```bash
+export CEREMEMORY_LLM__PROVIDER=claude
+export CEREMEMORY_LLM__API_KEY_RAW=sk-ant-api03-...
+export CEREMEMORY_LLM__MODEL=claude-sonnet-4-20250514
+```
+
+</div>
+
+<div>
+
+```toml
+[llm]
+provider = "openai"
+api_key_raw = "sk-..."
+model = "gpt-4o"           # optional
+base_url = null            # optional, for Azure OpenAI
+```
+
+Environment variables:
+
+```bash
+export CEREMEMORY_LLM__PROVIDER=openai
+export CEREMEMORY_LLM__API_KEY_RAW=sk-...
+export CEREMEMORY_LLM__MODEL=gpt-4o
+```
+
+</div>
+
+<div>
+
+```toml
+[llm]
+provider = "gemini"
+api_key_raw = "AIza..."
+model = "gemini-2.0-flash"  # optional
+base_url = null
+```
+
+Environment variables:
+
+```bash
+export CEREMEMORY_LLM__PROVIDER=gemini
+export CEREMEMORY_LLM__API_KEY_RAW=AIza...
+export CEREMEMORY_LLM__MODEL=gemini-2.0-flash
+```
+
+</div>
+
+</Tabs>
+
+## Provider Capabilities
+
+Each provider advertises its capabilities via the `ProviderCapabilities` struct:
+
+```rust
+pub struct ProviderCapabilities {
+    pub text_embedding: bool,      // generate text embeddings
+    pub image_embedding: bool,     // describe image → embed description
+    pub audio_transcription: bool, // transcribe audio to text
+}
+```
+
+| Capability | Claude | OpenAI | Gemini | No Provider |
+|------------|--------|--------|--------|-------------|
+| Text embedding | Yes | Yes | Yes | No |
+| Image embedding | Yes (vision) | Yes (vision) | Yes (vision) | No |
+| Audio transcription | No | Yes (Whisper) | No | No |
+| Summarization | Yes | Yes | Yes | Truncation fallback |
+| Relation extraction | Yes | Yes | Yes | Skipped |
+
+## LLMProvider Trait
+
+The provider trait defines the core LLM operations:
+
+```rust
+pub trait LLMProvider: Send + Sync {
+    /// Generate an embedding vector for text.
+    fn embed(&self, text: &str) -> Pin<Box<dyn Future<Output = Result<Vec<f32>>> + Send>>;
+
+    /// Summarize multiple texts into a concise summary.
+    fn summarize(&self, texts: &[String], max_tokens: usize) -> Pin<Box<dyn Future<Output = Result<String>> + Send>>;
+
+    /// Extract semantic relations (subject-predicate-object triples).
+    fn extract_relations(&self, text: &str) -> Pin<Box<dyn Future<Output = Result<Vec<ExtractedRelation>>> + Send>>;
+
+    /// Generate embedding for an image (via vision → text → embed pipeline).
+    fn embed_image(&self, data: &[u8], format: &str) -> Pin<Box<dyn Future<Output = Result<Vec<f32>>> + Send>>;
+
+    /// Transcribe audio to text.
+    fn transcribe_audio(&self, data: &[u8], format: &str) -> Pin<Box<dyn Future<Output = Result<String>> + Send>>;
+
+    /// Advertise supported capabilities.
+    fn capabilities(&self) -> ProviderCapabilities;
+}
+```
+
+## LLMAdapter Trait
+
+The adapter trait handles context serialization for LLM consumption:
+
+```rust
+pub trait LLMAdapter: Send + Sync {
+    /// Serialize memories into LLM-consumable format within a token budget.
+    fn serialize_context(&self, memories: &[MemoryRecord], budget_tokens: usize) -> String;
+
+    /// Estimate token count for memory content.
+    fn estimate_tokens(&self, content: &MemoryContent) -> usize;
+
+    /// Model metadata.
+    fn model_info(&self) -> ModelInfo;
+}
+```
+
+Each adapter serializes memories optimally for its target model, respecting the model's context window and token limits.
+
+## Fallback Behavior
+
+When no LLM provider is configured (`provider = "none"`):
+
+| Operation | Fallback Behavior |
+|-----------|------------------|
+| Embedding generation | Returns empty vector (manual embeddings required) |
+| Summarization | Truncates to first 200 characters |
+| Relation extraction | Returns empty list (no graph enrichment) |
+| Image embedding | Returns `ModalityUnsupported` error |
+| Audio transcription | Returns `ModalityUnsupported` error |
+
+<Callout type="info">
+The NoOp provider is used internally when `provider = "none"`. It satisfies the `LLMProvider` trait but performs no API calls. Cerememory is fully functional without an LLM -- you lose automatic embeddings, summarization, and relation extraction, but all core memory operations work.
+</Callout>
+
+## Error Handling and Retries
+
+All LLM adapter HTTP requests use exponential backoff with the `backoff` crate. Transient errors (network timeouts, 429 rate limits, 5xx server errors) are retried automatically. Permanent errors (401 unauthorized, 400 bad request) fail immediately.
+
+## Next Steps
+
+<LinkCard href="/docs/deployment/configuration" title="Configuration" description="Full configuration options including LLM settings" />
+<LinkCard href="/docs/reference/api-endpoints" title="API Endpoints" description="HTTP REST endpoint reference" />

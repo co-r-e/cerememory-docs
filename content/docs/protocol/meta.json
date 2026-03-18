@@ -1,0 +1,5 @@
+{
+  "title": "CMP Protocol",
+  "icon": "zap",
+  "pages": ["overview", "encode", "recall", "lifecycle", "introspect"]
+}

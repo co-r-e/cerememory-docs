@@ -1,0 +1,142 @@
+---
+title: "Docker"
+description: "Run Cerememory with Docker and Docker Compose."
+---
+
+## Quick Start
+
+```bash
+docker run -d \
+  --name cerememory \
+  -p 8420:8420 \
+  -v cerememory-data:/data \
+  ghcr.io/co-r-e/cerememory:latest
+```
+
+This starts Cerememory with default settings: HTTP on port 8420, data persisted in a Docker volume, and background decay enabled.
+
+## Docker Run with Full Configuration
+
+```bash
+docker run -d \
+  --name cerememory \
+  -p 8420:8420 \
+  -p 50051:50051 \
+  -v cerememory-data:/data \
+  -v ./cerememory.toml:/etc/cerememory/cerememory.toml:ro \
+  -e CEREMEMORY_AUTH__ENABLED=true \
+  -e CEREMEMORY_AUTH_API_KEYS=sk-my-secret-key \
+  -e CEREMEMORY_LLM__PROVIDER=claude \
+  -e CEREMEMORY_LLM__API_KEY_RAW=sk-ant-... \
+  -e CEREMEMORY_GRPC__PORT=50051 \
+  ghcr.io/co-r-e/cerememory:latest \
+  serve --config /etc/cerememory/cerememory.toml
+```
+
+## Docker Compose
+
+```yaml
+version: "3.8"
+
+services:
+  cerememory:
+    image: ghcr.io/co-r-e/cerememory:latest
+    container_name: cerememory
+    ports:
+      - "8420:8420"
+      - "50051:50051"    # optional gRPC
+    volumes:
+      - cerememory-data:/data
+      - ./cerememory.toml:/etc/cerememory/cerememory.toml:ro
+    environment:
+      CEREMEMORY_AUTH__ENABLED: "true"
+      CEREMEMORY_AUTH_API_KEYS: "${CEREMEMORY_API_KEY}"
+      CEREMEMORY_LLM__PROVIDER: "claude"
+      CEREMEMORY_LLM__API_KEY_RAW: "${ANTHROPIC_API_KEY}"
+      CEREMEMORY_GRPC__PORT: "50051"
+      CEREMEMORY_LOG__FORMAT: "json"
+    command: ["serve", "--config", "/etc/cerememory/cerememory.toml"]
+    healthcheck:
+      test: ["CMD", "cerememory", "healthcheck", "--port", "8420"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+
+volumes:
+  cerememory-data:
+```
+
+<Callout type="info">
+Store sensitive values like API keys in a `.env` file or a secrets manager. The Docker Compose file above references `${CEREMEMORY_API_KEY}` and `${ANTHROPIC_API_KEY}` from the environment.
+</Callout>
+
+## Health Checks
+
+Cerememory exposes two health endpoints that do not require authentication:
+
+| Endpoint | Purpose | Success Response |
+|----------|---------|-----------------|
+| `GET /health` | Liveness probe | `{"status": "ok"}` (200) |
+| `GET /readiness` | Readiness probe | `{"status": "ready"}` (200) |
+
+The `/readiness` endpoint performs an actual engine operation (reading stats) and returns `503` if the engine is not ready.
+
+For Docker's HEALTHCHECK, use the built-in CLI command:
+
+```dockerfile
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD cerememory healthcheck --port 8420
+```
+
+## Building the Image
+
+To build from source:
+
+```dockerfile
+FROM rust:1.88-slim AS builder
+WORKDIR /app
+COPY . .
+RUN cargo build --release -p cerememory-cli
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /app/target/release/cerememory /usr/local/bin/
+ENV CEREMEMORY_DATA_DIR=/data
+EXPOSE 8420
+VOLUME ["/data"]
+ENTRYPOINT ["cerememory"]
+CMD ["serve"]
+```
+
+## Volumes and Data Persistence
+
+| Volume Mount | Purpose | Required |
+|-------------|---------|----------|
+| `/data` | Persistent storage (redb files, indexes) | Yes |
+| `/etc/cerememory/cerememory.toml` | Config file (read-only) | No |
+
+<Callout type="warning">
+Always mount a persistent volume at `/data`. Without it, all memories are lost when the container restarts. The working memory store is always in-memory and is intentionally not persisted.
+</Callout>
+
+## Metrics
+
+Prometheus metrics are available at `GET /metrics` (no authentication required) when the server is started. Metrics include:
+
+- `cerememory_http_requests_total` -- Total HTTP requests by method and status
+- `cerememory_http_request_duration_seconds` -- Request latency histogram
+- `cerememory_records_total` -- Total records by store
+- `cerememory_decay_ticks_total` -- Total background decay ticks
+
+## Next Steps
+
+<LinkCard href="/docs/deployment/kubernetes" title="Kubernetes" description="Deploy to Kubernetes with probes and scaling" />
+<LinkCard href="/docs/deployment/configuration" title="Configuration" description="Full configuration reference" />

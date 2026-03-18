@@ -1,0 +1,5 @@
+{
+  "title": "Deployment",
+  "icon": "server",
+  "pages": ["configuration", "docker", "kubernetes"]
+}

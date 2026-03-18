@@ -1,0 +1,119 @@
+---
+title: "Five Memory Stores"
+description: "Detailed explanation of Cerememory's five brain-inspired memory stores."
+---
+
+## Overview
+
+Cerememory implements five specialized memory stores, each modeled after a distinct region of the human brain. Every store implements the same `Store` trait, but each has unique characteristics for what it stores, how fast memories decay, and how they interact with other stores.
+
+## Store Comparison
+
+| Store | Brain Analog | Storage | Decay Rate | Consolidation | Use Case |
+|-------|-------------|---------|-----------|---------------|----------|
+| **Episodic** | Hippocampus | redb (disk) | Medium | Migrates to Semantic | Conversations, events, experiences |
+| **Semantic** | Neocortex | redb (disk) | Slow | Compresses over time | Facts, knowledge, user preferences |
+| **Procedural** | Basal Ganglia | redb (disk) | Very slow | Reinforced by repetition | Workflows, skills, how-to patterns |
+| **Emotional** | Amygdala | redb (disk) | Slow (emotion-anchored) | Strengthens associations | Emotionally significant moments |
+| **Working** | Prefrontal Cortex | In-memory | Fast | Promotes to Episodic | Active context, current session |
+
+## Episodic Store (Hippocampus)
+
+The episodic store holds **personal experiences and events** -- what happened, when, and in what context. This is the default destination for new memories when no store is explicitly specified.
+
+Key characteristics:
+
+- **Medium decay rate** -- Episodic memories fade at a moderate pace unless reinforced through recall
+- **Rich context** -- Stores temporal, spatial, and session context alongside content
+- **Consolidation source** -- During consolidation, episodic memories that meet age and access thresholds are migrated to the semantic store as distilled knowledge
+- **Association-rich** -- Temporal and sequential associations are automatically created between episodic memories stored in the same session
+
+```rust
+// Episodic memories capture experiences
+let record = MemoryRecord::new_text(
+    StoreType::Episodic,
+    "User asked about Rust async patterns and I explained tokio::spawn",
+);
+```
+
+## Semantic Store (Neocortex)
+
+The semantic store holds **facts, knowledge, and conceptual understanding** -- the "what" rather than the "when." Semantic memories are distilled from repeated episodic experiences or stored directly as factual knowledge.
+
+Key characteristics:
+
+- **Slow decay rate** -- Knowledge persists much longer than episodic memories
+- **Consolidation target** -- Receives distilled memories from the episodic store during consolidation
+- **Compression** -- Over time, related semantic memories are compressed and summarized
+- **Relation extraction** -- When an LLM provider is configured, semantic memories undergo relation extraction to build a knowledge graph
+
+## Procedural Store (Basal Ganglia)
+
+The procedural store holds **skills, workflows, and habitual patterns** -- the "how." These memories represent learned behaviors that become more stable with repetition.
+
+Key characteristics:
+
+- **Very slow decay** -- Procedural memories are among the most persistent
+- **Repetition reinforcement** -- Each time a procedural memory is accessed, its stability increases significantly
+- **Structured content** -- Often stores structured data (JSON) representing workflows or step-by-step procedures
+
+## Emotional Store (Amygdala)
+
+The emotional store holds **emotionally significant memories**. The emotional dimension uses Plutchik's 8-dimensional model to represent affective state.
+
+Key characteristics:
+
+- **Emotion-anchored decay** -- Higher emotional intensity leads to slower decay via the emotional modulation factor
+- **Cross-store influence** -- Emotional tags on any memory (in any store) modulate that memory's decay rate
+- **Valence tracking** -- Each emotion has a valence from -1.0 (negative) to +1.0 (positive)
+
+The eight primary emotions and their valences:
+
+| Emotion | Valence | Description |
+|---------|---------|-------------|
+| Joy | +1.0 | Happiness, satisfaction |
+| Trust | +0.7 | Confidence, reliability |
+| Fear | -0.8 | Anxiety, concern |
+| Surprise | 0.0 | Unexpected events |
+| Sadness | -1.0 | Loss, disappointment |
+| Disgust | -0.9 | Rejection, aversion |
+| Anger | -0.9 | Frustration, opposition |
+| Anticipation | +0.4 | Expectation, forward-looking |
+
+## Working Store (Prefrontal Cortex)
+
+The working store holds **active context and short-term information** -- the current "mental workspace." Unlike all other stores, working memory is entirely in-memory and does not persist across restarts.
+
+Key characteristics:
+
+- **Fast decay** -- Working memory items have the highest decay rate
+- **Capacity-limited** -- Has a configurable maximum capacity; stores return `WorkingMemoryFull` when exceeded
+- **Promotion** -- Important working memory items can be promoted to the episodic store for long-term retention
+- **Volatile** -- Data is lost on server restart
+
+<Callout type="warning">
+Working memory is intentionally volatile. It represents the current session's active context. Use the episodic or semantic stores for information that must survive restarts.
+</Callout>
+
+## The Store Trait
+
+All five stores implement the same `Store` trait, providing a uniform interface:
+
+```rust
+pub trait Store: Send + Sync {
+    fn store(&self, record: MemoryRecord) -> impl Future<Output = Result<Uuid>>;
+    fn get(&self, id: &Uuid) -> impl Future<Output = Result<Option<MemoryRecord>>>;
+    fn delete(&self, id: &Uuid) -> impl Future<Output = Result<bool>>;
+    fn update_fidelity(&self, id: &Uuid, fidelity: FidelityState) -> impl Future<Output = Result<()>>;
+    fn query_text(&self, query: &str, limit: usize) -> impl Future<Output = Result<Vec<MemoryRecord>>>;
+    fn list_ids(&self) -> impl Future<Output = Result<Vec<Uuid>>>;
+    fn count(&self) -> impl Future<Output = Result<usize>>;
+    fn update_record(&self, id: &Uuid, ...) -> impl Future<Output = Result<()>>;
+    fn update_access(&self, id: &Uuid, ...) -> impl Future<Output = Result<()>>;
+}
+```
+
+## Next Steps
+
+<LinkCard href="/docs/architecture/living-dynamics" title="Living Dynamics" description="Understand decay, noise, and emotional modulation" />
+<LinkCard href="/docs/architecture/data-model" title="Data Model" description="Explore the core data structures" />
