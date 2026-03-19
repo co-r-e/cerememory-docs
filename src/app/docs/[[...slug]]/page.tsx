@@ -41,14 +41,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const { title, description } = page.frontmatter;
+  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
   return {
     title: `${title} | Cerememory Docs`,
     description,
+    alternates: {
+      canonical: `${base}/docs/${slug.join("/")}`,
+    },
     openGraph: {
       title: `${title} | Cerememory Docs`,
       description,
       type: "article",
+    },
+    twitter: {
+      card: "summary",
+      title: `${title} | Cerememory Docs`,
+      description,
     },
   };
 }
