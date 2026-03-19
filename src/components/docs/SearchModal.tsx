@@ -10,6 +10,7 @@ import {
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import type { SearchEntry } from "@/lib/docs/types";
+import { basePath } from "@/lib/basePath";
 
 const TRANSITION_MS = 200;
 
@@ -113,7 +114,7 @@ export function SearchModal({ open, onClose }: Props): ReactNode {
       try {
         const [orama, indexResponse] = await Promise.all([
           import("@orama/orama"),
-          fetch("/docs/search-index.json"),
+          fetch(`${basePath}/docs/search-index.json`),
         ]);
 
         if (!indexResponse.ok) {
@@ -158,6 +159,8 @@ export function SearchModal({ open, onClose }: Props): ReactNode {
 
     initPromiseRef.current = promise;
     return promise;
+  // basePath is a module-level constant — no deps needed
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -268,7 +271,6 @@ export function SearchModal({ open, onClose }: Props): ReactNode {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [mounted, onClose]);
 
-  const flatResults = results;
 
   const navigate = useCallback(
     (href: string) => {
@@ -284,20 +286,20 @@ export function SearchModal({ open, onClose }: Props): ReactNode {
         case "ArrowDown": {
           e.preventDefault();
           setSelectedIndex((prev) =>
-            prev < flatResults.length - 1 ? prev + 1 : 0
+            prev < results.length - 1 ? prev + 1 : 0
           );
           break;
         }
         case "ArrowUp": {
           e.preventDefault();
           setSelectedIndex((prev) =>
-            prev > 0 ? prev - 1 : flatResults.length - 1
+            prev > 0 ? prev - 1 : results.length - 1
           );
           break;
         }
         case "Enter": {
           e.preventDefault();
-          const selected = flatResults[selectedIndex];
+          const selected = results[selectedIndex];
           if (selected) {
             navigate(selected.href);
           }
@@ -305,7 +307,7 @@ export function SearchModal({ open, onClose }: Props): ReactNode {
         }
       }
     },
-    [flatResults, selectedIndex, navigate]
+    [results, selectedIndex, navigate]
   );
 
   useEffect(() => {
@@ -320,7 +322,7 @@ export function SearchModal({ open, onClose }: Props): ReactNode {
 
   if (!mounted) return null;
 
-  const grouped = groupBySection(flatResults);
+  const grouped = groupBySection(results);
 
   return createPortal(
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Search documentation">
@@ -393,7 +395,7 @@ export function SearchModal({ open, onClose }: Props): ReactNode {
 
             {status === "ready" &&
               query.trim() &&
-              flatResults.length === 0 && (
+              results.length === 0 && (
                 <div className="px-4 py-8 text-center text-sm text-[var(--ink-soft)]">
                   No results found for &ldquo;{query}&rdquo;
                 </div>
@@ -402,7 +404,7 @@ export function SearchModal({ open, onClose }: Props): ReactNode {
             {status === "ready" && grouped.length > 0 && (
               <div className="py-2">
                 {grouped.map((group) => {
-                  const groupStartIndex = flatResults.indexOf(group.entries[0]);
+                  const groupStartIndex = results.indexOf(group.entries[0]);
 
                   return (
                     <div key={group.section}>

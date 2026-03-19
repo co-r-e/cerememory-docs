@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { basePath } from '@/lib/basePath'
 
 function useReveal() {
   const ref = useRef<HTMLDivElement>(null)
@@ -165,7 +166,7 @@ export default function Home() {
           </nav>
           <a href="#" className="masthead__logo-link">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.svg" alt="Cerememory" className="masthead__logo" />
+            <img src={`${basePath}/logo.svg`} alt="Cerememory" className="masthead__logo" />
           </a>
           <nav>
             <ul className="masthead__nav masthead__nav--right">
@@ -773,9 +774,10 @@ export default function Home() {
           <div className="footer__inner">
             <div className="footer__brand">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.svg" alt="Cerememory" className="footer__logo" />
+              <img src={`${basePath}/logo.svg`} alt="Cerememory" className="footer__logo" />
             </div>
             <ul className="footer__links">
+              <li><a href={`${basePath}/docs`}>Docs</a></li>
               <li>
                 <a href="https://github.com/co-r-e/cerememory" target="_blank" rel="noopener">
                   GitHub
