@@ -22,10 +22,10 @@ Trigger memory consolidation -- migrating mature episodic memories into the sema
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `strategy` | ConsolidationStrategy | No | incremental | `full`, `incremental`, or `selective` |
-| `min_age_hours` | u32 | No | 0 | Minimum age of episodic records to consider |
-| `min_access_count` | u32 | No | 0 | Minimum access count to qualify |
-| `dry_run` | bool | No | false | Preview without making changes |
+| `strategy` | ConsolidationStrategy | No | `incremental` | `full`, `incremental`, or `selective` |
+| `min_age_hours` | u32 | No | `0` | Minimum age of episodic records to consider |
+| `min_access_count` | u32 | No | `0` | Minimum access count to qualify |
+| `dry_run` | bool | No | `false` | Preview without making changes |
 
 ### Response
 
@@ -39,13 +39,11 @@ Trigger memory consolidation -- migrating mature episodic memories into the sema
 }
 ```
 
-<Callout type="info">
-Use `dry_run: true` to preview which records would be consolidated without making any changes. This is useful for tuning the `min_age_hours` and `min_access_count` thresholds.
-</Callout>
-
 ## lifecycle.decay_tick
 
-Manually trigger a decay computation cycle. In server mode, this runs automatically in the background, but you can trigger it explicitly for testing or manual control.
+Manually trigger a decay computation cycle.
+
+In server mode, Cerememory also runs decay automatically in the background at the configured interval.
 
 **Endpoint:** `POST /v1/lifecycle/decay-tick`
 
@@ -59,7 +57,7 @@ Manually trigger a decay computation cycle. In server mode, this runs automatica
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `tick_duration_seconds` | u32 | No | None | Simulated time to add (for testing) |
+| `tick_duration_seconds` | u32 | No | None | Simulated time to add |
 
 ### Response
 
@@ -70,8 +68,6 @@ Manually trigger a decay computation cycle. In server mode, this runs automatica
   "records_pruned": 8
 }
 ```
-
-The decay tick processes all records across all persistent stores in parallel. Records whose fidelity falls below the prune threshold (default: 0.01) are automatically deleted.
 
 ## lifecycle.set_mode
 
@@ -91,7 +87,7 @@ Switch the global recall mode between Human and Perfect.
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `mode` | RecallMode | Yes | -- | `human` or `perfect` |
-| `scope` | StoreType[] | No | All stores | Limit mode change to specific stores |
+| `scope` | StoreType[] | No | All stores | Limit the change to specific stores |
 
 ### Response
 
@@ -99,7 +95,7 @@ Returns `204 No Content` on success.
 
 ## lifecycle.forget
 
-Permanently delete memory records. Requires explicit confirmation to prevent accidental data loss.
+Permanently delete memory records.
 
 **Endpoint:** `DELETE /v1/lifecycle/forget`
 
@@ -120,7 +116,7 @@ Permanently delete memory records. Requires explicit confirmation to prevent acc
 | `record_ids` | Uuid[] | No | None | Specific records to delete |
 | `store` | StoreType | No | None | Delete all records in a store |
 | `temporal_range` | TemporalRange | No | None | Delete records within a time range |
-| `cascade` | bool | No | false | Also delete associated records |
+| `cascade` | bool | No | `false` | Also delete associated records |
 | `confirm` | bool | Yes | -- | Must be `true` to proceed |
 
 ### Response
@@ -132,18 +128,16 @@ Permanently delete memory records. Requires explicit confirmation to prevent acc
 ```
 
 <Callout type="warning">
-Forget is irreversible. Without `confirm: true`, the server returns a `FORGET_UNCONFIRMED` error. With `cascade: true`, all records linked by associations are also deleted.
+Forget is irreversible. The protocol always requires `confirm: true`, and the engine now supports `temporal_range` in addition to direct UUID and store-targeted deletes.
 </Callout>
 
 ## lifecycle.export
 
-Export memory records to a CMA (Cerememory Archive) file for backup or portability.
+Export memory records to a CMA archive.
 
-<Callout type="warning">
-Export and import are currently available via the **CLI** (`cerememory export` / `cerememory import`) and **MCP** transport only. HTTP REST endpoints for these operations are not yet implemented.
+<Callout type="info">
+HTTP REST does not expose export routes. Export is available through gRPC streaming, the CLI, and the MCP `export` tool.
 </Callout>
-
-**CLI:** `cerememory export`
 
 ### Request
 
@@ -152,18 +146,18 @@ Export and import are currently available via the **CLI** (`cerememory export` /
   "format": "cma",
   "stores": ["episodic", "semantic"],
   "encrypt": true,
-  "encryption_key": "base64-encoded-key"
+  "encryption_key": "correct horse battery staple"
 }
 ```
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `format` | string | No | cma | Archive format |
-| `stores` | StoreType[] | No | All stores | Filter to specific stores |
-| `encrypt` | bool | No | false | Encrypt the archive with ChaCha20-Poly1305 |
-| `encryption_key` | string | No | None | Base64-encoded encryption key |
+| `format` | string | No | `cma` | Archive format; `cma` is currently the only supported value |
+| `stores` | StoreType[] | No | All stores | Limit export to specific stores |
+| `encrypt` | bool | No | `false` | Encrypt the archive |
+| `encryption_key` | string | No | None | Archive passphrase when `encrypt` is `true` |
 
-### Response
+### Response Metadata
 
 ```json
 {
@@ -174,27 +168,57 @@ Export and import are currently available via the **CLI** (`cerememory export` /
 }
 ```
 
+In gRPC, this metadata is sent with the first streamed chunk of archive bytes. In the CLI and MCP tool, Cerememory writes the bytes directly to the requested output path.
+
+### Transport Notes
+
+- **CLI:** `cerememory export --output ./backup.cma ...`
+- **MCP:** `export` requires an explicit `output_path`
+- **gRPC:** The archive is streamed in chunks; metadata arrives in the first chunk
+
 ## lifecycle.import
 
-Import memory records from a CMA archive.
+Import records from a CMA archive.
 
-### Request
+<Callout type="info">
+HTTP REST and MCP do not currently expose import. Use the CLI or the gRPC streaming API.
+</Callout>
+
+### CMP Request
 
 ```json
 {
   "archive_id": "export_20260319_100000",
   "strategy": "merge",
   "conflict_resolution": "keep_newer",
-  "decryption_key": "base64-encoded-key"
+  "decryption_key": "correct horse battery staple",
+  "archive_data": "<raw CMA bytes>"
 }
 ```
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `archive_id` | string | Yes | -- | Archive identifier |
-| `strategy` | ImportStrategy | No | merge | `merge` or `replace` |
-| `conflict_resolution` | ConflictResolution | No | keep_newer | `keep_existing`, `keep_imported`, or `keep_newer` |
-| `decryption_key` | string | No | None | Required if archive is encrypted |
+| `strategy` | ImportStrategy | No | `merge` | `merge` or `replace` |
+| `conflict_resolution` | ConflictResolution | No | `keep_newer` | `keep_existing`, `keep_imported`, or `keep_newer` |
+| `decryption_key` | string | No | None | Passphrase for encrypted archives |
+| `archive_data` | bytes | No | None | Raw CMA archive data when using the protocol directly |
+
+### Response
+
+```json
+{
+  "records_imported": 342
+}
+```
+
+### CLI Equivalent
+
+```bash
+cerememory import ./memories-backup.cma --conflict-resolution keep_newer
+```
+
+The current CLI reads the archive bytes from disk, derives `archive_id` from the filename, and imports with the protocol's `merge` strategy while letting you choose the conflict resolution policy.
 
 ## Next Steps
 

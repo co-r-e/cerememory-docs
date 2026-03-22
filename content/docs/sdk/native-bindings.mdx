@@ -1,144 +1,19 @@
 ---
 title: "Native Bindings"
-description: "Zero-overhead PyO3 and napi-rs native bindings for Python and Node.js."
+description: "In-process PyO3 and napi-rs bindings for Python and Node.js."
 ---
 
 ## Overview
 
-In addition to the HTTP-based SDKs, Cerememory provides **native bindings** that embed the Rust engine directly in your Python or Node.js process. These bindings eliminate network overhead and provide the fastest possible access to the memory engine.
-
-Native bindings are built using:
-
-- **PyO3** for Python -- compiles to a native Python extension module
-- **napi-rs** for Node.js -- compiles to a native Node.js addon
+Cerememory also ships native bindings that embed the Rust engine directly in your Python or Node.js process. These bindings avoid HTTP overhead and are useful for embedded or single-process workloads.
 
 <Callout type="info">
-Native bindings run the Cerememory engine **in-process**. There is no HTTP server involved. This is ideal for single-process applications, testing, and high-throughput scenarios.
+The native bindings currently expose a smaller API surface than the HTTP SDKs. They focus on in-process store, recall, inspect, forget, and stats workflows.
 </Callout>
 
-## Python Native (PyO3)
+## Python Native (`cerememory-native`)
 
-### Installation
-
-```bash
-pip install cerememory-native
-```
-
-The `cerememory-native` package includes pre-built wheels for Linux (x86_64, aarch64) and macOS (x86_64, aarch64). If no pre-built wheel is available, pip will compile from source (requires Rust toolchain).
-
-### Usage
-
-```python
-from cerememory_native import Engine
-
-# Create an in-memory engine (no disk persistence)
-engine = Engine()
-
-# Or with configuration
-engine = Engine({"working_capacity": 7, "recall_mode": "human"})
-
-# Store a memory
-record_id = engine.store("Important fact about the user", store="semantic")
-
-# Store with full response
-response = engine.store_full("Another fact", store="episodic")
-print(f"Stored: {response.record_id}, fidelity: {response.initial_fidelity}")
-
-# Recall memories
-results = engine.recall("user facts", limit=5)
-for memory in results.memories:
-    print(f"{memory.record.id}: {memory.relevance_score}")
-
-# Get record details
-record = engine.get_record(record_id)
-print(f"Fidelity: {record.fidelity.score}")
-
-# Forget a record
-deleted = engine.forget([record_id], confirm=True)
-
-# Get system stats
-stats = engine.stats()
-print(f"Total records: {stats.total_records}")
-```
-
-### API Differences from HTTP Client
-
-The native API is slightly different from the HTTP client:
-
-| HTTP Client | Native Binding | Notes |
-|-------------|---------------|-------|
-| `client.store(text=...)` | `engine.store(text, store=...)` | Returns UUID string directly |
-| `client.recall(query=...)` | `engine.recall(query, limit=...)` | Returns `RecallQueryResponse` |
-| `client.forget(id, confirm=True)` | `engine.forget(ids, confirm=True)` | Takes list of IDs |
-| `client.get_record(id)` | `engine.get_record(id)` | Same structure |
-| `client.stats()` | `engine.stats()` | Same structure |
-| Async client available | Always sync (GIL released) | Use `asyncio.to_thread` for async |
-
-<Callout type="info">
-The native binding releases the Python GIL during Rust operations, so it is safe to use from multiple threads. For asyncio applications, wrap calls with `asyncio.to_thread()`.
-</Callout>
-
-## Node.js Native (napi-rs)
-
-### Installation
-
-```bash
-npm install @cerememory/native
-```
-
-Pre-built binaries are included for Linux (x86_64, aarch64), macOS (x86_64, aarch64), and Windows (x86_64).
-
-### Usage
-
-```typescript
-import { CerememoryEngine } from "@cerememory/native";
-
-// Create an in-memory engine
-const engine = new CerememoryEngine();
-
-// Store a memory
-const recordId = engine.store("User prefers dark mode", "semantic");
-
-// Recall memories
-const results = await engine.recall("user preferences", 5);
-for (const memory of results.memories) {
-  console.log(`${memory.record.id}: ${memory.relevance_score}`);
-}
-
-// Get record details
-const record = await engine.get_record(recordId);
-console.log(`Fidelity: ${record.fidelity.score}`);
-
-// Forget a record
-const deleted = engine.forget([recordId], true);
-
-// Get stats
-const stats = await engine.stats();
-console.log(`Total records: ${stats.total_records}`);
-```
-
-### napi-rs Features
-
-The napi-rs binding provides:
-
-- **Async/await support** -- All operations return Promises and run on the Rust tokio runtime
-- **Serde JSON bridging** -- Automatic conversion between Rust types and JavaScript objects
-- **TypeScript types** -- Full `.d.ts` type definitions included
-
-## When to Use Native Bindings
-
-| Scenario | Recommended |
-|----------|-------------|
-| Embedded in a single application | Native bindings |
-| Multiple clients sharing one memory store | HTTP server |
-| Testing and development | Native bindings (simpler setup) |
-| Production with health checks and metrics | HTTP server |
-| High-throughput batch processing | Native bindings |
-| Multi-language polyglot architecture | HTTP server |
-
-## Building from Source
-
-### Python
+### Build from Source
 
 ```bash
 cd bindings/python-native
@@ -146,13 +21,108 @@ pip install maturin
 maturin develop --release
 ```
 
-### Node.js
+The Python module name is `cerememory_native`.
+
+### Usage
+
+```python
+from cerememory_native import Engine
+
+engine = Engine({"working_capacity": 7, "recall_mode": "human"})
+
+record_id = engine.store(
+    "Important fact about the user",
+    store="semantic",
+    metadata={"source": "native"},
+)
+
+response = engine.store_full("Another fact", store="episodic")
+print(response.record_id, response.initial_fidelity)
+
+results = engine.recall("user facts", limit=5, activation_depth=2)
+record = engine.get_record(record_id)
+deleted = engine.forget([record_id], confirm=True)
+stats = engine.stats()
+```
+
+### Exposed Methods
+
+| Method | Notes |
+|--------|-------|
+| `store(text, store=None, metadata=None)` | Returns UUID string |
+| `store_full(text, store=None, metadata=None)` | Python-only convenience method returning full `EncodeStoreResponse` fields |
+| `recall(query, limit=10, stores=None, min_fidelity=None, recall_mode=None, reconsolidate=True, activation_depth=2)` | Returns `RecallQueryResponse` |
+| `get_record(id)` | Returns a full `MemoryRecord` view |
+| `forget(ids, confirm=False)` | Accepts a list of UUID strings |
+| `stats()` | Returns stats plus optional evolution metrics |
+
+## Node.js Native (`@cerememory/native`)
+
+### Build from Source
 
 ```bash
 cd bindings/typescript-native
 npm install
 npm run build
 ```
+
+### Usage
+
+```typescript
+import { CerememoryEngine } from "@cerememory/native";
+
+const engine = new CerememoryEngine();
+
+const recordId = engine.store(
+  "User prefers dark mode",
+  "semantic",
+  { source: "native" }
+);
+
+const results = engine.recall("user preferences", 5, true, 2);
+const record = engine.get_record(recordId);
+const deleted = engine.forget([recordId], true);
+const stats = engine.stats();
+```
+
+<Callout type="warning">
+The Node.js binding methods are synchronous from the caller's perspective. Do not `await` them.
+</Callout>
+
+### Exposed Methods
+
+| Method | Notes |
+|--------|-------|
+| `store(text, store?, metadata?)` | Returns UUID string |
+| `recall(query, limit?, reconsolidate?, activation_depth?)` | Returns JSON-shaped recall data |
+| `get_record(id)` | Returns JSON-shaped record data |
+| `forget(ids, confirm?)` | Deletes by UUID list |
+| `stats()` | Returns JSON-shaped stats data |
+
+## Native vs HTTP SDK
+
+| Capability | HTTP SDKs | Native bindings |
+|------------|-----------|-----------------|
+| Shared server process | Yes | No |
+| Auth / CORS / rate limiting | Yes | No |
+| Health / readiness / metrics | Yes | No |
+| Full REST API surface | Yes | No |
+| In-process calls | No | Yes |
+| Best for embedded single-process workloads | Sometimes | Yes |
+
+## When to Use Native Bindings
+
+Use native bindings when:
+
+- You want the engine embedded directly in one process
+- You do not need shared multi-client access over HTTP/gRPC
+- You want to avoid transport overhead in tests or local tools
+
+Use the HTTP server and SDKs when:
+
+- Multiple clients share one memory store
+- You need observability, auth, or remote access
+- You want the full public API surface
 
 ## Next Steps
 

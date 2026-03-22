@@ -14,7 +14,7 @@ description: "Complete reference for all Cerememory CLI commands and flags."
 
 ## serve
 
-Start the HTTP server (and optionally gRPC).
+Start the HTTP server and, optionally, the gRPC server.
 
 ```bash
 cerememory serve [OPTIONS]
@@ -22,30 +22,79 @@ cerememory serve [OPTIONS]
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--port` | u16 | 8420 | HTTP port |
-| `--grpc-port` | u16 | None | gRPC port (disabled if not set) |
+| `--port` | u16 | `8420` | HTTP port |
+| `--grpc-port` | u16 | None | Enable gRPC on this port |
 
-<Terminal title="Example: Start with both HTTP and gRPC">
+<Terminal title="Example: Start HTTP and gRPC together">
 ```bash
 cerememory serve --port 8420 --grpc-port 8421 --config ./cerememory.toml
 ```
 </Terminal>
 
-The server starts with:
-- Background decay enabled (configurable interval)
-- Graceful shutdown on SIGINT/SIGTERM
-- Optional Prometheus metrics at `/metrics` when `http.metrics_enabled = true`
-- Health probes at `/health` and `/readiness`
+The server provides:
+
+- `GET /health` and `GET /readiness`
+- Optional `/metrics` when `http.metrics_enabled = true`
+- Request IDs, auth, and rate limiting according to config
+- Background decay ticks on the configured interval
 
 <Callout type="warning">
-If you enable gRPC and either `auth.enabled = true` or `http.bind_address` is non-loopback, you must also configure `grpc.tls_cert_path` and `grpc.tls_key_path`.
+If gRPC is enabled and either `auth.enabled = true` or the bind address is non-loopback, you must configure both `grpc.tls_cert_path` and `grpc.tls_key_path`.
 </Callout>
+
+---
+
+## consolidate
+
+Consolidate mature episodic memories into semantic memory.
+
+```bash
+cerememory consolidate [OPTIONS]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--strategy` | string | `incremental` | `incremental`, `full`, or `selective` |
+| `--min-age-hours` | u32 | `0` | Minimum record age before consolidation |
+| `--min-access-count` | u32 | `0` | Minimum access count before consolidation |
+| `--dry-run` | bool | `false` | Preview work without mutating data |
+
+<Terminal title="Example: Preview a selective consolidation run">
+```bash
+cerememory consolidate \
+  --strategy selective \
+  --min-age-hours 24 \
+  --min-access-count 3 \
+  --dry-run
+```
+</Terminal>
+
+---
+
+## set-mode
+
+Change the recall mode used by stateful operations.
+
+```bash
+cerememory set-mode <MODE> [OPTIONS]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `<MODE>` | string | -- | Required. `human` or `perfect` |
+| `--scope` | string | None | Optional comma-separated store filter |
+
+<Terminal title="Example: Set perfect mode for semantic memory">
+```bash
+cerememory set-mode perfect --scope semantic
+```
+</Terminal>
 
 ---
 
 ## store
 
-Store a new memory record.
+Store a new text memory record.
 
 ```bash
 cerememory store <TEXT> [OPTIONS]
@@ -54,8 +103,8 @@ cerememory store <TEXT> [OPTIONS]
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `<TEXT>` | string | -- | Required. Text content to store |
-| `--store` | string | episodic | Target store (episodic, semantic, procedural, emotional, working) |
-| `--embedding` | string | None | Comma-separated embedding vector (e.g., "0.1,0.2,0.3") |
+| `--store` | string | `episodic` | Target store |
+| `--embedding` | string | None | Comma-separated embedding vector |
 
 <Terminal title="Example: Store a semantic memory">
 ```bash
@@ -63,14 +112,8 @@ cerememory store "The user prefers dark mode" --store semantic
 ```
 </Terminal>
 
-Output:
-
-```
-Stored: 01916e3a-5678-7000-8000-000000000001 (store: semantic, fidelity: 1.0)
-```
-
 <Callout type="warning">
-Storing to the working store prints a warning: working memory is in-memory only and will not persist across restarts.
+The working store is intentionally in-memory only. Records written there do not survive process restarts.
 </Callout>
 
 ---
@@ -86,8 +129,8 @@ cerememory recall <QUERY> [OPTIONS]
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `<QUERY>` | string | -- | Required. Text query |
-| `--limit` | u32 | 10 | Maximum results |
-| `--mode` | string | human | Recall mode: "human" or "perfect" |
+| `--limit` | u32 | `10` | Maximum number of results |
+| `--mode` | string | `human` | `human` or `perfect` |
 
 <Terminal title="Example: Recall with perfect mode">
 ```bash
@@ -95,21 +138,11 @@ cerememory recall "user preferences" --limit 5 --mode perfect
 ```
 </Terminal>
 
-Output:
-
-```
-Found 3 memories (total candidates: 42)
-
-1. [semantic] score=0.9234 fidelity=0.8470
-   ID: 01916e3a-5678-7000-8000-000000000001
-   The user prefers dark mode
-```
-
 ---
 
 ## inspect
 
-Inspect a specific record with full detail.
+Inspect a specific record as pretty-printed JSON.
 
 ```bash
 cerememory inspect <RECORD_ID>
@@ -117,33 +150,27 @@ cerememory inspect <RECORD_ID>
 
 | Flag | Type | Description |
 |------|------|-------------|
-| `<RECORD_ID>` | UUID | Required. Record UUID to inspect |
+| `<RECORD_ID>` | UUID | Required. Record UUID |
 
-<Terminal title="Example: Inspect a record">
-```bash
-cerememory inspect 01916e3a-5678-7000-8000-000000000001
-```
-</Terminal>
-
-Outputs the full MemoryRecord as pretty-printed JSON, including fidelity state, emotion vector, associations, and metadata.
+The output includes fidelity state, emotion vector, associations, metadata, and version.
 
 ---
 
 ## stats
 
-Display system-wide statistics.
+Show system-wide statistics.
 
 ```bash
 cerememory stats
 ```
 
-Outputs JSON with total records, per-store counts, average fidelity, total associations, and recall count.
+The response includes total records, per-store counts, total associations, average fidelity, background decay status, and `evolution_metrics` when available.
 
 ---
 
 ## decay-tick
 
-Manually trigger a decay computation cycle.
+Run a manual decay cycle.
 
 ```bash
 cerememory decay-tick [OPTIONS]
@@ -151,22 +178,13 @@ cerememory decay-tick [OPTIONS]
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--duration` | u32 | 3600 | Simulated duration in seconds |
+| `--duration` | u32 | `3600` | Simulated duration in seconds |
 
-<Terminal title="Example: Run a decay tick">
+<Terminal title="Example: Advance decay by two hours">
 ```bash
 cerememory decay-tick --duration 7200
 ```
 </Terminal>
-
-Output:
-
-```
-Decay tick completed:
-  Records updated: 342
-  Below threshold: 15
-  Pruned: 8
-```
 
 ---
 
@@ -180,25 +198,19 @@ cerememory forget <RECORD_ID> [OPTIONS]
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `<RECORD_ID>` | UUID | -- | Required. Record to delete |
-| `--cascade` | bool | false | Also delete associated records |
-| `--confirm` | bool | false | Required confirmation flag |
+| `<RECORD_ID>` | UUID | -- | Required. Target record |
+| `--cascade` | bool | `false` | Also delete associated records |
+| `--confirm` | bool | `false` | Required confirmation flag |
 
 <Callout type="warning">
-The `--confirm` flag is mandatory. Without it, the operation is rejected. This prevents accidental deletion.
+Without `--confirm`, the command is rejected. Forget is irreversible.
 </Callout>
-
-<Terminal title="Example: Forget with cascade">
-```bash
-cerememory forget 01916e3a-5678-7000-8000-000000000001 --cascade --confirm
-```
-</Terminal>
 
 ---
 
 ## export
 
-Export all records to a CMA archive file.
+Export records to a CMA archive file.
 
 ```bash
 cerememory export [OPTIONS]
@@ -207,24 +219,19 @@ cerememory export [OPTIONS]
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--output` | path | `./backup.cma` | Output file path |
-| `--format` | string | `cma` | Archive format |
+| `--format` | string | `cma` | Archive format. `cma` is currently the only supported value |
 | `--stores` | string | None | Comma-separated store filter |
-| `--encrypt` | bool | false | Encrypt the archive with ChaCha20-Poly1305 |
-| `--encryption-key` | string | None | Passphrase for archive encryption |
+| `--encrypt` | bool | `false` | Encrypt the archive |
+| `--encryption-key` | string | None | Archive passphrase |
+| `--encryption-key-stdin` | bool | `false` | Read the archive passphrase from stdin |
 
-<Terminal title="Example: Export to a file">
-```bash
-cerememory export --output ./memories-backup.cma
-```
-</Terminal>
-
-<Terminal title="Example: Export only episodic and semantic memories, encrypted">
+<Terminal title="Example: Export selected stores with encryption">
 ```bash
 cerememory export \
   --output ./memories-backup.cma \
   --stores episodic,semantic \
   --encrypt \
-  --encryption-key "correct horse battery staple"
+  --encryption-key-stdin
 ```
 </Terminal>
 
@@ -238,14 +245,18 @@ Import records from a CMA archive file.
 cerememory import <PATH> [OPTIONS]
 ```
 
-| Flag | Type | Description |
-|------|------|-------------|
-| `<PATH>` | path | Required. Path to the CMA archive file |
-| `--decryption-key` | string | Passphrase for encrypted archives |
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `<PATH>` | path | -- | Required. CMA archive path |
+| `--decryption-key` | string | None | Decryption passphrase for encrypted archives |
+| `--decryption-key-stdin` | bool | `false` | Read the decryption passphrase from stdin |
+| `--conflict-resolution` | string | `keep_newer` | `keep_existing`, `keep_imported`, or `keep_newer` |
 
 <Terminal title="Example: Import an encrypted archive">
 ```bash
-cerememory import ./memories-backup.cma --decryption-key "correct horse battery staple"
+cerememory import ./memories-backup.cma \
+  --decryption-key-stdin \
+  --conflict-resolution keep_newer
 ```
 </Terminal>
 
@@ -253,7 +264,7 @@ cerememory import ./memories-backup.cma --decryption-key "correct horse battery 
 
 ## healthcheck
 
-Lightweight HTTP health check (useful for Docker HEALTHCHECK).
+Lightweight HTTP health probe for container health checks.
 
 ```bash
 cerememory healthcheck [OPTIONS]
@@ -261,37 +272,39 @@ cerememory healthcheck [OPTIONS]
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--port` | u16 | 8420 | HTTP port to check |
+| `--port` | u16 | `8420` | HTTP port to check |
 
-Returns exit code 0 on success, non-zero on failure.
+Returns exit code `0` when healthy and non-zero otherwise.
 
 ---
 
 ## mcp
 
-Start the MCP (Model Context Protocol) server on stdio for direct LLM integration.
+Start the stdio MCP server for Claude Code and other MCP-compatible clients.
 
 ```bash
 cerememory mcp
 ```
 
-This starts a stdio-based MCP server using the rmcp library, enabling MCP-compatible AI agents to interact with Cerememory directly.
-
-The MCP server exposes the following tools:
+The MCP server exposes these tools:
 
 | Tool | Description |
 |------|-------------|
-| `store` | Store a single memory record |
+| `store` | Store a new memory record |
 | `update` | Update an existing record's content or emotion |
-| `batch_store` | Store multiple records with auto-association |
-| `recall` | Query memories by text cue |
-| `timeline` | Time-bucketed retrieval |
-| `associate` | Traverse association graph |
-| `forget` | Permanently delete records |
-| `consolidate` | Trigger episodic→semantic consolidation |
-| `stats` | Get system statistics |
+| `batch_store` | Store multiple memories at once with inferred associations |
+| `recall` | Query memories, or list recent ones when `query` is omitted |
+| `timeline` | Retrieve memories in time buckets |
+| `associate` | Traverse the association graph from a record |
+| `forget` | Permanently delete records by UUID |
+| `consolidate` | Trigger episodic-to-semantic consolidation |
+| `stats` | View system statistics |
 | `inspect` | Inspect a specific record |
-| `export` | Export to CMA archive (with optional encryption) |
+| `export` | Export a CMA archive to an explicit output path |
+
+<Callout type="info">
+The MCP surface is intentionally LLM-friendly and does not expose every HTTP/gRPC method one-to-one. For full protocol access, use the REST API or gRPC transport.
+</Callout>
 
 ## Next Steps
 

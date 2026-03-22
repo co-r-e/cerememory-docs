@@ -1,6 +1,6 @@
 ---
 title: "Python SDK"
-description: "Complete reference for the Cerememory Python SDK with sync and async clients."
+description: "Reference for the Cerememory Python SDK with sync and async clients."
 ---
 
 ## Installation
@@ -9,11 +9,7 @@ description: "Complete reference for the Cerememory Python SDK with sync and asy
 pip install cerememory
 ```
 
-For the native PyO3-based bindings (no HTTP overhead):
-
-```bash
-pip install cerememory-native
-```
+For the native in-process binding, see [Native Bindings](/docs/sdk/native-bindings).
 
 ## Sync Client
 
@@ -21,177 +17,180 @@ pip install cerememory-native
 from cerememory import Client
 
 client = Client(
-    base_url="http://localhost:8420",
-    api_key="your-api-key",  # optional
+    "http://localhost:8420",
+    api_key="sk-cerememory-prod-abc123",
     timeout=30.0,
+    max_retries=0,
+    retry_mutating_requests=False,
 )
 ```
 
-### store
+<Callout type="info">
+Retries are conservative by default in `0.2.0`: `max_retries` defaults to `0`, and mutating requests are retried only when `retry_mutating_requests=True`.
+</Callout>
 
-Store a new memory record.
+## High-Level Methods
+
+<Callout type="info">
+The high-level helpers are text-first conveniences. For multimodal blocks, manual associations, full encode context, or custom `MemoryContent`, use the protocol-level methods such as `encode_store()`.
+</Callout>
+
+### `store(text, ...)`
+
+Store a text memory and receive its UUID.
 
 ```python
-result = client.store(
-    text="The user's favorite programming language is Rust.",
+record_id = client.store(
+    "The user's preferred editor is Neovim.",
     store="semantic",
-    emotion="trust",
     metadata={"source": "onboarding"},
 )
-print(result.record_id)    # UUID
-print(result.store)        # "semantic"
-print(result.initial_fidelity)  # 1.0
+print(record_id)
 ```
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `text` | str | Yes | -- | Text content to store |
-| `store` | str | No | auto | Target store |
-| `emotion` | str or dict | No | None | Emotion label or EmotionVector dict |
-| `embedding` | list[float] | No | None | Pre-computed embedding vector |
-| `metadata` | dict | No | None | Arbitrary metadata |
-| `session_id` | str | No | None | Session identifier for context |
+Supported keyword arguments:
 
-### recall
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `store` | `str | StoreType` | `StoreType.EPISODIC` | Target store |
+| `emotion` | `EmotionVector | None` | None | Optional emotion vector |
+| `metadata` | `dict | None` | None | Stored with the record |
 
-Query memories by text cue.
+### `recall(query, ...)`
+
+Recall memories matching a text cue.
 
 ```python
-results = client.recall(
-    text="What programming language does the user prefer?",
+memories = client.recall(
+    "What editor does the user prefer?",
     limit=5,
-    mode="human",
     stores=["semantic", "episodic"],
-    min_fidelity=0.1,
+    mode="human",
+    reconsolidate=True,
+    activation_depth=2,
 )
 
-for memory in results.memories:
-    print(f"[{memory.record.store}] score={memory.relevance_score:.4f}")
-    print(f"  fidelity={memory.record.fidelity.score:.4f}")
+for memory in memories:
+    print(memory.record.store, memory.relevance_score)
 ```
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `text` | str | Yes | -- | Text query |
-| `limit` | int | No | 10 | Maximum results |
-| `mode` | str | No | "human" | "human" or "perfect" |
-| `stores` | list[str] | No | All | Filter by store |
-| `min_fidelity` | float | No | None | Minimum fidelity threshold |
-| `reconsolidate` | bool | No | True | Strengthen retrieved memories |
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `limit` | `int` | `10` | Maximum number of results |
+| `stores` | `list[str | StoreType] | None` | None | Restrict the search |
+| `mode` | `str | RecallMode` | `RecallMode.HUMAN` | `human` or `perfect` |
+| `min_fidelity` | `float | None` | None | Minimum fidelity threshold |
+| `reconsolidate` | `bool` | `True` | Strengthen recalled memories |
+| `activation_depth` | `int` | `2` | Spreading activation depth |
 
-### forget
-
-Delete records permanently.
+### `forget(*record_ids, ...)`
 
 ```python
-client.forget(
-    "01916e3a-5678-7000-8000-000000000001",
-    confirm=True,
-    cascade=False,
-)
+deleted = client.forget(record_id, confirm=True, cascade=False)
+print(deleted)
 ```
 
-### stats
-
-Get system statistics.
+### `stats()`, `get_record()`, `health()`, `readiness()`
 
 ```python
 stats = client.stats()
-print(f"Total records: {stats.total_records}")
-print(f"Avg fidelity: {stats.avg_fidelity:.3f}")
+record = client.get_record(record_id)
+health = client.health()
+readiness = client.readiness()
 ```
 
-### get_record
+`stats()` returns `background_decay_enabled` and optional `evolution_metrics` in addition to the usual record counters.
 
-Get full details for a specific record.
+## Full CMP Methods
+
+The sync client also exposes protocol-level methods:
+
+| Method | Purpose |
+|--------|---------|
+| `encode_store()` | `POST /v1/encode` |
+| `encode_batch()` | `POST /v1/encode/batch` |
+| `encode_update(record_id, request)` | `PATCH /v1/encode/:record_id` |
+| `recall_query()` | `POST /v1/recall/query` |
+| `recall_associate(record_id, request)` | `POST /v1/recall/associate/:record_id` |
+| `recall_timeline()` | `POST /v1/recall/timeline` |
+| `recall_graph()` | `POST /v1/recall/graph` |
+| `lifecycle_consolidate()` | `POST /v1/lifecycle/consolidate` |
+| `lifecycle_decay_tick()` | `POST /v1/lifecycle/decay-tick` |
+| `lifecycle_set_mode()` | `PUT /v1/lifecycle/mode` |
+| `lifecycle_forget()` | `DELETE /v1/lifecycle/forget` |
+| `introspect_stats()` | `GET /v1/introspect/stats` |
+| `introspect_record(record_id)` | `GET /v1/introspect/record/:record_id` |
+| `introspect_decay_forecast()` | `POST /v1/introspect/decay-forecast` |
+| `introspect_evolution()` | `GET /v1/introspect/evolution` |
+
+Example:
 
 ```python
-record = client.get_record("01916e3a-5678-7000-8000-000000000001")
-print(f"Fidelity: {record.fidelity.score}")
-print(f"Noise: {record.fidelity.noise_level}")
-print(f"Stability: {record.fidelity.stability}")
-print(f"Associations: {len(record.associations)}")
-```
-
-### decay_tick
-
-Trigger a manual decay cycle.
-
-```python
-result = client.decay_tick(duration_seconds=3600)
-print(f"Updated: {result.records_updated}")
-print(f"Pruned: {result.records_pruned}")
-```
-
-### consolidate
-
-Trigger memory consolidation.
-
-```python
-result = client.consolidate(
-    strategy="incremental",
-    min_age_hours=24,
-    min_access_count=3,
-    dry_run=True,
-)
-print(f"Would migrate: {result.records_migrated}")
+metrics = client.introspect_evolution()
+print(metrics.parameter_adjustments)
 ```
 
 ## Async Client
 
-For asyncio-based applications:
+The async client mirrors the sync API:
 
 ```python
 from cerememory import AsyncClient
 
-client = AsyncClient(
-    base_url="http://localhost:8420",
-    api_key="your-api-key",
-)
-
-async def main():
-    result = await client.store(
-        text="Async memory storage",
-        store="episodic",
-    )
-
-    results = await client.recall(text="async storage")
-    for memory in results.memories:
-        print(f"score={memory.relevance_score:.4f}")
-
-    await client.close()
+async with AsyncClient("http://localhost:8420") as client:
+    record_id = await client.store("Async memory", store="episodic")
+    memories = await client.recall("async memory")
+    await client.forget(record_id, confirm=True)
 ```
 
-The async client provides the same methods as the sync client, but all return coroutines.
+Use `AsyncClient` for asyncio-based services, agents, or web backends.
+
+## Integrations
+
+The Python package also includes integration modules for:
+
+- `cerememory.integrations.langchain`
+- `cerememory.integrations.llamaindex`
+
+Use these when you want Cerememory-backed memory or vector-store behavior inside LangChain or LlamaIndex applications.
 
 ## Error Handling
 
 ```python
-from cerememory import CerememoryError, RecordNotFoundError, RateLimitedError
+from cerememory import (
+    CerememoryError,
+    RecordNotFoundError,
+    RateLimitedError,
+    UnauthorizedError,
+)
 
 try:
-    record = client.get_record("nonexistent-id")
-except RecordNotFoundError as e:
-    print(f"Not found: {e.record_id}")
-except RateLimitedError as e:
-    print(f"Rate limited, retry after {e.retry_after}s")
-except CerememoryError as e:
-    print(f"CMP error [{e.code}]: {e.message}")
+    client.get_record("00000000-0000-0000-0000-000000000000")
+except RecordNotFoundError:
+    print("Record not found")
+except RateLimitedError as exc:
+    print(exc.retry_after)
+except UnauthorizedError:
+    print("Missing or invalid API key")
+except CerememoryError as exc:
+    print(exc.code, exc.message)
 ```
 
-All CMP error codes are mapped to typed exceptions:
+## Exported Types
 
-| Exception | CMP Code |
-|-----------|----------|
-| `RecordNotFoundError` | RECORD_NOT_FOUND |
-| `ValidationError` | VALIDATION_ERROR |
-| `ContentTooLargeError` | CONTENT_TOO_LARGE |
-| `WorkingMemoryFullError` | WORKING_MEMORY_FULL |
-| `RateLimitedError` | RATE_LIMITED |
-| `UnauthorizedError` | UNAUTHORIZED |
-| `CerememoryError` | All others |
+The package exports protocol and model types such as:
+
+```python
+from cerememory import (
+    EncodeStoreRequest,
+    MemoryRecord,
+    RecalledMemory,
+    StatsResponse,
+    EvolutionMetrics,
+)
+```
 
 ## Next Steps
 
 <LinkCard href="/docs/sdk/typescript" title="TypeScript SDK" description="Use Cerememory from TypeScript" />
-<LinkCard href="/docs/sdk/native-bindings" title="Native Bindings" description="Zero-overhead PyO3 and napi-rs bindings" />
+<LinkCard href="/docs/sdk/native-bindings" title="Native Bindings" description="In-process Python and Node.js bindings" />

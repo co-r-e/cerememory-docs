@@ -3,7 +3,7 @@ title: "Quick Start"
 description: "Store, recall, and forget your first memory with Cerememory."
 ---
 
-This guide walks you through the basic Cerememory workflow: starting the server, storing a memory, recalling it, and forgetting it.
+This guide walks through the core Cerememory workflow: start the server, store a memory, recall it, and remove it.
 
 ## Start the Server
 
@@ -15,11 +15,11 @@ This guide walks you through the basic Cerememory workflow: starting the server,
 cerememory serve --port 8420
 ```
 
-Output:
+Example startup output:
 
-```
-Cerememory v0.1.0
-HTTP  listening on 0.0.0.0:8420
+```text
+Cerememory v0.2.0
+HTTP  listening on 127.0.0.1:8420
 ```
 
 </div>
@@ -27,14 +27,25 @@ HTTP  listening on 0.0.0.0:8420
 <div>
 
 ```bash
-docker run -d --name cerememory -p 8420:8420 ghcr.io/co-r-e/cerememory:latest
+docker run --rm -p 8420:8420 ghcr.io/co-r-e/cerememory:latest
 ```
 
 </div>
 
 </Tabs>
 
-The server is now running with default settings: in-memory working store, persistent redb-backed stores for episodic/semantic/procedural/emotional, and background decay ticks every hour.
+By default Cerememory starts with:
+
+- HTTP bound to `127.0.0.1:8420`
+- Background decay enabled
+- Persistent `redb` stores for episodic, semantic, procedural, and emotional memory
+- In-memory working memory
+- `/health` and `/readiness` enabled
+- `/metrics` disabled until `http.metrics_enabled = true`
+
+<Callout type="info">
+For agent workflows, run `cerememory mcp` to expose the MCP tool surface over stdio instead of starting the HTTP server.
+</Callout>
 
 ## Store a Memory
 
@@ -47,12 +58,13 @@ from cerememory import Client
 
 client = Client("http://localhost:8420")
 
-result = client.store(
-    text="The user prefers dark mode and uses vim keybindings.",
+record_id = client.store(
+    "The user prefers dark mode and uses vim keybindings.",
     store="semantic",
-    emotion="trust",
+    metadata={"source": "onboarding"},
 )
-print(f"Stored: {result.record_id}")
+
+print(f"Stored: {record_id}")
 ```
 
 </div>
@@ -64,11 +76,14 @@ import { CerememoryClient } from "@cerememory/sdk";
 
 const client = new CerememoryClient("http://localhost:8420");
 
-const recordId = await client.store({
-  text: "The user prefers dark mode and uses vim keybindings.",
-  store: "semantic",
-  emotion: "trust",
-});
+const recordId = await client.store(
+  "The user prefers dark mode and uses vim keybindings.",
+  {
+    store: "semantic",
+    metadata: { source: "onboarding" },
+  }
+);
+
 console.log(`Stored: ${recordId}`);
 ```
 
@@ -84,12 +99,15 @@ curl -X POST http://localhost:8420/v1/encode \
       "blocks": [{
         "modality": "text",
         "format": "text/plain",
-        "data": [84,104,101,32,117,115,101,114,32,112,114,101,102,101,114,115,32,100,97,114,107,32,109,111,100,101],
+        "data": [84,104,101,32,117,115,101,114,32,112,114,101,102,101,114,115,32,100,97,114,107,32,109,111,100,101,32,97,110,100,32,117,115,101,115,32,118,105,109,32,107,101,121,98,105,110,100,105,110,103,115,46],
         "embedding": null
       }],
       "summary": null
     },
-    "store": "semantic"
+    "store": "semantic",
+    "metadata": {
+      "source": "onboarding"
+    }
   }'
 ```
 
@@ -100,12 +118,6 @@ curl -X POST http://localhost:8420/v1/encode \
 ```bash
 cerememory store "The user prefers dark mode and uses vim keybindings." \
   --store semantic
-```
-
-Output:
-
-```
-Stored: 01916e3a-1234-7000-8000-000000000001 (store: semantic, fidelity: 1.0)
 ```
 
 </div>
@@ -119,13 +131,13 @@ Stored: 01916e3a-1234-7000-8000-000000000001 (store: semantic, fidelity: 1.0)
 <div>
 
 ```python
-results = client.recall(
-    text="What are the user's preferences?",
+memories = client.recall(
+    "What are the user's preferences?",
     limit=5,
-    mode="human",  # applies fidelity decay and noise
+    mode="human",
 )
 
-for memory in results.memories:
+for memory in memories:
     print(f"[{memory.record.store}] score={memory.relevance_score:.4f}")
 ```
 
@@ -134,10 +146,9 @@ for memory in results.memories:
 <div>
 
 ```typescript
-const memories = await client.recall({
-  text: "What are the user's preferences?",
+const memories = await client.recall("What are the user's preferences?", {
   limit: 5,
-  mode: "human",
+  recall_mode: "human",
 });
 
 for (const memory of memories) {
@@ -172,7 +183,7 @@ cerememory recall "What are the user's preferences?" --limit 5 --mode human
 </Tabs>
 
 <Callout type="info">
-In **human** mode, recalled content is filtered through fidelity and noise -- older or less-accessed memories may be slightly distorted, just like biological recall. Use **perfect** mode when exact reproduction is needed.
+In **human** mode, Cerememory returns `rendered_content` with fidelity and noise applied. Use **perfect** mode when you need exact stored content.
 </Callout>
 
 ## Forget a Memory
@@ -182,10 +193,7 @@ In **human** mode, recalled content is filtered through fidelity and noise -- ol
 <div>
 
 ```python
-client.forget(
-    "01916e3a-1234-7000-8000-000000000001",
-    confirm=True,
-)
+client.forget(record_id, confirm=True)
 ```
 
 </div>
@@ -193,10 +201,7 @@ client.forget(
 <div>
 
 ```typescript
-await client.forget(
-  "01916e3a-1234-7000-8000-000000000001",
-  { confirm: true }
-);
+await client.forget(recordId, { confirm: true });
 ```
 
 </div>
@@ -212,29 +217,17 @@ cerememory forget 01916e3a-1234-7000-8000-000000000001 --confirm
 </Tabs>
 
 <Callout type="warning">
-The `--confirm` flag is required for all forget operations. Forgetting is permanent and cannot be undone. Use `--cascade` to also delete associated records.
+Forget is irreversible. Use `--cascade` or `cascade=True` only when you intentionally want associated records deleted as well.
 </Callout>
 
-## Check System Stats
+## Check System State
 
 ```bash
-cerememory stats
+curl http://localhost:8420/readiness
+curl http://localhost:8420/v1/introspect/stats
 ```
 
-```json
-{
-  "total_records": 42,
-  "records_by_store": {
-    "episodic": 18,
-    "semantic": 15,
-    "procedural": 5,
-    "emotional": 4
-  },
-  "total_associations": 23,
-  "avg_fidelity": 0.847,
-  "total_recall_count": 156
-}
-```
+`/readiness` is unauthenticated and intended for probes. `/v1/introspect/stats` is the full CMP stats endpoint.
 
 ## Next Steps
 

@@ -80,13 +80,20 @@ The `RecallCue` supports multiple modalities simultaneously:
       { "record_id": "...", "activation_level": 0.85, "hop": 1, "edge_type": "semantic" }
     ]
   },
-  "total_candidates": 42
+  "total_candidates": 42,
+  "query_metadata": {
+    "total_records_scanned": 342,
+    "stores_searched": ["semantic", "episodic"],
+    "fidelity_filtered": 12
+  }
 }
 ```
 
 <Callout type="info">
 In **human** mode, `rendered_content` may differ from the original `record.content` -- noise is applied based on the memory's current fidelity and noise level. In **perfect** mode, they are identical.
 </Callout>
+
+`query_metadata` is optional. When present, it helps explain how much data was scanned and how many candidates were filtered by fidelity constraints.
 
 ## recall.associate
 

@@ -48,8 +48,6 @@ Cerememory is organized as a layered system where each layer has a single respon
 
 ## Crate Structure
 
-The codebase is organized as a Cargo workspace with crates separated by responsibility.
-
 <FileTree>
   <FileTree.Folder name="cerememory" defaultOpen>
     <FileTree.Folder name="crates" defaultOpen>
@@ -94,46 +92,54 @@ The codebase is organized as a Cargo workspace with crates separated by responsi
 
 ### Transport Layer
 
-Three transport bindings expose the CMP protocol to external clients:
+Three transport bindings expose CMP externally:
 
-- **HTTP/REST** (axum) -- Primary transport on port 8420. Includes Bearer token auth, CORS, rate limiting, request tracing, and Prometheus metrics.
-- **gRPC** (tonic) -- Optional transport with TLS support. Enabled by setting `grpc.port` in configuration.
-- **MCP** (rmcp) -- Model Context Protocol server over stdio. Enables direct integration with MCP-compatible AI agents (e.g., Claude). Exposes 11 CMP tools: `store`, `update`, `batch_store`, `recall`, `timeline`, `associate`, `forget`, `consolidate`, `stats`, `inspect`, and `export`.
+- **HTTP/REST** (axum) -- primary network transport. Binds to `127.0.0.1:8420` by default and includes Bearer auth, request IDs, trusted-proxy-aware rate limiting, optional CORS, and opt-in Prometheus metrics.
+- **gRPC** (tonic) -- optional network transport. Supports export/import streaming and requires TLS when auth is enabled or the deployment is exposed beyond loopback.
+- **MCP** (rmcp) -- stdio transport for Claude Code and MCP-compatible clients. Exposes 11 LLM-friendly tools: `store`, `update`, `batch_store`, `recall`, `timeline`, `associate`, `forget`, `consolidate`, `stats`, `inspect`, and `export`.
 
 ### Engine Layer
 
-The `CerememoryEngine` is the central coordinator. It implements all CMP operations (encode, recall, lifecycle, introspect) and orchestrates cross-store interactions. It manages:
+The `CerememoryEngine` is the central coordinator. It implements encode, recall, lifecycle, and introspect operations and orchestrates cross-store interactions. It manages:
 
-- The **hippocampal coordinator** for cross-store recall and spreading activation
-- The **decay engine** for background fidelity decay (runs on a configurable interval)
-- The **text index** (tantivy) and **vector index** (HNSW) for fast retrieval
-- An optional **LLM provider** for embedding generation, summarization, and relation extraction
+- The hippocampal coordinator for cross-store recall and spreading activation
+- The Tantivy text index and HNSW vector index
+- The background decay engine
+- An optional LLM provider for embeddings, summarization, image/audio handling, and relation extraction
 
 ### Store Layer
 
-Five specialized stores, each backed by redb (except working memory which is in-memory only). All stores implement the `Store` trait, providing a uniform interface for CRUD operations, text search, and fidelity updates.
+Five specialized stores implement the common `Store` trait:
+
+- **Episodic**
+- **Semantic**
+- **Procedural**
+- **Emotional**
+- **Working**
+
+All persistent stores are backed by redb. Working memory is intentionally in-memory only.
 
 ### Supporting Engines
 
-- **Decay Engine** -- Stateless, rayon-parallel computation of power-law decay across all records
-- **Association Engine** -- Spreading activation over the cross-store association graph
-- **Evolution Engine** -- Adaptive parameter tuning based on usage patterns
+- **Decay Engine** -- rayon-parallel power-law decay computation
+- **Association Engine** -- spreading activation over the persisted association graph
+- **Evolution Engine** -- adaptive tuning surfaced via `introspect.evolution`
 
 ## Dependency Direction
 
-```
+```text
 cerememory-cli
-├── cerememory-config       ← cerememory-engine
-├── cerememory-engine       ← cerememory-core, all stores, decay, association, index
-├── cerememory-transport-*  ← cerememory-engine, cerememory-core
-├── cerememory-archive      ← cerememory-core
-└── adapter-*              ← cerememory-core
+├── cerememory-config
+├── cerememory-engine
+├── cerememory-transport-*
+├── cerememory-archive
+└── adapter-*
 
-cerememory-core (leaf crate: types, traits, protocol, errors)
+cerememory-core
 ```
 
 <Callout type="info">
-`cerememory-core` is the leaf dependency -- it defines all shared types, traits, and protocol structures. Every other crate depends on it, but it depends on no internal crate.
+`cerememory-core` is the leaf dependency. It defines shared types, protocol structs, and errors used by every other crate.
 </Callout>
 
 ## Next Steps

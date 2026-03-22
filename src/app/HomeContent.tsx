@@ -79,7 +79,7 @@ record_id <span class="op">=</span> client.<span class="fn">store</span>(
 )
 
 <span class="cm"># Recall memories about Alice</span>
-results <span class="op">=</span> client.<span class="fn">recall</span>(<span class="str">"Alice"</span>, limit<span class="op">=</span><span class="num">5</span>)
+memories <span class="op">=</span> client.<span class="fn">recall</span>(<span class="str">"Alice"</span>, limit<span class="op">=</span><span class="num">5</span>)
 
 <span class="cm"># Forget a memory</span>
 client.<span class="fn">forget</span>(record_id, confirm<span class="op">=</span><span class="var-hl">True</span>)`,
@@ -109,7 +109,7 @@ client.<span class="fn">forget</span>(record_id, confirm<span class="op">=</span
 );
 
 <span class="cm">// Recall memories about Alice</span>
-<span class="kw">const</span> results <span class="op">=</span> <span class="kw">await</span> client.<span class="fn">recall</span>(<span class="str">"Alice"</span>, { limit: <span class="num">5</span> });
+<span class="kw">const</span> memories <span class="op">=</span> <span class="kw">await</span> client.<span class="fn">recall</span>(<span class="str">"Alice"</span>, { limit: <span class="num">5</span> });
 
 <span class="cm">// Forget a memory</span>
 <span class="kw">await</span> client.<span class="fn">forget</span>(recordId, { confirm: <span class="var-hl">true</span> });`,
@@ -132,13 +132,22 @@ client.<span class="fn">forget</span>(record_id, confirm<span class="op">=</span
 <span class="fn">curl</span> -X POST http://localhost:<span class="num">8420</span>/v1/encode \\
   -H <span class="str">"Content-Type: application/json"</span> \\
   -d <span class="str">'{
-    "content": "Had coffee with Alice at the park",
+    "content": {
+      "blocks": [{
+        "modality": "text",
+        "format": "text/plain",
+        "data": [72,97,100,32,99,111,102,102,101,101,32,119,105,116,104,32,65,108,105,99,101,32,97,116,32,116,104,101,32,112,97,114,107],
+        "embedding": null
+      }],
+      "summary": null
+    },
     "store": "episodic"
   }'</span>
 
 <span class="cm"># Query memories</span>
 <span class="fn">curl</span> -X POST http://localhost:<span class="num">8420</span>/v1/recall/query \\
-  -d <span class="str">'{"query": "Alice", "limit": 5}'</span>
+  -H <span class="str">"Content-Type: application/json"</span> \\
+  -d <span class="str">'{"cue": {"text": "Alice"}, "limit": 5, "recall_mode": "human"}'</span>
 
 <span class="cm"># Check system stats</span>
 <span class="fn">curl</span> http://localhost:<span class="num">8420</span>/v1/introspect/stats`,
@@ -184,13 +193,13 @@ export default function HomeContent() {
       {/* HERO */}
       <section className="hero">
         <div className="column">
-          <span className="hero__version">v0.1.0 &middot; Open Source &middot; Rust</span>
+          <span className="hero__version">Open Source &middot; HTTP / gRPC / MCP &middot; Rust</span>
           <h1 className="hero__title">
             A <em>Living</em> Memory Database<br />for the Age of AI
           </h1>
           <p className="hero__subtitle">
-            Neuroscience-inspired memory architecture that gives AI systems
-            persistent, evolving, and emotionally-modulated recall.
+            Brain-inspired memory architecture with secure transports, persistent recall,
+            and user-sovereign data ownership.
           </p>
         </div>
       </section>
@@ -480,8 +489,9 @@ export default function HomeContent() {
           <span className="section__number">&sect; 4</span>
           <h2 className="section__title">Cerememory Protocol (CMP)</h2>
           <p className="section__lead">
-            CMP is a standardized, transport-agnostic interface connecting any LLM to Cerememory. It
-            is organized into four operation categories.
+            CMP is a standardized, transport-agnostic interface connecting any LLM to Cerememory. HTTP
+            and gRPC expose the full protocol surface, while MCP provides a focused 11-tool interface
+            for agent workflows.
           </p>
 
           <div className="protocol-grid">
@@ -529,7 +539,8 @@ export default function HomeContent() {
           <div className="footnote">
             <sup>*</sup> Recall has two modes: <strong>Human</strong> (realistic recall with
             fidelity-weighted noise) and <strong>Perfect</strong> (complete retrieval of original
-            data). Spreading activation depth is also configurable.
+            data). Spreading activation depth is configurable, and SDKs surface query metadata,
+            request IDs, and retry hints for debugging.
           </div>
         </RevealSection>
       </section>
@@ -540,8 +551,8 @@ export default function HomeContent() {
           <span className="section__number">&sect; 5</span>
           <h2 className="section__title">Quick Start</h2>
           <p className="section__lead">
-            Give your AI memory in just a few lines of code. Choose from Python, TypeScript, or the
-            CLI.
+            Give your AI memory in just a few lines of code. Choose from Python, TypeScript, REST,
+            or MCP-backed workflows.
           </p>
 
           <div className="code-block" style={{ marginBottom: '2rem' }}>
@@ -553,6 +564,9 @@ export default function HomeContent() {
               dangerouslySetInnerHTML={{
                 __html: `<span class="cm"># Start the server</span>
 <span class="fn">cargo</span> run -p cerememory-cli -- serve --port <span class="num">8420</span>
+
+<span class="cm"># Claude Code / MCP</span>
+<span class="fn">cargo</span> run -p cerememory-cli -- mcp
 
 <span class="cm"># Or via Docker</span>
 <span class="fn">docker</span> run --rm -p <span class="num">8420</span>:<span class="num">8420</span> ghcr.io/co-r-e/cerememory:latest`,
@@ -617,17 +631,17 @@ export default function HomeContent() {
               {
                 icon: 'M',
                 title: 'Multimodal',
-                desc: 'Unified memory for text, images, audio, video, and structured data. Automatic format detection with semantic embeddings.',
+                desc: 'Text, image, audio, and structured blocks are supported today, with provider-backed image/audio recall and auto-embedding.',
               },
               {
-                icon: 'E',
-                title: 'Encryption',
-                desc: 'ChaCha20-Poly1305 encryption. Secure export and import via CMA archive format.',
+                icon: 'H',
+                title: 'Secure Defaults',
+                desc: 'Localhost-first HTTP, Bearer auth, trusted-proxy-aware rate limiting, and enforced gRPC TLS on exposed deployments.',
               },
               {
                 icon: 'O',
                 title: 'Observability',
-                desc: 'Prometheus metrics, health checks, and Kubernetes-ready. Everything needed for production operations.',
+                desc: 'Opt-in protected Prometheus metrics, /health and /readiness probes, plus x-request-id correlation for production debugging.',
               },
               {
                 icon: 'V',
@@ -640,9 +654,9 @@ export default function HomeContent() {
                 desc: 'Weighted breadth-first traversal for associative recall. Configurable decay factor, threshold, and depth.',
               },
               {
-                icon: 'S',
-                title: 'Self-Tuning',
-                desc: 'Automatic parameter optimization via the Evolution engine. The more you use it, the more refined the memory system becomes.',
+                icon: 'W',
+                title: 'Workflow Stability',
+                desc: 'Persisted inferred associations, safe CMA export/import flows, and rebuilt coordinators before stateful CLI operations.',
               },
             ].map((f) => (
               <div key={f.title} className="feature">

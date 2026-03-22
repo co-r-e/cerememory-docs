@@ -25,9 +25,9 @@
 
 ## Sdk
 
-- [Python SDK](https://cerememory.dev/docs/sdk/python): Complete reference for the Cerememory Python SDK with sync and async clients.
-- [TypeScript SDK](https://cerememory.dev/docs/sdk/typescript): Complete reference for the Cerememory TypeScript/JavaScript SDK.
-- [Native Bindings](https://cerememory.dev/docs/sdk/native-bindings): Zero-overhead PyO3 and napi-rs native bindings for Python and Node.js.
+- [Python SDK](https://cerememory.dev/docs/sdk/python): Reference for the Cerememory Python SDK with sync and async clients.
+- [TypeScript SDK](https://cerememory.dev/docs/sdk/typescript): Reference for the Cerememory TypeScript/JavaScript SDK.
+- [Native Bindings](https://cerememory.dev/docs/sdk/native-bindings): In-process PyO3 and napi-rs bindings for Python and Node.js.
 
 ## Deployment
 

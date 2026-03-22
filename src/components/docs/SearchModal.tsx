@@ -159,8 +159,6 @@ export function SearchModal({ open, onClose }: Props): ReactNode {
 
     initPromiseRef.current = promise;
     return promise;
-  // basePath is a module-level constant — no deps needed
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

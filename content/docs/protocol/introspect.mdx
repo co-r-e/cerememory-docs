@@ -5,7 +5,7 @@ description: "Observe system state, inspect records, forecast decay, and monitor
 
 ## introspect.stats
 
-Retrieve system-wide statistics including record counts, average fidelity, and background decay status.
+Retrieve system-wide statistics including record counts, average fidelity, background decay status, and optional evolution metrics.
 
 **Endpoint:** `GET /v1/introspect/stats`
 
@@ -33,6 +33,11 @@ Retrieve system-wide statistics including record counts, average fidelity, and b
   "oldest_record": "2026-01-15T08:30:00Z",
   "newest_record": "2026-03-19T09:45:00Z",
   "total_recall_count": 1567,
+  "evolution_metrics": {
+    "parameter_adjustments": [],
+    "detected_patterns": [],
+    "schema_adaptations": []
+  },
   "background_decay_enabled": true
 }
 ```
@@ -47,6 +52,7 @@ Retrieve system-wide statistics including record counts, average fidelity, and b
 | `oldest_record` | DateTime | Timestamp of the oldest record |
 | `newest_record` | DateTime | Timestamp of the newest record |
 | `total_recall_count` | u64 | Total recall operations performed |
+| `evolution_metrics` | EvolutionMetrics or null | Adaptive tuning metrics when available |
 | `background_decay_enabled` | bool | Whether background decay is running |
 
 ## introspect.record
@@ -61,17 +67,7 @@ Inspect a specific memory record with full detail including fidelity state, asso
 |-----------|------|-------------|
 | `record_id` | UUID (path) | The record to inspect |
 
-The following query parameters are defined in the CMP specification. In the current HTTP transport implementation, these default to `false` and are not configurable via query string -- the full record (including associations) is always returned.
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `include_history` | bool | false | Include access history |
-| `include_associations` | bool | false | Include association details |
-| `include_versions` | bool | false | Include version history |
-
-<Callout type="info">
-These parameters are available when using the CMP protocol directly (e.g., via gRPC or MCP). The HTTP REST endpoint returns the standard record with associations included.
-</Callout>
+The CMP request model also defines `include_history`, `include_associations`, and `include_versions`. The current HTTP transport always returns the standard record shape and does not expose those toggles as query parameters.
 
 ### Response
 
@@ -175,8 +171,6 @@ Predict the future fidelity of specific records at a given point in time.
 }
 ```
 
-The `estimated_threshold_date` is the projected date when fidelity will drop below the prune threshold. A `null` value means the memory is projected to remain above threshold indefinitely (high stability or emotional anchoring).
-
 ## introspect.evolution
 
 View the evolution engine's adaptive parameter adjustments, detected usage patterns, and schema adaptations.
@@ -205,7 +199,7 @@ View the evolution engine's adaptive parameter adjustments, detected usage patte
 ```
 
 <Callout type="info">
-The evolution engine is optional and runs only when sufficient usage data has been collected. Early in a Cerememory instance's lifecycle, this endpoint may return empty arrays.
+Early in a Cerememory instance's lifecycle, `introspect.evolution` may legitimately return empty arrays. `introspect.stats` surfaces the same structure in its optional `evolution_metrics` field.
 </Callout>
 
 ## Next Steps

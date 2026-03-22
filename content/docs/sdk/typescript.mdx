@@ -1,6 +1,6 @@
 ---
 title: "TypeScript SDK"
-description: "Complete reference for the Cerememory TypeScript/JavaScript SDK."
+description: "Reference for the Cerememory TypeScript/JavaScript SDK."
 ---
 
 ## Installation
@@ -9,173 +9,148 @@ description: "Complete reference for the Cerememory TypeScript/JavaScript SDK."
 npm install @cerememory/sdk
 ```
 
-Or with yarn:
-
-```bash
-yarn add @cerememory/sdk
-```
+The SDK uses native `fetch`, so Node.js `18+` or a browser/runtime with `fetch` is required.
 
 ## Client Setup
 
 ```typescript
 import { CerememoryClient } from "@cerememory/sdk";
 
-const client = new CerememoryClient({
-  baseUrl: "http://localhost:8420",
-  apiKey: "your-api-key",  // optional
-  timeout: 30_000,         // ms
+const client = new CerememoryClient("http://localhost:8420", {
+  apiKey: "sk-cerememory-prod-abc123",
+  timeoutMs: 30_000,
+  maxRetries: 0,
+  retryMutatingRequests: false,
 });
 ```
 
-## Methods
+<Callout type="info">
+Retries are conservative by default in `0.2.0`: `maxRetries` defaults to `0`, and mutating requests are retried only when `retryMutatingRequests` is explicitly enabled.
+</Callout>
 
-### store
+## High-Level Methods
 
-Store a new memory record.
+<Callout type="info">
+The high-level helpers are text-first conveniences. For multimodal content, manual associations, or full CMP request bodies, use methods such as `encodeStore()` or `recallQuery()`.
+</Callout>
 
-```typescript
-const recordId = await client.store({
-  text: "The user prefers TypeScript over JavaScript for new projects.",
-  store: "semantic",
-  emotion: "trust",
-  metadata: { source: "conversation", topic: "preferences" },
-});
+### `store(text, options)`
 
-console.log(recordId);  // UUID string (e.g., "01916e3a-5678-7000-8000-000000000001")
-```
-
-The high-level `store()` method returns the UUID string directly. For the full response including `store` and `initial_fidelity`, use the protocol-level `encodeStore()` method.
-
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `text` | string | Yes | -- | Text content |
-| `store` | StoreType | No | auto | Target store |
-| `emotion` | string or EmotionVector | No | undefined | Emotion label or vector |
-| `embedding` | number[] | No | undefined | Pre-computed embedding |
-| `metadata` | Record | No | undefined | Arbitrary metadata |
-| `sessionId` | string | No | undefined | Session context |
-
-### storeBatch
-
-Store multiple records in a single request.
+Store a text memory and receive its UUID.
 
 ```typescript
-const result = await client.storeBatch({
-  records: [
-    { text: "First memory", store: "episodic" },
-    { text: "Second memory", store: "episodic" },
-  ],
-  inferAssociations: true,
-});
-
-console.log(result.results.length);        // 2
-console.log(result.associationsInferred);  // number of inferred links
-```
-
-### recall
-
-Query memories with a text cue.
-
-```typescript
-const memories = await client.recall({
-  text: "What does the user prefer for new projects?",
-  limit: 10,
-  mode: "human",
-  stores: ["semantic", "episodic"],
-  minFidelity: 0.1,
-  reconsolidate: true,
-});
-
-for (const memory of memories) {
-  console.log(`[${memory.record.store}] score=${memory.relevance_score.toFixed(4)}`);
-  console.log(`  fidelity=${memory.record.fidelity.score.toFixed(4)}`);
-}
-```
-
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `text` | string | Yes | -- | Text query cue |
-| `limit` | number | No | 10 | Maximum results |
-| `mode` | "human" or "perfect" | No | "human" | Recall mode |
-| `stores` | StoreType[] | No | all | Filter by store |
-| `minFidelity` | number | No | undefined | Minimum fidelity |
-| `reconsolidate` | boolean | No | true | Strengthen recalled memories |
-| `activationDepth` | number | No | 2 | Association traversal depth |
-
-### recallAssociate
-
-Traverse the association graph from a specific record.
-
-```typescript
-const associations = await client.recallAssociate(
-  "01916e3a-5678-7000-8000-000000000001",
+const recordId = await client.store(
+  "The user prefers TypeScript for new projects.",
   {
-    types: ["semantic", "temporal"],
-    depth: 3,
-    min_weight: 0.2,
-    limit: 20,
+    store: "semantic",
+    metadata: { source: "onboarding" },
+    emotion: { trust: 1, intensity: 0.6, valence: 0.7 },
   }
 );
-
-for (const memory of associations.memories) {
-  console.log(`${memory.record.id} via ${memory.activation_path.join(" -> ")}`);
-}
 ```
 
-### forget
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `store` | `StoreType` | `episodic` | Target store |
+| `emotion` | `Partial<EmotionVector>` | None | Emotion values merged into a full vector |
+| `context` | `EncodeContext` | None | Session, spatial, temporal, or source context |
+| `metadata` | `Record<string, unknown>` | None | Stored with the record |
 
-Permanently delete records.
+### `recall(query, options)`
+
+Recall memories matching a text cue.
 
 ```typescript
-await client.forget({
-  recordIds: ["01916e3a-5678-7000-8000-000000000001"],
+const memories = await client.recall(
+  "What tooling does the user prefer?",
+  {
+    limit: 5,
+    stores: ["semantic", "episodic"],
+    recall_mode: "human",
+    reconsolidate: true,
+    activation_depth: 2,
+  }
+);
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `limit` | `number` | `10` | Maximum number of results |
+| `stores` | `StoreType[]` | All stores | Restrict the search |
+| `min_fidelity` | `number` | None | Minimum fidelity threshold |
+| `recall_mode` | `RecallMode` | `human` | `human` or `perfect` |
+| `include_decayed` | `boolean` | `false` | Include records below the normal prune threshold |
+| `reconsolidate` | `boolean` | `true` | Strengthen recalled memories |
+| `activation_depth` | `number` | `2` | Spreading activation depth |
+
+### `forget(recordId, options)`
+
+Delete a memory record.
+
+```typescript
+await client.forget(recordId, {
+  confirm: true,
   cascade: false,
-  confirm: true,  // required
 });
 ```
 
-### stats
-
-Get system statistics.
+### `stats()` and `health()`
 
 ```typescript
 const stats = await client.stats();
-console.log(`Total records: ${stats.total_records}`);
-console.log(`Avg fidelity: ${stats.avg_fidelity.toFixed(3)}`);
-console.log(`By store:`, stats.records_by_store);
+const health = await client.health();
 ```
 
-### introspectRecord
+`stats()` returns the full `StatsResponse`, including `background_decay_enabled` and optional `evolution_metrics`.
 
-Get full details for a specific record.
+## Full CMP Methods
+
+The client also exposes protocol-level methods for the full REST surface:
+
+| Method | Purpose |
+|--------|---------|
+| `encodeStore()` | `POST /v1/encode` |
+| `encodeBatch()` | `POST /v1/encode/batch` |
+| `encodeUpdate(recordId, request)` | `PATCH /v1/encode/:record_id` |
+| `recallQuery()` | `POST /v1/recall/query` |
+| `recallAssociate(recordId, request)` | `POST /v1/recall/associate/:record_id` |
+| `recallTimeline()` | `POST /v1/recall/timeline` |
+| `recallGraph()` | `POST /v1/recall/graph` |
+| `lifecycleConsolidate()` | `POST /v1/lifecycle/consolidate` |
+| `lifecycleDecayTick()` | `POST /v1/lifecycle/decay-tick` |
+| `lifecycleSetMode()` | `PUT /v1/lifecycle/mode` |
+| `lifecycleForget()` | `DELETE /v1/lifecycle/forget` |
+| `introspectStats()` | `GET /v1/introspect/stats` |
+| `introspectRecord(recordId)` | `GET /v1/introspect/record/:record_id` |
+| `introspectDecayForecast()` | `POST /v1/introspect/decay-forecast` |
+| `introspectEvolution()` | `GET /v1/introspect/evolution` |
+
+Example:
 
 ```typescript
-const record = await client.introspectRecord("01916e3a-5678-7000-8000-000000000001");
-console.log(`Fidelity: ${record.fidelity.score}`);
-console.log(`Noise: ${record.fidelity.noise_level}`);
-console.log(`Access count: ${record.access_count}`);
-```
-
-### lifecycleDecayTick
-
-Trigger a manual decay cycle.
-
-```typescript
-const result = await client.lifecycleDecayTick({ tick_duration_seconds: 3600 });
-console.log(`Updated: ${result.records_updated}, Pruned: ${result.records_pruned}`);
-```
-
-### lifecycleConsolidate
-
-Trigger memory consolidation.
-
-```typescript
-const result = await client.lifecycleConsolidate({
-  strategy: "incremental",
-  min_age_hours: 24,
-  min_access_count: 3,
-  dry_run: true,
+const graph = await client.recallGraph({
+  center_id: recordId,
+  depth: 2,
+  limit_nodes: 25,
 });
+```
+
+## Vercel AI SDK Integration
+
+The package exports `CerememoryProvider` for Vercel AI SDK tool definitions:
+
+```typescript
+import { CerememoryClient, CerememoryProvider } from "@cerememory/sdk";
+
+const client = new CerememoryClient("http://localhost:8420");
+const provider = new CerememoryProvider(client);
+
+const tools = provider.tools();
+const augmentedPrompt = await provider.augmentPrompt(
+  "You are a helpful assistant.",
+  "user preferences",
+  5
+);
 ```
 
 ## Error Handling
@@ -185,38 +160,41 @@ import {
   CerememoryError,
   RecordNotFoundError,
   RateLimitedError,
+  UnauthorizedError,
 } from "@cerememory/sdk";
 
 try {
   await client.introspectRecord("nonexistent-id");
 } catch (error) {
   if (error instanceof RecordNotFoundError) {
-    console.error(`Not found: ${error.recordId}`);
+    console.error("Record not found");
   } else if (error instanceof RateLimitedError) {
-    console.error(`Rate limited, retry after ${error.retryAfter}s`);
+    console.error(`Retry after ${error.retryAfter}s`);
+  } else if (error instanceof UnauthorizedError) {
+    console.error("Missing or invalid API key");
   } else if (error instanceof CerememoryError) {
-    console.error(`CMP error [${error.code}]: ${error.message}`);
+    console.error(`${error.code}: ${error.message}`);
   }
 }
 ```
 
-## Type Definitions
+Errors surface request IDs when the server returns them, which helps correlate SDK failures with server logs.
 
-The SDK exports full TypeScript types for all CMP structures:
+## Type Exports
+
+The SDK exports protocol and model types such as:
 
 ```typescript
 import type {
+  EncodeStoreRequest,
   MemoryRecord,
-  FidelityState,
-  EmotionVector,
-  Association,
-  StoreType,
-  RecallMode,
   RecalledMemory,
+  StatsResponse,
+  EvolutionMetrics,
 } from "@cerememory/sdk";
 ```
 
 ## Next Steps
 
-<LinkCard href="/docs/sdk/native-bindings" title="Native Bindings" description="Zero-overhead napi-rs bindings for Node.js" />
+<LinkCard href="/docs/sdk/native-bindings" title="Native Bindings" description="In-process Python and Node.js bindings" />
 <LinkCard href="/docs/reference/api-endpoints" title="API Endpoints" description="Full HTTP REST endpoint reference" />

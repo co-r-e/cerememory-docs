@@ -29,6 +29,9 @@ export const metadata: Metadata = {
   title: 'Cerememory — A Living Memory Database for the Age of AI',
   description:
     'Cerememory is an open-source, neuroscience-inspired memory database that gives AI systems persistent, evolving memory. LLM-agnostic. User-sovereign. Brain-inspired.',
+  verification: {
+    google: 'CBcDA0b8srBcFKeEHkeDyhDckldYfdR1QRjYWExLy7I',
+  },
 }
 
 export default function RootLayout({

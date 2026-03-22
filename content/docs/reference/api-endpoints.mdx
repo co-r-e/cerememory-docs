@@ -19,7 +19,7 @@ When `auth.enabled = true`, all `/v1/*` endpoints require a Bearer token in the 
 Authorization: Bearer sk-cerememory-prod-abc123
 ```
 
-Health endpoints (`/health`, `/readiness`) bypass authentication. The `/metrics` endpoint is disabled by default and, when enabled, follows the configured auth policy.
+Health endpoints (`/health`, `/readiness`) bypass authentication and rate limiting. The `/metrics` endpoint is disabled by default and, when enabled, follows the configured auth and rate-limit policy.
 
 ## Endpoint Reference
 
@@ -28,7 +28,7 @@ Health endpoints (`/health`, `/readiness`) bypass authentication. The `/metrics`
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/health` | No | Liveness probe -- returns `{"status": "ok"}` |
-| GET | `/readiness` | No | Readiness probe -- verifies engine is operational |
+| GET | `/readiness` | No | Readiness probe -- verifies the engine can answer an internal stats request |
 | GET | `/metrics` | Depends | Prometheus metrics (text format). Only present when `http.metrics_enabled = true` |
 
 ### Encode
@@ -108,6 +108,10 @@ API endpoints are rate-limited using a token bucket algorithm. When the limit is
 - CMPError body with `code: "RATE_LIMITED"` and `retry_after` field
 
 Default limits: 100 requests/second with a burst of 50.
+
+## Request Size Limits
+
+HTTP API routes under `/v1/*` are capped at **2 MiB** request bodies. This is separate from modality-level limits enforced by the engine itself.
 
 ## CORS
 

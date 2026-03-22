@@ -19,7 +19,7 @@ Every CMP message includes a protocol header with versioning:
 ```
 
 <Callout type="info">
-The header is optional in requests -- the server generates one if omitted. Version compatibility follows semver: any `1.x` version is compatible with `1.0`.
+The header is optional in requests. When omitted, Cerememory generates one automatically. Version compatibility follows semver: any `1.x` version is compatible with `1.0`.
 </Callout>
 
 ## Four Operation Categories
@@ -30,12 +30,12 @@ CMP organizes all operations into four categories:
 |----------|--------|---------|
 | **Encode** | `encode.*` | Store and update memories |
 | **Recall** | `recall.*` | Query and retrieve memories |
-| **Lifecycle** | `lifecycle.*` | Manage memory dynamics (decay, consolidation, forget) |
+| **Lifecycle** | `lifecycle.*` | Manage decay, consolidation, mode changes, and archive workflows |
 | **Introspect** | `introspect.*` | Observe system state and memory metadata |
 
 ## Operation Summary
 
-### Encode (CMP Spec Section 3)
+### Encode
 
 | Operation | Description |
 |-----------|-------------|
@@ -43,7 +43,7 @@ CMP organizes all operations into four categories:
 | `encode.batch` | Store multiple records with optional association inference |
 | `encode.update` | Update an existing record's content, emotion, or metadata |
 
-### Recall (CMP Spec Section 4)
+### Recall
 
 | Operation | Description |
 |-----------|-------------|
@@ -52,27 +52,38 @@ CMP organizes all operations into four categories:
 | `recall.timeline` | Time-bucketed retrieval within a date range |
 | `recall.graph` | Retrieve a subgraph of memory nodes and edges |
 
-### Lifecycle (CMP Spec Section 5)
+### Lifecycle
 
 | Operation | Description |
 |-----------|-------------|
 | `lifecycle.consolidate` | Migrate mature episodic memories to semantic store |
 | `lifecycle.decay_tick` | Manually trigger a decay computation cycle |
 | `lifecycle.set_mode` | Switch between Human and Perfect recall modes |
-| `lifecycle.forget` | Permanently delete records (requires confirmation) |
-| `lifecycle.export` | Export records to a CMA archive (CLI and MCP only) |
-| `lifecycle.import` | Import records from a CMA archive (CLI only) |
+| `lifecycle.forget` | Permanently delete records |
+| `lifecycle.export` | Export records to a CMA archive; gRPC exposes streaming bytes and CLI/MCP wrap the workflow |
+| `lifecycle.import` | Import records from a CMA archive; available through gRPC streaming and the CLI |
 
-### Introspect (CMP Spec Section 6)
+### Introspect
 
 | Operation | Description |
 |-----------|-------------|
-| `introspect.stats` | System-wide statistics (record counts, avg fidelity, etc.) |
+| `introspect.stats` | System-wide statistics, including optional evolution metrics |
 | `introspect.record` | Detailed view of a single record |
 | `introspect.decay_forecast` | Predict future fidelity for given records |
 | `introspect.evolution` | View adaptive parameter adjustments |
 
-## Error Handling (CMP Spec Section 7)
+## Transport Availability
+
+The protocol is transport-agnostic, but each binding exposes a different subset:
+
+| Transport | Coverage |
+|-----------|----------|
+| **HTTP/REST** | Core encode, recall, lifecycle, and introspect operations |
+| **gRPC** | Full CMP coverage, including export/import streaming |
+| **MCP** | Curated LLM-friendly tool surface over stdio |
+| **CLI** | Local workflows that wrap engine operations and archive management |
+
+## Error Handling
 
 All errors are returned as a standardized `CMPError` envelope:
 
@@ -85,15 +96,13 @@ All errors are returned as a standardized `CMPError` envelope:
 }
 ```
 
-Error codes:
-
 | Code | HTTP Status | Description |
 |------|-------------|-------------|
 | `RECORD_NOT_FOUND` | 404 | Record does not exist |
 | `STORE_INVALID` | 400 | Invalid store name |
 | `CONTENT_TOO_LARGE` | 413 | Content exceeds size limit |
 | `VALIDATION_ERROR` | 400 | Request validation failed |
-| `MODALITY_UNSUPPORTED` | 400 | Modality not supported by provider |
+| `MODALITY_UNSUPPORTED` | 400 | Modality not supported by the configured provider |
 | `WORKING_MEMORY_FULL` | 503 | Working memory at capacity |
 | `DECAY_ENGINE_BUSY` | 503 | Decay computation in progress |
 | `CONSOLIDATION_IN_PROGRESS` | 503 | Consolidation already running |
@@ -101,8 +110,8 @@ Error codes:
 | `IMPORT_CONFLICT` | 409 | Import conflict detected |
 | `FORGET_UNCONFIRMED` | 400 | Missing `confirm: true` |
 | `VERSION_MISMATCH` | 400 | Optimistic concurrency conflict |
-| `UNAUTHORIZED` | 401 | Invalid or missing API key |
-| `RATE_LIMITED` | 429 | Too many requests (includes `retry_after`) |
+| `UNAUTHORIZED` | 401 | Missing or invalid API key |
+| `RATE_LIMITED` | 429 | Too many requests |
 | `INTERNAL_ERROR` | 500 | Unexpected server error |
 
 ## Next Steps
