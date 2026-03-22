@@ -21,40 +21,44 @@ Native bindings run the Cerememory engine **in-process**. There is no HTTP serve
 ### Installation
 
 ```bash
-pip install cerememory
+pip install cerememory-native
 ```
 
-The `cerememory` package includes pre-built wheels for Linux (x86_64, aarch64) and macOS (x86_64, aarch64). If no pre-built wheel is available, pip will compile from source (requires Rust toolchain).
+The `cerememory-native` package includes pre-built wheels for Linux (x86_64, aarch64) and macOS (x86_64, aarch64). If no pre-built wheel is available, pip will compile from source (requires Rust toolchain).
 
 ### Usage
 
 ```python
-from cerememory.native import CerememoryEngine
+from cerememory_native import Engine
 
 # Create an in-memory engine (no disk persistence)
-engine = CerememoryEngine.in_memory()
+engine = Engine()
 
-# Or with persistent storage
-engine = CerememoryEngine(data_dir="./my-memories")
+# Or with configuration
+engine = Engine({"working_capacity": 7, "recall_mode": "human"})
 
 # Store a memory
-record_id = engine.store(
-    text="Important fact about the user",
-    store="semantic",
-)
+record_id = engine.store("Important fact about the user", store="semantic")
+
+# Store with full response
+response = engine.store_full("Another fact", store="episodic")
+print(f"Stored: {response.record_id}, fidelity: {response.initial_fidelity}")
 
 # Recall memories
-results = engine.recall(text="user facts", limit=5)
-for result in results:
-    print(f"{result.record_id}: {result.text_content}")
+results = engine.recall("user facts", limit=5)
+for memory in results.memories:
+    print(f"{memory.record.id}: {memory.relevance_score}")
 
-# Inspect a record
-record = engine.inspect(record_id)
+# Get record details
+record = engine.get_record(record_id)
 print(f"Fidelity: {record.fidelity.score}")
 
-# Run a decay tick
-stats = engine.decay_tick(duration_seconds=3600)
-print(f"Records updated: {stats.records_updated}")
+# Forget a record
+deleted = engine.forget([record_id], confirm=True)
+
+# Get system stats
+stats = engine.stats()
+print(f"Total records: {stats.total_records}")
 ```
 
 ### API Differences from HTTP Client
@@ -63,9 +67,10 @@ The native API is slightly different from the HTTP client:
 
 | HTTP Client | Native Binding | Notes |
 |-------------|---------------|-------|
-| `client.store(text=...)` | `engine.store(text=...)` | Same signature |
-| `client.recall(text=...)` | `engine.recall(text=...)` | Returns list, not wrapper object |
-| `client.forget(record_ids=[...], confirm=True)` | `engine.forget(record_ids=[...])` | Confirm not required (no accidental HTTP calls) |
+| `client.store(text=...)` | `engine.store(text, store=...)` | Returns UUID string directly |
+| `client.recall(query=...)` | `engine.recall(query, limit=...)` | Returns `RecallQueryResponse` |
+| `client.forget(id, confirm=True)` | `engine.forget(ids, confirm=True)` | Takes list of IDs |
+| `client.get_record(id)` | `engine.get_record(id)` | Same structure |
 | `client.stats()` | `engine.stats()` | Same structure |
 | Async client available | Always sync (GIL released) | Use `asyncio.to_thread` for async |
 
@@ -78,7 +83,7 @@ The native binding releases the Python GIL during Rust operations, so it is safe
 ### Installation
 
 ```bash
-npm install cerememory-native
+npm install @cerememory/native
 ```
 
 Pre-built binaries are included for Linux (x86_64, aarch64), macOS (x86_64, aarch64), and Windows (x86_64).
@@ -86,29 +91,30 @@ Pre-built binaries are included for Linux (x86_64, aarch64), macOS (x86_64, aarc
 ### Usage
 
 ```typescript
-import { CerememoryEngine } from "cerememory-native";
+import { CerememoryEngine } from "@cerememory/native";
 
 // Create an in-memory engine
-const engine = CerememoryEngine.inMemory();
-
-// Or with persistent storage
-const engine = new CerememoryEngine({ dataDir: "./my-memories" });
+const engine = new CerememoryEngine();
 
 // Store a memory
-const recordId = await engine.store({
-  text: "User prefers dark mode",
-  store: "semantic",
-});
+const recordId = engine.store("User prefers dark mode", "semantic");
 
 // Recall memories
-const results = await engine.recall({ text: "user preferences", limit: 5 });
-for (const result of results) {
-  console.log(`${result.recordId}: ${result.textContent}`);
+const results = await engine.recall("user preferences", 5);
+for (const memory of results.memories) {
+  console.log(`${memory.record.id}: ${memory.relevance_score}`);
 }
 
-// Inspect a record
-const record = await engine.inspect(recordId);
+// Get record details
+const record = await engine.get_record(recordId);
 console.log(`Fidelity: ${record.fidelity.score}`);
+
+// Forget a record
+const deleted = engine.forget([recordId], true);
+
+// Get stats
+const stats = await engine.stats();
+console.log(`Total records: ${stats.total_records}`);
 ```
 
 ### napi-rs Features

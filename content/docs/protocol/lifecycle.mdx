@@ -139,7 +139,11 @@ Forget is irreversible. Without `confirm: true`, the server returns a `FORGET_UN
 
 Export memory records to a CMA (Cerememory Archive) file for backup or portability.
 
-**Endpoint:** `POST /v1/lifecycle/export` (via CLI: `cerememory export`)
+<Callout type="warning">
+Export and import are currently available via the **CLI** (`cerememory export` / `cerememory import`) and **MCP** transport only. HTTP REST endpoints for these operations are not yet implemented.
+</Callout>
+
+**CLI:** `cerememory export`
 
 ### Request
 

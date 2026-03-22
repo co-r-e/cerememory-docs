@@ -307,6 +307,7 @@ export default function HomeContent() {
               <div className="arch-layer">
                 <div className="arch-box arch-box--primary">HTTP / REST (Axum)</div>
                 <div className="arch-box arch-box--primary">gRPC (Tonic)</div>
+                <div className="arch-box arch-box--primary">MCP (rmcp)</div>
               </div>
               <div className="arch-arrow">&darr;</div>
               <div className="arch-layer">
@@ -520,6 +521,7 @@ export default function HomeContent() {
                 <li>introspect.stats &mdash; System-wide statistics</li>
                 <li>introspect.record &mdash; Inspect decay state</li>
                 <li>introspect.decay_forecast &mdash; Fidelity prediction</li>
+                <li>introspect.evolution &mdash; Evolution engine metrics</li>
               </ul>
             </div>
           </div>

@@ -61,13 +61,17 @@ Inspect a specific memory record with full detail including fidelity state, asso
 |-----------|------|-------------|
 | `record_id` | UUID (path) | The record to inspect |
 
-The following query parameters are available for the CMP-level request:
+The following query parameters are defined in the CMP specification. In the current HTTP transport implementation, these default to `false` and are not configurable via query string -- the full record (including associations) is always returned.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `include_history` | bool | false | Include access history |
 | `include_associations` | bool | false | Include association details |
 | `include_versions` | bool | false | Include version history |
+
+<Callout type="info">
+These parameters are available when using the CMP protocol directly (e.g., via gRPC or MCP). The HTTP REST endpoint returns the standard record with associations included.
+</Callout>
 
 ### Response
 

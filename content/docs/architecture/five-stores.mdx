@@ -87,7 +87,7 @@ The working store holds **active context and short-term information** -- the cur
 Key characteristics:
 
 - **Fast decay** -- Working memory items have the highest decay rate
-- **Capacity-limited** -- Has a configurable maximum capacity; stores return `WorkingMemoryFull` when exceeded
+- **Capacity-limited** -- Has a configurable maximum capacity (default: 7 slots, inspired by Miller's Law); when capacity is exceeded, the least recently used (LRU) record is silently evicted
 - **Promotion** -- Important working memory items can be promoted to the episodic store for long-term retention
 - **Volatile** -- Data is lost on server restart
 

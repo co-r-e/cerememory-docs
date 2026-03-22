@@ -50,16 +50,16 @@ docker run -d \
 
 <div>
 
-Install the Python SDK (includes the server binary):
+Install the Python HTTP SDK:
 
 ```bash
 pip install cerememory
 ```
 
-Or install only the client library:
+For native in-process bindings (no HTTP server needed):
 
 ```bash
-pip install cerememory-client
+pip install cerememory-native
 ```
 
 </div>
@@ -69,13 +69,13 @@ pip install cerememory-client
 Install the TypeScript/JavaScript SDK:
 
 ```bash
-npm install cerememory
+npm install @cerememory/sdk
 ```
 
 Or with yarn:
 
 ```bash
-yarn add cerememory
+yarn add @cerememory/sdk
 ```
 
 </div>
@@ -93,7 +93,7 @@ cargo build --release
 The binary will be located at `target/release/cerememory`.
 
 <Callout type="info">
-Cerememory requires Rust edition 2021 with resolver v2. The workspace includes over 20 crates -- an incremental build after the first compile is fast.
+Cerememory requires Rust edition 2021 with resolver v2. The workspace includes 18 crates -- an incremental build after the first compile is fast.
 </Callout>
 
 ## Feature Flags

@@ -6,19 +6,19 @@ description: "Complete reference for the Cerememory TypeScript/JavaScript SDK."
 ## Installation
 
 ```bash
-npm install cerememory
+npm install @cerememory/sdk
 ```
 
 Or with yarn:
 
 ```bash
-yarn add cerememory
+yarn add @cerememory/sdk
 ```
 
 ## Client Setup
 
 ```typescript
-import { CerememoryClient } from "cerememory";
+import { CerememoryClient } from "@cerememory/sdk";
 
 const client = new CerememoryClient({
   baseUrl: "http://localhost:8420",
@@ -34,17 +34,17 @@ const client = new CerememoryClient({
 Store a new memory record.
 
 ```typescript
-const result = await client.store({
+const recordId = await client.store({
   text: "The user prefers TypeScript over JavaScript for new projects.",
   store: "semantic",
   emotion: "trust",
   metadata: { source: "conversation", topic: "preferences" },
 });
 
-console.log(result.recordId);       // UUID string
-console.log(result.store);          // "semantic"
-console.log(result.initialFidelity); // 1.0
+console.log(recordId);  // UUID string (e.g., "01916e3a-5678-7000-8000-000000000001")
 ```
+
+The high-level `store()` method returns the UUID string directly. For the full response including `store` and `initial_fidelity`, use the protocol-level `encodeStore()` method.
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
@@ -77,7 +77,7 @@ console.log(result.associationsInferred);  // number of inferred links
 Query memories with a text cue.
 
 ```typescript
-const results = await client.recall({
+const memories = await client.recall({
   text: "What does the user prefer for new projects?",
   limit: 10,
   mode: "human",
@@ -86,10 +86,9 @@ const results = await client.recall({
   reconsolidate: true,
 });
 
-for (const memory of results.memories) {
-  console.log(`[${memory.store}] score=${memory.relevanceScore.toFixed(4)}`);
-  console.log(`  ${memory.textContent}`);
-  console.log(`  fidelity=${memory.fidelity.toFixed(4)}`);
+for (const memory of memories) {
+  console.log(`[${memory.record.store}] score=${memory.relevance_score.toFixed(4)}`);
+  console.log(`  fidelity=${memory.record.fidelity.score.toFixed(4)}`);
 }
 ```
 
@@ -103,21 +102,23 @@ for (const memory of results.memories) {
 | `reconsolidate` | boolean | No | true | Strengthen recalled memories |
 | `activationDepth` | number | No | 2 | Association traversal depth |
 
-### associate
+### recallAssociate
 
 Traverse the association graph from a specific record.
 
 ```typescript
-const associations = await client.associate({
-  recordId: "01916e3a-5678-7000-8000-000000000001",
-  types: ["semantic", "temporal"],
-  depth: 3,
-  minWeight: 0.2,
-  limit: 20,
-});
+const associations = await client.recallAssociate(
+  "01916e3a-5678-7000-8000-000000000001",
+  {
+    types: ["semantic", "temporal"],
+    depth: 3,
+    min_weight: 0.2,
+    limit: 20,
+  }
+);
 
 for (const memory of associations.memories) {
-  console.log(`${memory.recordId} via ${memory.activationPath.join(" -> ")}`);
+  console.log(`${memory.record.id} via ${memory.activation_path.join(" -> ")}`);
 }
 ```
 
@@ -139,41 +140,41 @@ Get system statistics.
 
 ```typescript
 const stats = await client.stats();
-console.log(`Total records: ${stats.totalRecords}`);
-console.log(`Avg fidelity: ${stats.avgFidelity.toFixed(3)}`);
-console.log(`By store:`, stats.recordsByStore);
+console.log(`Total records: ${stats.total_records}`);
+console.log(`Avg fidelity: ${stats.avg_fidelity.toFixed(3)}`);
+console.log(`By store:`, stats.records_by_store);
 ```
 
-### inspect
+### introspectRecord
 
 Get full details for a specific record.
 
 ```typescript
-const record = await client.inspect("01916e3a-5678-7000-8000-000000000001");
+const record = await client.introspectRecord("01916e3a-5678-7000-8000-000000000001");
 console.log(`Fidelity: ${record.fidelity.score}`);
-console.log(`Noise: ${record.fidelity.noiseLevel}`);
-console.log(`Access count: ${record.accessCount}`);
+console.log(`Noise: ${record.fidelity.noise_level}`);
+console.log(`Access count: ${record.access_count}`);
 ```
 
-### decayTick
+### lifecycleDecayTick
 
 Trigger a manual decay cycle.
 
 ```typescript
-const result = await client.decayTick({ durationSeconds: 3600 });
-console.log(`Updated: ${result.recordsUpdated}, Pruned: ${result.recordsPruned}`);
+const result = await client.lifecycleDecayTick({ tick_duration_seconds: 3600 });
+console.log(`Updated: ${result.records_updated}, Pruned: ${result.records_pruned}`);
 ```
 
-### consolidate
+### lifecycleConsolidate
 
 Trigger memory consolidation.
 
 ```typescript
-const result = await client.consolidate({
+const result = await client.lifecycleConsolidate({
   strategy: "incremental",
-  minAgeHours: 24,
-  minAccessCount: 3,
-  dryRun: true,
+  min_age_hours: 24,
+  min_access_count: 3,
+  dry_run: true,
 });
 ```
 
@@ -184,10 +185,10 @@ import {
   CerememoryError,
   RecordNotFoundError,
   RateLimitedError,
-} from "cerememory";
+} from "@cerememory/sdk";
 
 try {
-  await client.inspect("nonexistent-id");
+  await client.introspectRecord("nonexistent-id");
 } catch (error) {
   if (error instanceof RecordNotFoundError) {
     console.error(`Not found: ${error.recordId}`);
@@ -212,7 +213,7 @@ import type {
   StoreType,
   RecallMode,
   RecalledMemory,
-} from "cerememory";
+} from "@cerememory/sdk";
 ```
 
 ## Next Steps

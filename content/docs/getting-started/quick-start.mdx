@@ -43,9 +43,9 @@ The server is now running with default settings: in-memory working store, persis
 <div>
 
 ```python
-from cerememory import CerememoryClient
+from cerememory import Client
 
-client = CerememoryClient("http://localhost:8420")
+client = Client("http://localhost:8420")
 
 result = client.store(
     text="The user prefers dark mode and uses vim keybindings.",
@@ -60,16 +60,16 @@ print(f"Stored: {result.record_id}")
 <div>
 
 ```typescript
-import { CerememoryClient } from "cerememory";
+import { CerememoryClient } from "@cerememory/sdk";
 
 const client = new CerememoryClient("http://localhost:8420");
 
-const result = await client.store({
+const recordId = await client.store({
   text: "The user prefers dark mode and uses vim keybindings.",
   store: "semantic",
   emotion: "trust",
 });
-console.log(`Stored: ${result.recordId}`);
+console.log(`Stored: ${recordId}`);
 ```
 
 </div>
@@ -126,8 +126,7 @@ results = client.recall(
 )
 
 for memory in results.memories:
-    print(f"[{memory.store}] score={memory.relevance_score:.4f}")
-    print(f"  {memory.text_content}")
+    print(f"[{memory.record.store}] score={memory.relevance_score:.4f}")
 ```
 
 </div>
@@ -135,15 +134,14 @@ for memory in results.memories:
 <div>
 
 ```typescript
-const results = await client.recall({
+const memories = await client.recall({
   text: "What are the user's preferences?",
   limit: 5,
   mode: "human",
 });
 
-for (const memory of results.memories) {
-  console.log(`[${memory.store}] score=${memory.relevanceScore.toFixed(4)}`);
-  console.log(`  ${memory.textContent}`);
+for (const memory of memories) {
+  console.log(`[${memory.record.store}] score=${memory.relevance_score.toFixed(4)}`);
 }
 ```
 
@@ -185,7 +183,7 @@ In **human** mode, recalled content is filtered through fidelity and noise -- ol
 
 ```python
 client.forget(
-    record_ids=["01916e3a-1234-7000-8000-000000000001"],
+    "01916e3a-1234-7000-8000-000000000001",
     confirm=True,
 )
 ```
@@ -195,10 +193,10 @@ client.forget(
 <div>
 
 ```typescript
-await client.forget({
-  recordIds: ["01916e3a-1234-7000-8000-000000000001"],
-  confirm: true,
-});
+await client.forget(
+  "01916e3a-1234-7000-8000-000000000001",
+  { confirm: true }
+);
 ```
 
 </div>

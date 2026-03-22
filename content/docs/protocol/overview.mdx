@@ -60,8 +60,8 @@ CMP organizes all operations into four categories:
 | `lifecycle.decay_tick` | Manually trigger a decay computation cycle |
 | `lifecycle.set_mode` | Switch between Human and Perfect recall modes |
 | `lifecycle.forget` | Permanently delete records (requires confirmation) |
-| `lifecycle.export` | Export records to a CMA archive |
-| `lifecycle.import` | Import records from a CMA archive |
+| `lifecycle.export` | Export records to a CMA archive (CLI and MCP only) |
+| `lifecycle.import` | Import records from a CMA archive (CLI only) |
 
 ### Introspect (CMP Spec Section 6)
 
@@ -94,9 +94,11 @@ Error codes:
 | `CONTENT_TOO_LARGE` | 413 | Content exceeds size limit |
 | `VALIDATION_ERROR` | 400 | Request validation failed |
 | `MODALITY_UNSUPPORTED` | 400 | Modality not supported by provider |
-| `WORKING_MEMORY_FULL` | 429 | Working memory at capacity |
+| `WORKING_MEMORY_FULL` | 503 | Working memory at capacity |
 | `DECAY_ENGINE_BUSY` | 503 | Decay computation in progress |
-| `CONSOLIDATION_IN_PROGRESS` | 409 | Consolidation already running |
+| `CONSOLIDATION_IN_PROGRESS` | 503 | Consolidation already running |
+| `EXPORT_FAILED` | 500 | Archive export failed |
+| `IMPORT_CONFLICT` | 409 | Import conflict detected |
 | `FORGET_UNCONFIRMED` | 400 | Missing `confirm: true` |
 | `VERSION_MISMATCH` | 400 | Optimistic concurrency conflict |
 | `UNAUTHORIZED` | 401 | Invalid or missing API key |

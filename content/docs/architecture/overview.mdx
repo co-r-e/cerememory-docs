@@ -82,7 +82,9 @@ The codebase is organized as a Cargo workspace with crates separated by responsi
       <FileTree.Folder name="adapter-gemini" />
     </FileTree.Folder>
     <FileTree.Folder name="bindings">
+      <FileTree.Folder name="python" />
       <FileTree.Folder name="python-native" />
+      <FileTree.Folder name="typescript" />
       <FileTree.Folder name="typescript-native" />
     </FileTree.Folder>
   </FileTree.Folder>
@@ -96,7 +98,7 @@ Three transport bindings expose the CMP protocol to external clients:
 
 - **HTTP/REST** (axum) -- Primary transport on port 8420. Includes Bearer token auth, CORS, rate limiting, request tracing, and Prometheus metrics.
 - **gRPC** (tonic) -- Optional transport with TLS support. Enabled by setting `grpc.port` in configuration.
-- **MCP** (rmcp) -- Model Context Protocol server over stdio. Enables direct integration with MCP-compatible AI agents.
+- **MCP** (rmcp) -- Model Context Protocol server over stdio. Enables direct integration with MCP-compatible AI agents (e.g., Claude). Exposes 11 CMP tools: `store`, `update`, `batch_store`, `recall`, `timeline`, `associate`, `forget`, `consolidate`, `stats`, `inspect`, and `export`.
 
 ### Engine Layer
 

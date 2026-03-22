@@ -6,21 +6,21 @@ description: "Complete reference for the Cerememory Python SDK with sync and asy
 ## Installation
 
 ```bash
-pip install cerememory-client
+pip install cerememory
 ```
 
 For the native PyO3-based bindings (no HTTP overhead):
 
 ```bash
-pip install cerememory
+pip install cerememory-native
 ```
 
 ## Sync Client
 
 ```python
-from cerememory import CerememoryClient
+from cerememory import Client
 
-client = CerememoryClient(
+client = Client(
     base_url="http://localhost:8420",
     api_key="your-api-key",  # optional
     timeout=30.0,
@@ -66,8 +66,8 @@ results = client.recall(
 )
 
 for memory in results.memories:
-    print(f"[{memory.store}] {memory.text_content}")
-    print(f"  score={memory.relevance_score:.4f}, fidelity={memory.fidelity:.4f}")
+    print(f"[{memory.record.store}] score={memory.relevance_score:.4f}")
+    print(f"  fidelity={memory.record.fidelity.score:.4f}")
 ```
 
 | Parameter | Type | Required | Default | Description |
@@ -85,9 +85,9 @@ Delete records permanently.
 
 ```python
 client.forget(
-    record_ids=["01916e3a-5678-7000-8000-000000000001"],
-    cascade=False,
+    "01916e3a-5678-7000-8000-000000000001",
     confirm=True,
+    cascade=False,
 )
 ```
 
@@ -101,12 +101,12 @@ print(f"Total records: {stats.total_records}")
 print(f"Avg fidelity: {stats.avg_fidelity:.3f}")
 ```
 
-### inspect
+### get_record
 
 Get full details for a specific record.
 
 ```python
-record = client.inspect("01916e3a-5678-7000-8000-000000000001")
+record = client.get_record("01916e3a-5678-7000-8000-000000000001")
 print(f"Fidelity: {record.fidelity.score}")
 print(f"Noise: {record.fidelity.noise_level}")
 print(f"Stability: {record.fidelity.stability}")
@@ -142,9 +142,9 @@ print(f"Would migrate: {result.records_migrated}")
 For asyncio-based applications:
 
 ```python
-from cerememory import AsyncCerememoryClient
+from cerememory import AsyncClient
 
-client = AsyncCerememoryClient(
+client = AsyncClient(
     base_url="http://localhost:8420",
     api_key="your-api-key",
 )
@@ -157,7 +157,7 @@ async def main():
 
     results = await client.recall(text="async storage")
     for memory in results.memories:
-        print(memory.text_content)
+        print(f"score={memory.relevance_score:.4f}")
 
     await client.close()
 ```
@@ -170,7 +170,7 @@ The async client provides the same methods as the sync client, but all return co
 from cerememory import CerememoryError, RecordNotFoundError, RateLimitedError
 
 try:
-    record = client.inspect("nonexistent-id")
+    record = client.get_record("nonexistent-id")
 except RecordNotFoundError as e:
     print(f"Not found: {e.record_id}")
 except RateLimitedError as e:

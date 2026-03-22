@@ -133,6 +133,42 @@ Consolidation migrates mature episodic memories into the semantic store as disti
 
 </Steps>
 
+## Per-Store Decay Defaults
+
+The evolution engine initializes each store with distinct decay parameters tuned to its role:
+
+| Store | Decay Exponent (d) | Retrieval Boost | Interference Rate | Prune Threshold |
+|-------|-------------------|-----------------|-------------------|-----------------|
+| **Episodic** | 0.3 | 1.5 | 0.1 | 0.01 |
+| **Semantic** | 0.15 | 2.0 | 0.05 | 0.005 |
+| **Procedural** | 0.1 | 2.5 | 0.02 | 0.001 |
+| **Emotional** | 0.2 | 1.8 | 0.08 | 0.01 |
+| **Working** | 0.8 | 1.0 | 0.3 | 0.1 |
+
+These parameters are adaptively tuned by the evolution engine over time (see [Evolution Engine](#evolution-engine) below).
+
+## Spreading Activation
+
+The association engine uses weighted breadth-first search (BFS) to propagate activation through the cross-store association graph. When a memory is recalled, related memories are also activated with diminishing strength.
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `decay_factor` | 0.5 | Activation strength multiplier per hop |
+| `threshold` | 0.05 | Minimum activation to continue spreading |
+| `default_depth` | 2 | Maximum traversal depth |
+
+Activation at each hop is computed as `parent_activation * edge_weight * decay_factor`. Nodes below the threshold are not expanded.
+
+## Evolution Engine
+
+The evolution engine autonomously tunes decay parameters based on usage patterns. It applies three rules:
+
+1. **Low fidelity rule** -- If median fidelity drops below 0.3, reduce `decay_exponent` by 10% (memories are decaying too fast)
+2. **Low recall hit rate** -- If recall hit rate drops below 0.2 (minimum 5 observations), increase `retrieval_boost` by 10%
+3. **Excessive pruning** -- If more than 50% of records are in the lowest fidelity bucket, reduce `prune_threshold` by 10%
+
+All parameter adjustments are capped at ±50% of the original value to prevent runaway tuning.
+
 ## Pruning
 
 Records whose fidelity falls below the **prune threshold** (default: 0.01) are flagged for deletion during decay ticks. This automatic cleanup prevents unbounded storage growth while ensuring that only truly forgotten memories are removed.
