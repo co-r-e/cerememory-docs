@@ -30,16 +30,13 @@ spec:
             - name: http
               containerPort: 8420
               protocol: TCP
-            - name: grpc
-              containerPort: 50051
-              protocol: TCP
           env:
             - name: CEREMEMORY_AUTH_API_KEYS
               valueFrom:
                 secretKeyRef:
                   name: cerememory-secrets
                   key: api-keys
-            - name: CEREMEMORY_LLM__API_KEY_RAW
+            - name: CEREMEMORY_LLM__API_KEY
               valueFrom:
                 secretKeyRef:
                   name: cerememory-secrets
@@ -125,9 +122,6 @@ spec:
     - name: http
       port: 8420
       targetPort: http
-    - name: grpc
-      port: 50051
-      targetPort: grpc
   type: ClusterIP
 ```
 
@@ -144,9 +138,7 @@ data:
 
     [http]
     port = 8420
-
-    [grpc]
-    port = 50051
+    bind_address = "0.0.0.0"
 
     [auth]
     enabled = true
@@ -178,6 +170,10 @@ stringData:
 
 <Callout type="info">
 In production, use a secrets manager (Vault, AWS Secrets Manager, etc.) instead of Kubernetes Secrets. The example above is for demonstration purposes.
+</Callout>
+
+<Callout type="warning">
+The example deployment above enables only HTTP. If you want to expose gRPC from Kubernetes, you must also configure `grpc.tls_cert_path` and `grpc.tls_key_path`; plaintext gRPC on a non-loopback bind is rejected.
 </Callout>
 
 ## Probes
@@ -224,6 +220,8 @@ spec:
       path: /metrics
       interval: 30s
 ```
+
+Enable `http.metrics_enabled = true` before scraping `/metrics`. If auth is enabled, your Prometheus setup must present the same Bearer token you use for Cerememory API access.
 
 ## Next Steps
 

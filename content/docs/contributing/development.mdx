@@ -22,7 +22,7 @@ cargo build
 The first build downloads and compiles all dependencies. Subsequent incremental builds are fast.
 
 <Callout type="info">
-The workspace contains over 20 crates. Use `cargo build -p cerememory-core` to build a specific crate during focused development.
+The workspace contains 18 crates. Use `cargo build -p cerememory-core` to build a specific crate during focused development.
 </Callout>
 
 ## Running Tests
@@ -89,7 +89,7 @@ With an LLM provider:
 
 ```bash
 CEREMEMORY_LLM__PROVIDER=claude \
-CEREMEMORY_LLM__API_KEY_RAW=sk-ant-... \
+CEREMEMORY_LLM__API_KEY=sk-ant-... \
 cargo run -p cerememory-cli -- serve
 ```
 

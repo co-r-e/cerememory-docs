@@ -27,15 +27,19 @@ cerememory serve [OPTIONS]
 
 <Terminal title="Example: Start with both HTTP and gRPC">
 ```bash
-cerememory serve --port 8420 --grpc-port 50051 --config ./cerememory.toml
+cerememory serve --port 8420 --grpc-port 8421 --config ./cerememory.toml
 ```
 </Terminal>
 
 The server starts with:
 - Background decay enabled (configurable interval)
 - Graceful shutdown on SIGINT/SIGTERM
-- Prometheus metrics at `/metrics`
+- Optional Prometheus metrics at `/metrics` when `http.metrics_enabled = true`
 - Health probes at `/health` and `/readiness`
+
+<Callout type="warning">
+If you enable gRPC and either `auth.enabled = true` or `http.bind_address` is non-loopback, you must also configure `grpc.tls_cert_path` and `grpc.tls_key_path`.
+</Callout>
 
 ---
 
@@ -203,10 +207,24 @@ cerememory export [OPTIONS]
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--output` | path | `./backup.cma` | Output file path |
+| `--format` | string | `cma` | Archive format |
+| `--stores` | string | None | Comma-separated store filter |
+| `--encrypt` | bool | false | Encrypt the archive with ChaCha20-Poly1305 |
+| `--encryption-key` | string | None | Passphrase for archive encryption |
 
 <Terminal title="Example: Export to a file">
 ```bash
 cerememory export --output ./memories-backup.cma
+```
+</Terminal>
+
+<Terminal title="Example: Export only episodic and semantic memories, encrypted">
+```bash
+cerememory export \
+  --output ./memories-backup.cma \
+  --stores episodic,semantic \
+  --encrypt \
+  --encryption-key "correct horse battery staple"
 ```
 </Terminal>
 
@@ -217,12 +235,19 @@ cerememory export --output ./memories-backup.cma
 Import records from a CMA archive file.
 
 ```bash
-cerememory import <PATH>
+cerememory import <PATH> [OPTIONS]
 ```
 
 | Flag | Type | Description |
 |------|------|-------------|
 | `<PATH>` | path | Required. Path to the CMA archive file |
+| `--decryption-key` | string | Passphrase for encrypted archives |
+
+<Terminal title="Example: Import an encrypted archive">
+```bash
+cerememory import ./memories-backup.cma --decryption-key "correct horse battery staple"
+```
+</Terminal>
 
 ---
 
@@ -251,6 +276,22 @@ cerememory mcp
 ```
 
 This starts a stdio-based MCP server using the rmcp library, enabling MCP-compatible AI agents to interact with Cerememory directly.
+
+The MCP server exposes the following tools:
+
+| Tool | Description |
+|------|-------------|
+| `store` | Store a single memory record |
+| `update` | Update an existing record's content or emotion |
+| `batch_store` | Store multiple records with auto-association |
+| `recall` | Query memories by text cue |
+| `timeline` | Time-bucketed retrieval |
+| `associate` | Traverse association graph |
+| `forget` | Permanently delete records |
+| `consolidate` | Trigger episodic→semantic consolidation |
+| `stats` | Get system statistics |
+| `inspect` | Inspect a specific record |
+| `export` | Export to CMA archive (with optional encryption) |
 
 ## Next Steps
 

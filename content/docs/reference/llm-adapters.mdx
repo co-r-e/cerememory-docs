@@ -12,11 +12,20 @@ Cerememory integrates with LLM providers through two trait-based interfaces:
 
 LLM integration is **optional**. Without a configured provider, Cerememory falls back to manual embeddings, truncation-based summarization, and skips relation extraction.
 
+## Server Auth Key vs LLM Provider Key
+
+These are different settings and solve different problems:
+
+- `auth.api_keys` protects access to the Cerememory server itself
+- `llm.api_key` lets Cerememory call OpenAI, Anthropic, or Gemini
+
+You only need `llm.api_key` for features that actually invoke a provider.
+
 ## Supported Providers
 
 | Provider | Config Value | Crate | Features |
 |----------|-------------|-------|----------|
-| Anthropic Claude | `claude` or `anthropic` | `adapter-claude` | Text embedding, summarization, relation extraction, image embedding (vision) |
+| Anthropic Claude | `claude` or `anthropic` | `adapter-claude` | Summarization, relation extraction |
 | OpenAI GPT | `openai` | `adapter-openai` | Text embedding, summarization, relation extraction, image embedding, audio transcription |
 | Google Gemini | `gemini` or `google` | `adapter-gemini` | Text embedding, summarization, relation extraction, image embedding |
 
@@ -29,7 +38,7 @@ LLM integration is **optional**. Without a configured provider, Cerememory falls
 ```toml
 [llm]
 provider = "claude"
-api_key_raw = "sk-ant-api03-..."
+api_key = "sk-ant-api03-..."
 model = "claude-sonnet-4-20250514"  # optional
 base_url = null            # optional, for proxy setups
 ```
@@ -38,7 +47,7 @@ Environment variables:
 
 ```bash
 export CEREMEMORY_LLM__PROVIDER=claude
-export CEREMEMORY_LLM__API_KEY_RAW=sk-ant-api03-...
+export CEREMEMORY_LLM__API_KEY=sk-ant-api03-...
 export CEREMEMORY_LLM__MODEL=claude-sonnet-4-20250514
 ```
 
@@ -49,7 +58,7 @@ export CEREMEMORY_LLM__MODEL=claude-sonnet-4-20250514
 ```toml
 [llm]
 provider = "openai"
-api_key_raw = "sk-..."
+api_key = "sk-..."
 model = "gpt-4o"           # optional
 base_url = null            # optional, for Azure OpenAI
 ```
@@ -58,7 +67,7 @@ Environment variables:
 
 ```bash
 export CEREMEMORY_LLM__PROVIDER=openai
-export CEREMEMORY_LLM__API_KEY_RAW=sk-...
+export CEREMEMORY_LLM__API_KEY=sk-...
 export CEREMEMORY_LLM__MODEL=gpt-4o
 ```
 
@@ -69,7 +78,7 @@ export CEREMEMORY_LLM__MODEL=gpt-4o
 ```toml
 [llm]
 provider = "gemini"
-api_key_raw = "AIza..."
+api_key = "AIza..."
 model = "gemini-2.0-flash"  # optional
 base_url = null
 ```
@@ -78,7 +87,7 @@ Environment variables:
 
 ```bash
 export CEREMEMORY_LLM__PROVIDER=gemini
-export CEREMEMORY_LLM__API_KEY_RAW=AIza...
+export CEREMEMORY_LLM__API_KEY=AIza...
 export CEREMEMORY_LLM__MODEL=gemini-2.0-flash
 ```
 
@@ -100,11 +109,27 @@ pub struct ProviderCapabilities {
 
 | Capability | Claude | OpenAI | Gemini | No Provider |
 |------------|--------|--------|--------|-------------|
-| Text embedding | Yes | Yes | Yes | No |
-| Image embedding | Yes (vision) | Yes (vision) | Yes (vision) | No |
+| Text embedding | No | Yes | Yes | No |
+| Image embedding | No | Yes (vision) | Yes (vision) | No |
 | Audio transcription | No | Yes (Whisper) | No | No |
 | Summarization | Yes | Yes | Yes | Truncation fallback |
 | Relation extraction | Yes | Yes | Yes | Skipped |
+
+## Which Features Actually Need An LLM Key?
+
+Requires `llm.api_key`:
+
+- Automatic embedding generation
+- Image recall cues and image embedding
+- Audio recall cues and transcription
+- Consolidation summarization
+- Relation extraction
+
+Does not require `llm.api_key`:
+
+- Basic text/structured store and recall
+- Search by precomputed embeddings you provide yourself
+- Timeline, graph, inspect, stats, forget, export, import
 
 ## LLMProvider Trait
 

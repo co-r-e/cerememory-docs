@@ -19,7 +19,7 @@ When `auth.enabled = true`, all `/v1/*` endpoints require a Bearer token in the 
 Authorization: Bearer sk-cerememory-prod-abc123
 ```
 
-Health endpoints (`/health`, `/readiness`) and metrics (`/metrics`) bypass authentication.
+Health endpoints (`/health`, `/readiness`) bypass authentication. The `/metrics` endpoint is disabled by default and, when enabled, follows the configured auth policy.
 
 ## Endpoint Reference
 
@@ -29,7 +29,7 @@ Health endpoints (`/health`, `/readiness`) and metrics (`/metrics`) bypass authe
 |--------|------|------|-------------|
 | GET | `/health` | No | Liveness probe -- returns `{"status": "ok"}` |
 | GET | `/readiness` | No | Readiness probe -- verifies engine is operational |
-| GET | `/metrics` | No | Prometheus metrics (text format) |
+| GET | `/metrics` | Depends | Prometheus metrics (text format). Only present when `http.metrics_enabled = true` |
 
 ### Encode
 
@@ -88,9 +88,9 @@ All errors return a `CMPError` JSON envelope:
 | `CONTENT_TOO_LARGE` | 413 | Exceeds modality size limit |
 | `VALIDATION_ERROR` | 400 | Malformed request or invalid values |
 | `MODALITY_UNSUPPORTED` | 400 | Provider does not support this modality |
-| `WORKING_MEMORY_FULL` | 429 | Working memory capacity exceeded |
+| `WORKING_MEMORY_FULL` | 503 | Working memory capacity exceeded |
 | `DECAY_ENGINE_BUSY` | 503 | Decay tick already in progress |
-| `CONSOLIDATION_IN_PROGRESS` | 409 | Consolidation already running |
+| `CONSOLIDATION_IN_PROGRESS` | 503 | Consolidation already running |
 | `EXPORT_FAILED` | 500 | Archive export failed |
 | `IMPORT_CONFLICT` | 409 | Import conflict detected |
 | `FORGET_UNCONFIRMED` | 400 | Missing `confirm: true` |
@@ -111,7 +111,11 @@ Default limits: 100 requests/second with a burst of 50.
 
 ## CORS
 
-CORS is configured via `http.cors_origins`. When the list is empty, all origins are allowed. When origins are specified, only those origins receive CORS headers.
+CORS is configured via `http.cors_origins`.
+
+- When the list is empty, Cerememory emits **no** CORS headers
+- When origins are specified, only those origins receive CORS headers
+- Use an explicit `"*"` entry only if you intentionally want browser-wide access
 
 ## Request Tracing
 

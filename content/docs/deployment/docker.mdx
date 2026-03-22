@@ -10,6 +10,7 @@ docker run -d \
   --name cerememory \
   -p 8420:8420 \
   -v cerememory-data:/data \
+  -e CEREMEMORY_HTTP__BIND_ADDRESS=0.0.0.0 \
   ghcr.io/co-r-e/cerememory:latest
 ```
 
@@ -21,14 +22,13 @@ This starts Cerememory with default settings: HTTP on port 8420, data persisted 
 docker run -d \
   --name cerememory \
   -p 8420:8420 \
-  -p 50051:50051 \
   -v cerememory-data:/data \
   -v ./cerememory.toml:/etc/cerememory/cerememory.toml:ro \
   -e CEREMEMORY_AUTH__ENABLED=true \
   -e CEREMEMORY_AUTH_API_KEYS=sk-my-secret-key \
   -e CEREMEMORY_LLM__PROVIDER=claude \
-  -e CEREMEMORY_LLM__API_KEY_RAW=sk-ant-... \
-  -e CEREMEMORY_GRPC__PORT=50051 \
+  -e CEREMEMORY_LLM__API_KEY=sk-ant-... \
+  -e CEREMEMORY_HTTP__BIND_ADDRESS=0.0.0.0 \
   ghcr.io/co-r-e/cerememory:latest \
   serve --config /etc/cerememory/cerememory.toml
 ```
@@ -36,15 +36,12 @@ docker run -d \
 ## Docker Compose
 
 ```yaml
-version: "3.8"
-
 services:
   cerememory:
     image: ghcr.io/co-r-e/cerememory:latest
     container_name: cerememory
     ports:
       - "8420:8420"
-      - "50051:50051"    # optional gRPC
     volumes:
       - cerememory-data:/data
       - ./cerememory.toml:/etc/cerememory/cerememory.toml:ro
@@ -52,8 +49,8 @@ services:
       CEREMEMORY_AUTH__ENABLED: "true"
       CEREMEMORY_AUTH_API_KEYS: "${CEREMEMORY_API_KEY}"
       CEREMEMORY_LLM__PROVIDER: "claude"
-      CEREMEMORY_LLM__API_KEY_RAW: "${ANTHROPIC_API_KEY}"
-      CEREMEMORY_GRPC__PORT: "50051"
+      CEREMEMORY_LLM__API_KEY: "${ANTHROPIC_API_KEY}"
+      CEREMEMORY_HTTP__BIND_ADDRESS: "0.0.0.0"
       CEREMEMORY_LOG__FORMAT: "json"
     command: ["serve", "--config", "/etc/cerememory/cerememory.toml"]
     healthcheck:
@@ -76,6 +73,10 @@ volumes:
 
 <Callout type="info">
 Store sensitive values like API keys in a `.env` file or a secrets manager. The Docker Compose file above references `${CEREMEMORY_API_KEY}` and `${ANTHROPIC_API_KEY}` from the environment.
+</Callout>
+
+<Callout type="warning">
+Expose gRPC from Docker only when you also configure TLS. Cerememory rejects gRPC startup on non-loopback binds when auth is enabled and TLS is missing.
 </Callout>
 
 ## Health Checks
@@ -101,7 +102,7 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
 To build from source:
 
 ```dockerfile
-FROM rust:1.88-slim AS builder
+FROM rust:1.88-bookworm AS builder
 WORKDIR /app
 COPY . .
 RUN cargo build --release -p cerememory-cli
@@ -129,7 +130,9 @@ Always mount a persistent volume at `/data`. Without it, all memories are lost w
 
 ## Metrics
 
-Prometheus metrics are available at `GET /metrics` (no authentication required) when the server is started. Metrics include:
+Prometheus metrics are available at `GET /metrics` only when `http.metrics_enabled = true`. When auth is enabled, `/metrics` follows the same auth policy as the rest of the API.
+
+Metrics include:
 
 - `cerememory_http_requests_total` -- Total HTTP requests by method and status
 - `cerememory_http_request_duration_seconds` -- Request latency histogram
