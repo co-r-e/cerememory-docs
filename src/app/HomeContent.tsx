@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { basePath } from '@/lib/basePath'
 
 function useReveal() {
@@ -160,6 +160,230 @@ client.<span class="fn">forget</span>(record_id, confirm<span class="op">=</span
   )
 }
 
+/* ========== HERO CANVAS BACKGROUND ========== */
+
+const LINE_COLORS = ['#8B1A2B', '#8B1A2B', '#A8293D', '#1C1917', '#292524']
+
+interface AnimatedLine {
+  x: number
+  y: number
+  length: number
+  angle: number
+  thickness: number
+  color: string
+  opacity: number
+  maxOpacity: number
+  phase: 'fadeIn' | 'drift' | 'fadeOut'
+  age: number
+  fadeInDuration: number
+  driftDuration: number
+  fadeOutDuration: number
+  dx: number
+  dy: number
+  dAngle: number
+}
+
+function spawnLine(w: number, h: number): AnimatedLine {
+  return {
+    x: Math.random() * w,
+    y: Math.random() * h,
+    length: 40 + Math.random() * 160,
+    angle: Math.random() * Math.PI * 2,
+    thickness: 0.5 + Math.random() * 1.0,
+    color: LINE_COLORS[Math.floor(Math.random() * LINE_COLORS.length)],
+    opacity: 0,
+    maxOpacity: 0.08 + Math.random() * 0.17,
+    phase: 'fadeIn',
+    age: 0,
+    fadeInDuration: 60 + Math.random() * 90,
+    driftDuration: 180 + Math.random() * 300,
+    fadeOutDuration: 60 + Math.random() * 90,
+    dx: (Math.random() - 0.5) * 0.3,
+    dy: (Math.random() - 0.5) * 0.3,
+    dAngle: (Math.random() - 0.5) * 0.002,
+  }
+}
+
+function HeroCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  const initAndAnimate = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    let dpr = window.devicePixelRatio || 1
+
+    function sizeCanvas() {
+      const rect = canvas!.getBoundingClientRect()
+      dpr = window.devicePixelRatio || 1
+      canvas!.width = rect.width * dpr
+      canvas!.height = rect.height * dpr
+      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0)
+      return rect
+    }
+
+    function calcLineCount(w: number, h: number) {
+      return Math.floor(Math.min(120, Math.max(80, (w * h) / 5000)))
+    }
+
+    let rect = sizeCanvas()
+    let canvasW = rect.width
+    let canvasH = rect.height
+    const lineCount = calcLineCount(canvasW, canvasH)
+
+    // Initialize lines with staggered ages so canvas looks alive immediately
+    const lines: AnimatedLine[] = []
+    for (let i = 0; i < lineCount; i++) {
+      const line = spawnLine(canvasW, canvasH)
+      const totalLife = line.fadeInDuration + line.driftDuration + line.fadeOutDuration
+      const startAge = Math.random() * totalLife
+
+      if (startAge < line.fadeInDuration) {
+        line.phase = 'fadeIn'
+        line.age = startAge
+        line.opacity = line.maxOpacity * (startAge / line.fadeInDuration)
+      } else if (startAge < line.fadeInDuration + line.driftDuration) {
+        line.phase = 'drift'
+        line.age = startAge - line.fadeInDuration
+        line.opacity = line.maxOpacity
+      } else {
+        line.phase = 'fadeOut'
+        line.age = startAge - line.fadeInDuration - line.driftDuration
+        line.opacity = line.maxOpacity * (1 - line.age / line.fadeOutDuration)
+      }
+
+      // Apply drift for the staggered age
+      const driftFrames = startAge
+      line.x += line.dx * driftFrames
+      line.y += line.dy * driftFrames
+      line.angle += line.dAngle * driftFrames
+
+      lines.push(line)
+    }
+
+    function updateLines() {
+      for (let i = 0; i < lines.length; i++) {
+        const l = lines[i]
+        l.age++
+        l.x += l.dx
+        l.y += l.dy
+        l.angle += l.dAngle
+
+        switch (l.phase) {
+          case 'fadeIn':
+            l.opacity = l.maxOpacity * (l.age / l.fadeInDuration)
+            if (l.age >= l.fadeInDuration) {
+              l.phase = 'drift'
+              l.age = 0
+            }
+            break
+          case 'drift':
+            l.opacity = l.maxOpacity
+            if (l.age >= l.driftDuration) {
+              l.phase = 'fadeOut'
+              l.age = 0
+            }
+            break
+          case 'fadeOut':
+            l.opacity = l.maxOpacity * (1 - l.age / l.fadeOutDuration)
+            if (l.age >= l.fadeOutDuration) {
+              lines[i] = spawnLine(canvasW, canvasH)
+            }
+            break
+        }
+      }
+    }
+
+    function drawFrame() {
+      ctx!.clearRect(0, 0, canvasW, canvasH)
+      ctx!.lineCap = 'round'
+
+      for (let i = 0; i < lines.length; i++) {
+        const l = lines[i]
+        if (l.opacity <= 0) continue
+        const halfLen = l.length / 2
+        const cos = Math.cos(l.angle)
+        const sin = Math.sin(l.angle)
+
+        ctx!.globalAlpha = l.opacity
+        ctx!.strokeStyle = l.color
+        ctx!.lineWidth = l.thickness
+        ctx!.beginPath()
+        ctx!.moveTo(l.x - cos * halfLen, l.y - sin * halfLen)
+        ctx!.lineTo(l.x + cos * halfLen, l.y + sin * halfLen)
+        ctx!.stroke()
+      }
+      ctx!.globalAlpha = 1
+    }
+
+    // Static render for reduced motion
+    if (reducedMotion) {
+      drawFrame()
+      return () => {}
+    }
+
+    // Animation loop
+    let animId: number
+    function tick() {
+      updateLines()
+      drawFrame()
+      animId = requestAnimationFrame(tick)
+    }
+    animId = requestAnimationFrame(tick)
+
+    // Resize handler (debounced)
+    let resizeTimer: ReturnType<typeof setTimeout>
+    function handleResize() {
+      clearTimeout(resizeTimer)
+      resizeTimer = setTimeout(() => {
+        rect = sizeCanvas()
+        canvasW = rect.width
+        canvasH = rect.height
+
+        const newCount = calcLineCount(canvasW, canvasH)
+        while (lines.length < newCount) {
+          lines.push(spawnLine(canvasW, canvasH))
+        }
+        while (lines.length > newCount) {
+          lines.pop()
+        }
+      }, 150)
+    }
+    window.addEventListener('resize', handleResize)
+
+    return () => {
+      cancelAnimationFrame(animId)
+      clearTimeout(resizeTimer)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
+
+  useEffect(() => {
+    const cleanup = initAndAnimate()
+    return () => cleanup?.()
+  }, [initAndAnimate])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden="true"
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: 0,
+        pointerEvents: 'none',
+      }}
+    />
+  )
+}
+
 export default function HomeContent() {
   return (
     <>
@@ -192,7 +416,8 @@ export default function HomeContent() {
 
       {/* HERO */}
       <section className="hero">
-        <div className="column">
+        <HeroCanvas />
+        <div className="column hero__content">
           <span className="hero__version">Open Source &middot; HTTP / gRPC / MCP &middot; Rust</span>
           <h1 className="hero__title">
             A <em>Living</em> Memory Database<br />for the Age of AI
