@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { basePath } from '@/lib/basePath'
+import type { Dictionary } from '@/i18n/types'
+import type { Locale } from '@/i18n/config'
+import { LanguageSwitcher } from '@/components/lp/LanguageSwitcher'
 
 function useReveal() {
   const ref = useRef<HTMLDivElement>(null)
@@ -42,8 +45,11 @@ function RevealSection({
   )
 }
 
-function CodeTabs() {
+function CodeTabs({ dict }: { dict: Dictionary }) {
   const [active, setActive] = useState<'python' | 'typescript' | 'rest'>('python')
+
+  // Suppress unused-var lint - dict is accepted for future tab-label i18n
+  void dict
 
   return (
     <div className="code-tabs">
@@ -160,48 +166,54 @@ client.<span class="fn">forget</span>(record_id, confirm<span class="op">=</span
   )
 }
 
-/* ========== HERO CANVAS BACKGROUND ========== */
+/* ========== HERO CANVAS BACKGROUND - composite sine waves ========== */
 
-const LINE_COLORS = ['#8B1A2B', '#8B1A2B', '#A8293D', '#1C1917', '#292524']
+const WAVE_COLORS = ['#8B1A2B', '#8B1A2B', '#A8293D', '#1C1917', '#292524']
+const WAVE_LINE_COUNT = 25
+const STEP_PX = 4
 
-interface AnimatedLine {
-  x: number
-  y: number
-  length: number
-  angle: number
-  thickness: number
-  color: string
-  opacity: number
-  maxOpacity: number
-  phase: 'fadeIn' | 'drift' | 'fadeOut'
-  age: number
-  fadeInDuration: number
-  driftDuration: number
-  fadeOutDuration: number
-  dx: number
-  dy: number
-  dAngle: number
+interface WaveComponent {
+  amplitude: number
+  frequency: number
+  phaseSpeed: number
+  phase: number
 }
 
-function spawnLine(w: number, h: number): AnimatedLine {
-  return {
-    x: Math.random() * w,
-    y: Math.random() * h,
-    length: 40 + Math.random() * 160,
-    angle: Math.random() * Math.PI * 2,
-    thickness: 0.5 + Math.random() * 1.0,
-    color: LINE_COLORS[Math.floor(Math.random() * LINE_COLORS.length)],
-    opacity: 0,
-    maxOpacity: 0.08 + Math.random() * 0.17,
-    phase: 'fadeIn',
-    age: 0,
-    fadeInDuration: 60 + Math.random() * 90,
-    driftDuration: 180 + Math.random() * 300,
-    fadeOutDuration: 60 + Math.random() * 90,
-    dx: (Math.random() - 0.5) * 0.3,
-    dy: (Math.random() - 0.5) * 0.3,
-    dAngle: (Math.random() - 0.5) * 0.002,
+interface WaveLine {
+  baseY: number
+  color: string
+  opacity: number
+  thickness: number
+  waves: WaveComponent[]
+}
+
+function createWaveLine(baseY: number): WaveLine {
+  const count = 2 + Math.floor(Math.random() * 2) // 2 or 3 harmonics
+  const waves: WaveComponent[] = []
+  for (let i = 0; i < count; i++) {
+    waves.push({
+      amplitude: 5 + Math.random() * 25,
+      frequency: 0.002 + Math.random() * 0.013,
+      phaseSpeed: (0.005 + Math.random() * 0.025) * (Math.random() < 0.5 ? 1 : -1),
+      phase: Math.random() * Math.PI * 2,
+    })
   }
+  return {
+    baseY,
+    color: WAVE_COLORS[Math.floor(Math.random() * WAVE_COLORS.length)],
+    opacity: 0.06 + Math.random() * 0.14,
+    thickness: 0.5 + Math.random() * 1.0,
+    waves,
+  }
+}
+
+function waveY(line: WaveLine, x: number): number {
+  let y = line.baseY
+  for (let i = 0; i < line.waves.length; i++) {
+    const w = line.waves[i]
+    y += w.amplitude * Math.sin(w.frequency * x + w.phase)
+  }
+  return y
 }
 
 function HeroCanvas() {
@@ -215,109 +227,57 @@ function HeroCanvas() {
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-    let dpr = window.devicePixelRatio || 1
-
     function sizeCanvas() {
       const rect = canvas!.getBoundingClientRect()
-      dpr = window.devicePixelRatio || 1
+      const dpr = window.devicePixelRatio || 1
       canvas!.width = rect.width * dpr
       canvas!.height = rect.height * dpr
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0)
       return rect
     }
 
-    function calcLineCount(w: number, h: number) {
-      return Math.floor(Math.min(120, Math.max(80, (w * h) / 5000)))
-    }
-
     let rect = sizeCanvas()
     let canvasW = rect.width
     let canvasH = rect.height
-    const lineCount = calcLineCount(canvasW, canvasH)
 
-    // Initialize lines with staggered ages so canvas looks alive immediately
-    const lines: AnimatedLine[] = []
-    for (let i = 0; i < lineCount; i++) {
-      const line = spawnLine(canvasW, canvasH)
-      const totalLife = line.fadeInDuration + line.driftDuration + line.fadeOutDuration
-      const startAge = Math.random() * totalLife
-
-      if (startAge < line.fadeInDuration) {
-        line.phase = 'fadeIn'
-        line.age = startAge
-        line.opacity = line.maxOpacity * (startAge / line.fadeInDuration)
-      } else if (startAge < line.fadeInDuration + line.driftDuration) {
-        line.phase = 'drift'
-        line.age = startAge - line.fadeInDuration
-        line.opacity = line.maxOpacity
-      } else {
-        line.phase = 'fadeOut'
-        line.age = startAge - line.fadeInDuration - line.driftDuration
-        line.opacity = line.maxOpacity * (1 - line.age / line.fadeOutDuration)
-      }
-
-      // Apply drift for the staggered age
-      const driftFrames = startAge
-      line.x += line.dx * driftFrames
-      line.y += line.dy * driftFrames
-      line.angle += line.dAngle * driftFrames
-
-      lines.push(line)
-    }
-
-    function updateLines() {
-      for (let i = 0; i < lines.length; i++) {
-        const l = lines[i]
-        l.age++
-        l.x += l.dx
-        l.y += l.dy
-        l.angle += l.dAngle
-
-        switch (l.phase) {
-          case 'fadeIn':
-            l.opacity = l.maxOpacity * (l.age / l.fadeInDuration)
-            if (l.age >= l.fadeInDuration) {
-              l.phase = 'drift'
-              l.age = 0
-            }
-            break
-          case 'drift':
-            l.opacity = l.maxOpacity
-            if (l.age >= l.driftDuration) {
-              l.phase = 'fadeOut'
-              l.age = 0
-            }
-            break
-          case 'fadeOut':
-            l.opacity = l.maxOpacity * (1 - l.age / l.fadeOutDuration)
-            if (l.age >= l.fadeOutDuration) {
-              lines[i] = spawnLine(canvasW, canvasH)
-            }
-            break
-        }
+    let lines: WaveLine[] = []
+    function initLines() {
+      lines = []
+      const spacing = canvasH / (WAVE_LINE_COUNT + 1)
+      for (let i = 0; i < WAVE_LINE_COUNT; i++) {
+        const baseY = spacing * (i + 1) + (Math.random() - 0.5) * spacing * 0.4
+        lines.push(createWaveLine(baseY))
       }
     }
+    initLines()
 
     function drawFrame() {
       ctx!.clearRect(0, 0, canvasW, canvasH)
       ctx!.lineCap = 'round'
 
       for (let i = 0; i < lines.length; i++) {
-        const l = lines[i]
-        if (l.opacity <= 0) continue
-        const halfLen = l.length / 2
-        const cos = Math.cos(l.angle)
-        const sin = Math.sin(l.angle)
-
-        ctx!.globalAlpha = l.opacity
-        ctx!.strokeStyle = l.color
-        ctx!.lineWidth = l.thickness
+        const line = lines[i]
+        ctx!.globalAlpha = line.opacity
+        ctx!.strokeStyle = line.color
+        ctx!.lineWidth = line.thickness
         ctx!.beginPath()
-        ctx!.moveTo(l.x - cos * halfLen, l.y - sin * halfLen)
-        ctx!.lineTo(l.x + cos * halfLen, l.y + sin * halfLen)
+        ctx!.moveTo(0, waveY(line, 0))
+        for (let x = STEP_PX; x <= canvasW; x += STEP_PX) {
+          ctx!.lineTo(x, waveY(line, x))
+        }
+        ctx!.lineTo(canvasW, waveY(line, canvasW))
         ctx!.stroke()
       }
       ctx!.globalAlpha = 1
+    }
+
+    function advancePhases() {
+      for (let i = 0; i < lines.length; i++) {
+        const ws = lines[i].waves
+        for (let j = 0; j < ws.length; j++) {
+          ws[j].phase += ws[j].phaseSpeed
+        }
+      }
     }
 
     // Static render for reduced motion
@@ -329,7 +289,7 @@ function HeroCanvas() {
     // Animation loop
     let animId: number
     function tick() {
-      updateLines()
+      advancePhases()
       drawFrame()
       animId = requestAnimationFrame(tick)
     }
@@ -343,13 +303,9 @@ function HeroCanvas() {
         rect = sizeCanvas()
         canvasW = rect.width
         canvasH = rect.height
-
-        const newCount = calcLineCount(canvasW, canvasH)
-        while (lines.length < newCount) {
-          lines.push(spawnLine(canvasW, canvasH))
-        }
-        while (lines.length > newCount) {
-          lines.pop()
+        const spacing = canvasH / (WAVE_LINE_COUNT + 1)
+        for (let i = 0; i < lines.length; i++) {
+          lines[i].baseY = spacing * (i + 1) + (Math.random() - 0.5) * spacing * 0.4
         }
       }, 150)
     }
@@ -384,7 +340,7 @@ function HeroCanvas() {
   )
 }
 
-export default function HomeContent() {
+export default function HomeContent({ dict, locale }: { dict: Dictionary; locale: Locale }) {
   return (
     <>
       {/* MASTHEAD */}
@@ -392,9 +348,9 @@ export default function HomeContent() {
         <div className="column column--wide masthead__inner">
           <nav>
             <ul className="masthead__nav masthead__nav--left">
-              <li><a href="#architecture">Architecture</a></li>
-              <li><a href="#dynamics">Dynamics</a></li>
-              <li><a href="#protocol">Protocol</a></li>
+              <li><a href="#architecture">{dict.nav.architecture}</a></li>
+              <li><a href="#dynamics">{dict.nav.dynamics}</a></li>
+              <li><a href="#protocol">{dict.nav.protocol}</a></li>
             </ul>
           </nav>
           <a href="#" className="masthead__logo-link">
@@ -403,12 +359,13 @@ export default function HomeContent() {
           </a>
           <nav>
             <ul className="masthead__nav masthead__nav--right">
-              <li><a href="#quickstart">Quick Start</a></li>
+              <li><a href="#quickstart">{dict.nav.quickStart}</a></li>
               <li>
                 <a href="https://github.com/co-r-e/cerememory" target="_blank" rel="noopener" style={{ border: 'none' }}>
-                  GitHub
+                  {dict.nav.github}
                 </a>
               </li>
+              <li><LanguageSwitcher locale={locale} label={dict.langSwitcher.label} /></li>
             </ul>
           </nav>
         </div>
@@ -418,13 +375,11 @@ export default function HomeContent() {
       <section className="hero">
         <HeroCanvas />
         <div className="column hero__content">
-          <span className="hero__version">Open Source &middot; HTTP / gRPC / MCP &middot; Rust</span>
           <h1 className="hero__title">
-            A <em>Living</em> Memory Database<br />for the Age of AI
+            {dict.hero.titlePre}<em>{dict.hero.titleEm}</em>{dict.hero.titlePost}
           </h1>
           <p className="hero__subtitle">
-            Brain-inspired memory architecture with secure transports, persistent recall,
-            and user-sovereign data ownership.
+            {dict.hero.subtitle}
           </p>
         </div>
       </section>
@@ -432,41 +387,26 @@ export default function HomeContent() {
       {/* ABSTRACT */}
       <section className="abstract">
         <div className="column">
-          <div className="abstract__label">Abstract</div>
-          <p className="abstract__text">
-            Today&apos;s LLMs lose context with every conversation reset, forcing users to repeat
-            themselves endlessly. <strong>Cerememory</strong> is an LLM-agnostic memory database
-            built on five specialized memory stores grounded in neuroscience research. Memories are
-            not merely stored &mdash; they decay over time, reactivate when related memories fire,
-            and have their retention rates modulated by emotional intensity. This is not a database.
-            It is a <em>living memory system</em>. With a user-sovereign, local-first design, full
-            ownership of memory data is guaranteed to the user.
-          </p>
+          <div className="abstract__label">{dict.abstract.label}</div>
+          <p className="abstract__text" dangerouslySetInnerHTML={{ __html: dict.abstract.text }} />
           <div className="abstract__keywords">
-            <strong>Keywords</strong>&ensp; Memory Database &middot; LLM &middot; Neuroscience &middot;
-            Spreading Activation &middot; Decay Model &middot; Emotional Modulation &middot; Rust &middot;
-            CMP Protocol
+            <strong>{dict.abstract.keywordsLabel}</strong>&ensp; {dict.abstract.keywords}
           </div>
         </div>
       </section>
 
-      {/* §1 THE PROBLEM */}
+      {/* S1 THE PROBLEM */}
       <section className="section" id="problem">
         <RevealSection className="column">
-          <span className="section__number">&sect; 1</span>
-          <h2 className="section__title">The Problem: LLM Amnesia</h2>
+          <span className="section__number">{dict.problem.number}</span>
+          <h2 className="section__title">{dict.problem.title}</h2>
           <div className="section__body">
+            <p>{dict.problem.para1}</p>
             <p>
-              Every LLM today suffers from a fundamental flaw. Each time a conversation resets,
-              the context window flushes, and users are forced to re-explain themselves from scratch.
-              Existing memory solutions are shallow, text-only, model-specific, and vendor-controlled.
-            </p>
-            <p>
-              Cerememory addresses this with three principles. Memory must be{' '}
-              <strong>alive</strong> &mdash; not frozen at write-time, but evolving over time. It must
-              be <strong>LLM-agnostic</strong> &mdash; a standardized protocol (CMP) allows any LLM to
-              read and write to the memory layer. And it must be <strong>user-sovereign</strong> &mdash;
-              local-first and fully exportable by design.
+              {dict.problem.para2Pre}
+              <strong>{dict.problem.alive}</strong>{dict.problem.aliveDesc}
+              <strong>{dict.problem.llmAgnostic}</strong>{dict.problem.llmAgnosticDesc}
+              <strong>{dict.problem.userSovereign}</strong>{dict.problem.userSovereignDesc}
             </p>
           </div>
         </RevealSection>
@@ -474,70 +414,65 @@ export default function HomeContent() {
 
       <div className="sep"><div className="sep__diamond" /></div>
 
-      {/* §2 ARCHITECTURE */}
+      {/* S2 ARCHITECTURE */}
       <section className="section section--alt" id="architecture">
         <RevealSection className="column column--wide">
-          <span className="section__number">&sect; 2</span>
-          <h2 className="section__title">Five-Store Architecture</h2>
-          <p className="section__lead">
-            Just as the human brain processes different types of memory in distinct regions,
-            Cerememory distributes memories across five specialized stores.
-          </p>
+          <span className="section__number">{dict.architecture.number}</span>
+          <h2 className="section__title">{dict.architecture.title}</h2>
+          <p className="section__lead">{dict.architecture.lead}</p>
 
           <div className="figure">
             <div className="figure__content">
               <table className="stores-table">
                 <thead>
                   <tr>
-                    <th>Store</th>
-                    <th>Brain Analog</th>
-                    <th>Function</th>
+                    <th>{dict.architecture.tableHeaders.store}</th>
+                    <th>{dict.architecture.tableHeaders.brainAnalog}</th>
+                    <th>{dict.architecture.tableHeaders.function}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td><span className="store-name">Episodic</span></td>
-                    <td><span className="store-analog">Hippocampus</span></td>
-                    <td>Temporal event logs. Records what happened, when, and where. Persistent via redb.</td>
+                    <td><span className="store-name">{dict.architecture.stores.episodic.name}</span></td>
+                    <td><span className="store-analog">{dict.architecture.stores.episodic.analog}</span></td>
+                    <td>{dict.architecture.stores.episodic.desc}</td>
                   </tr>
                   <tr>
-                    <td><span className="store-name">Semantic</span></td>
-                    <td><span className="store-analog">Neocortex</span></td>
-                    <td>Graph of facts, concepts, and relationships. Stores what things mean. Typed-edge graph structure.</td>
+                    <td><span className="store-name">{dict.architecture.stores.semantic.name}</span></td>
+                    <td><span className="store-analog">{dict.architecture.stores.semantic.analog}</span></td>
+                    <td>{dict.architecture.stores.semantic.desc}</td>
                   </tr>
                   <tr>
-                    <td><span className="store-name">Procedural</span></td>
-                    <td><span className="store-analog">Basal Ganglia</span></td>
-                    <td>Behavioral patterns, preferences, and skills. Learns how things are done.</td>
+                    <td><span className="store-name">{dict.architecture.stores.procedural.name}</span></td>
+                    <td><span className="store-analog">{dict.architecture.stores.procedural.analog}</span></td>
+                    <td>{dict.architecture.stores.procedural.desc}</td>
                   </tr>
                   <tr>
-                    <td><span className="store-name">Emotional</span></td>
-                    <td><span className="store-analog">Amygdala</span></td>
-                    <td>Cross-cutting affective metadata. Modulates decay rates and retrieval priority across all stores.</td>
+                    <td><span className="store-name">{dict.architecture.stores.emotional.name}</span></td>
+                    <td><span className="store-analog">{dict.architecture.stores.emotional.analog}</span></td>
+                    <td>{dict.architecture.stores.emotional.desc}</td>
                   </tr>
                   <tr>
-                    <td><span className="store-name">Working</span></td>
-                    <td><span className="store-analog">Prefrontal Cortex</span></td>
-                    <td>Volatile, capacity-limited, high-speed active context cache. LRU-evicted, in-memory.</td>
+                    <td><span className="store-name">{dict.architecture.stores.working.name}</span></td>
+                    <td><span className="store-analog">{dict.architecture.stores.working.analog}</span></td>
+                    <td>{dict.architecture.stores.working.desc}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
-            <div className="figure__caption">
-              <strong>Table 1.</strong> Five memory stores and their neuroscientific analogs
-            </div>
+            <div className="figure__caption" dangerouslySetInnerHTML={{ __html: dict.architecture.tableCaption }} />
           </div>
 
           <div className="figure" style={{ marginTop: '3rem' }}>
             <div className="figure__content arch-diagram">
-              <div className="arch-label">LLM Adapters</div>
+              <div className="arch-label">{dict.architecture.diagram.llmAdapters}</div>
               <div className="arch-layer">
                 <div className="arch-box">Claude</div>
                 <div className="arch-box">GPT</div>
                 <div className="arch-box">Gemini</div>
               </div>
               <div className="arch-arrow">&darr; CMP Protocol</div>
-              <div className="arch-label">Transport Layer</div>
+              <div className="arch-label">{dict.architecture.diagram.transportLayer}</div>
               <div className="arch-layer">
                 <div className="arch-box arch-box--primary">HTTP / REST (Axum)</div>
                 <div className="arch-box arch-box--primary">gRPC (Tonic)</div>
@@ -546,57 +481,48 @@ export default function HomeContent() {
               <div className="arch-arrow">&darr;</div>
               <div className="arch-layer">
                 <div className="arch-box arch-box--primary" style={{ padding: '0.9em 2.5em' }}>
-                  Cerememory Engine
+                  {dict.architecture.diagram.cerememoryEngine}
                 </div>
               </div>
               <div className="arch-arrow">&darr;</div>
-              <div className="arch-label">Hippocampal Coordinator</div>
+              <div className="arch-label">{dict.architecture.diagram.hippocampalCoordinator}</div>
               <div className="arch-layer">
-                <div className="arch-box">Tantivy Full-Text</div>
-                <div className="arch-box">HNSW Vector</div>
-                <div className="arch-box">Association Graph</div>
+                <div className="arch-box">{dict.architecture.diagram.tantivyFullText}</div>
+                <div className="arch-box">{dict.architecture.diagram.hnswVector}</div>
+                <div className="arch-box">{dict.architecture.diagram.associationGraph}</div>
               </div>
               <div className="arch-arrow">&darr;</div>
-              <div className="arch-label">Memory Stores</div>
+              <div className="arch-label">{dict.architecture.diagram.memoryStores}</div>
               <div className="arch-layer">
-                <div className="arch-box arch-box--store">Episodic</div>
-                <div className="arch-box arch-box--store">Semantic</div>
-                <div className="arch-box arch-box--store">Procedural</div>
-                <div className="arch-box arch-box--store">Emotional</div>
-                <div className="arch-box arch-box--store">Working</div>
+                <div className="arch-box arch-box--store">{dict.architecture.stores.episodic.name}</div>
+                <div className="arch-box arch-box--store">{dict.architecture.stores.semantic.name}</div>
+                <div className="arch-box arch-box--store">{dict.architecture.stores.procedural.name}</div>
+                <div className="arch-box arch-box--store">{dict.architecture.stores.emotional.name}</div>
+                <div className="arch-box arch-box--store">{dict.architecture.stores.working.name}</div>
               </div>
               <div className="arch-arrow">&darr;</div>
-              <div className="arch-label">Engines</div>
+              <div className="arch-label">{dict.architecture.diagram.engines}</div>
               <div className="arch-layer">
-                <div className="arch-box">Decay Engine</div>
-                <div className="arch-box">Association Engine</div>
-                <div className="arch-box">Evolution Engine</div>
+                <div className="arch-box">{dict.architecture.diagram.decayEngine}</div>
+                <div className="arch-box">{dict.architecture.diagram.associationEngine}</div>
+                <div className="arch-box">{dict.architecture.diagram.evolutionEngine}</div>
               </div>
             </div>
-            <div className="figure__caption">
-              <strong>Fig. 1.</strong> Full system architecture of Cerememory
-            </div>
+            <div className="figure__caption" dangerouslySetInnerHTML={{ __html: dict.architecture.diagram.figCaption }} />
           </div>
         </RevealSection>
       </section>
 
-      {/* §3 LIVING DYNAMICS */}
+      {/* S3 LIVING DYNAMICS */}
       <section className="section" id="dynamics">
         <RevealSection className="column">
-          <span className="section__number">&sect; 3</span>
-          <h2 className="section__title">Living Memory Dynamics</h2>
-          <p className="section__lead">
-            In a traditional database, data is static. In Cerememory, memories breathe, decay, and
-            reactivate.
-          </p>
+          <span className="section__number">{dict.dynamics.number}</span>
+          <h2 className="section__title">{dict.dynamics.title}</h2>
+          <p className="section__lead">{dict.dynamics.lead}</p>
 
-          <h3 className="subsection-title">3.1 &ensp; Decay &mdash; The Forgetting Curve</h3>
+          <h3 className="subsection-title">{dict.dynamics.decay.title}</h3>
           <div className="section__body">
-            <p>
-              Memory fidelity decreases over time following a modified power-law curve. This is not
-              &ldquo;forget everything&rdquo; &mdash; it is gradual, realistic degradation. Emotional
-              intensity modulates decay rates, and repeated access increases stability.
-            </p>
+            <p>{dict.dynamics.decay.desc}</p>
           </div>
 
           <div className="formula">
@@ -610,29 +536,26 @@ export default function HomeContent() {
               <span className="var" style={{ color: 'var(--crimson)', fontStyle: 'italic' }}>
                 F
               </span>
-              <sub>0</sub> : initial fidelity &ensp;
+              <sub>0</sub> : {dict.dynamics.decay.initialFidelity} &ensp;
               <span className="var" style={{ color: 'var(--crimson)', fontStyle: 'italic' }}>
                 S
               </span>{' '}
-              : stability parameter &ensp;
+              : {dict.dynamics.decay.stabilityParam} &ensp;
               <span className="var" style={{ color: 'var(--crimson)', fontStyle: 'italic' }}>
                 d
               </span>{' '}
-              : decay exponent &ensp;
+              : {dict.dynamics.decay.decayExponent} &ensp;
               <span className="var" style={{ color: 'var(--crimson)', fontStyle: 'italic' }}>
                 E
               </span>
-              <sub>mod</sub> : emotional modulation factor
+              <sub>mod</sub> : {dict.dynamics.decay.emotionalModFactor}
             </div>
-            <div className="formula__label">Eq. 1 &mdash; Power-Law Decay</div>
+            <div className="formula__label">{dict.dynamics.decay.eqLabel}</div>
           </div>
 
-          <h3 className="subsection-title">3.2 &ensp; Noise &mdash; Interference Accumulation</h3>
+          <h3 className="subsection-title">{dict.dynamics.noise.title}</h3>
           <div className="section__body">
-            <p>
-              Similar memories blur each other&apos;s details over time. This reproduces the
-              interference phenomenon observed in human memory research.
-            </p>
+            <p>{dict.dynamics.noise.desc}</p>
           </div>
 
           <div className="formula">
@@ -645,24 +568,20 @@ export default function HomeContent() {
               <span className="var" style={{ color: 'var(--crimson)', fontStyle: 'italic' }}>
                 &lambda;
               </span>{' '}
-              : interference rate &ensp; Noise increases as fidelity degrades
+              : {dict.dynamics.noise.interferenceRate}
             </div>
-            <div className="formula__label">Eq. 2 &mdash; Noise Accumulation</div>
+            <div className="formula__label">{dict.dynamics.noise.eqLabel}</div>
           </div>
 
-          <h3 className="subsection-title">3.3 &ensp; Emotional Modulation</h3>
+          <h3 className="subsection-title">{dict.dynamics.emotional.title}</h3>
           <div className="section__body">
-            <p>
-              An 8-dimensional emotion vector is attached to every memory, influencing decay rates,
-              retrieval priority, and association strength. Emotionally intense memories are retained
-              longer.
-            </p>
+            <p>{dict.dynamics.emotional.desc}</p>
           </div>
 
           <div className="figure">
             <div className="figure__content">
               <div className="emotion-wheel">
-                {['joy', 'trust', 'fear', 'surprise', 'sadness', 'disgust', 'anger', 'anticipation'].map(
+                {dict.dynamics.emotional.emotions.map(
                   (emotion) => (
                     <div key={emotion} className="emotion-axis">
                       <span className="emotion-axis__bar" />
@@ -672,35 +591,24 @@ export default function HomeContent() {
                 )}
               </div>
             </div>
-            <div className="figure__caption">
-              <strong>Fig. 2.</strong> 8-dimensional emotion vector based on Plutchik&apos;s model of
-              emotions
-            </div>
+            <div className="figure__caption" dangerouslySetInnerHTML={{ __html: dict.dynamics.emotional.figCaption }} />
           </div>
 
           <div className="features" style={{ marginTop: '2.5rem' }}>
             <div className="feature">
               <div className="feature__icon">i</div>
-              <div className="feature__title">Reactivation</div>
-              <div className="feature__desc">
-                Firing of related memories temporarily restores decayed ones. Based on the spreading
-                activation model.
-              </div>
+              <div className="feature__title">{dict.dynamics.features.reactivation.title}</div>
+              <div className="feature__desc">{dict.dynamics.features.reactivation.desc}</div>
             </div>
             <div className="feature">
               <div className="feature__icon">ii</div>
-              <div className="feature__title">Reconsolidation</div>
-              <div className="feature__desc">
-                Recalled memories are subtly modified and reintegrated with current context.
-              </div>
+              <div className="feature__title">{dict.dynamics.features.reconsolidation.title}</div>
+              <div className="feature__desc">{dict.dynamics.features.reconsolidation.desc}</div>
             </div>
             <div className="feature">
               <div className="feature__icon">iii</div>
-              <div className="feature__title">Consolidation</div>
-              <div className="feature__desc">
-                Like sleep, episodic memories are periodically integrated and migrated into semantic
-                storage.
-              </div>
+              <div className="feature__title">{dict.dynamics.features.consolidation.title}</div>
+              <div className="feature__desc">{dict.dynamics.features.consolidation.desc}</div>
             </div>
           </div>
         </RevealSection>
@@ -708,77 +616,62 @@ export default function HomeContent() {
 
       <div className="sep"><div className="sep__diamond" /></div>
 
-      {/* §4 PROTOCOL */}
+      {/* S4 PROTOCOL */}
       <section className="section section--alt" id="protocol">
         <RevealSection className="column column--wide">
-          <span className="section__number">&sect; 4</span>
-          <h2 className="section__title">Cerememory Protocol (CMP)</h2>
-          <p className="section__lead">
-            CMP is a standardized, transport-agnostic interface connecting any LLM to Cerememory. HTTP
-            and gRPC expose the full protocol surface, while MCP provides a focused 11-tool interface
-            for agent workflows.
-          </p>
+          <span className="section__number">{dict.protocol.number}</span>
+          <h2 className="section__title">{dict.protocol.title}</h2>
+          <p className="section__lead">{dict.protocol.lead}</p>
 
           <div className="protocol-grid">
             <div className="protocol-card">
-              <div className="protocol-card__category">Encode</div>
-              <div className="protocol-card__title">Write Memories</div>
+              <div className="protocol-card__category">{dict.protocol.encode.category}</div>
+              <div className="protocol-card__title">{dict.protocol.encode.title}</div>
               <ul className="protocol-card__ops">
-                <li>encode.store &mdash; Store a single record</li>
-                <li>encode.batch &mdash; Batch store with auto-association</li>
-                <li>encode.update &mdash; Update an existing record</li>
+                {dict.protocol.encode.ops.map((op) => (
+                  <li key={op}>{op}</li>
+                ))}
               </ul>
             </div>
             <div className="protocol-card">
-              <div className="protocol-card__category">Recall</div>
-              <div className="protocol-card__title">Retrieve Memories</div>
+              <div className="protocol-card__category">{dict.protocol.recall.category}</div>
+              <div className="protocol-card__title">{dict.protocol.recall.title}</div>
               <ul className="protocol-card__ops">
-                <li>recall.query &mdash; Multimodal retrieval</li>
-                <li>recall.associate &mdash; Get associations</li>
-                <li>recall.timeline &mdash; Time-series retrieval</li>
-                <li>recall.graph &mdash; Subgraph retrieval</li>
+                {dict.protocol.recall.ops.map((op) => (
+                  <li key={op}>{op}</li>
+                ))}
               </ul>
             </div>
             <div className="protocol-card">
-              <div className="protocol-card__category">Lifecycle</div>
-              <div className="protocol-card__title">Memory Lifecycle</div>
+              <div className="protocol-card__category">{dict.protocol.lifecycle.category}</div>
+              <div className="protocol-card__title">{dict.protocol.lifecycle.title}</div>
               <ul className="protocol-card__ops">
-                <li>lifecycle.consolidate &mdash; Trigger consolidation</li>
-                <li>lifecycle.decay_tick &mdash; Run decay engine</li>
-                <li>lifecycle.forget &mdash; Permanently delete</li>
-                <li>lifecycle.set_mode &mdash; Human / Perfect mode</li>
+                {dict.protocol.lifecycle.ops.map((op) => (
+                  <li key={op}>{op}</li>
+                ))}
               </ul>
             </div>
             <div className="protocol-card">
-              <div className="protocol-card__category">Introspect</div>
-              <div className="protocol-card__title">Observe State</div>
+              <div className="protocol-card__category">{dict.protocol.introspect.category}</div>
+              <div className="protocol-card__title">{dict.protocol.introspect.title}</div>
               <ul className="protocol-card__ops">
-                <li>introspect.stats &mdash; System-wide statistics</li>
-                <li>introspect.record &mdash; Inspect decay state</li>
-                <li>introspect.decay_forecast &mdash; Fidelity prediction</li>
-                <li>introspect.evolution &mdash; Evolution engine metrics</li>
+                {dict.protocol.introspect.ops.map((op) => (
+                  <li key={op}>{op}</li>
+                ))}
               </ul>
             </div>
           </div>
 
-          <div className="footnote">
-            <sup>*</sup> Recall has two modes: <strong>Human</strong> (realistic recall with
-            fidelity-weighted noise) and <strong>Perfect</strong> (complete retrieval of original
-            data). Spreading activation depth is configurable, and SDKs surface query metadata,
-            request IDs, and retry hints for debugging.
-          </div>
+          <div className="footnote" dangerouslySetInnerHTML={{ __html: `<sup>*</sup> ${dict.protocol.footnote}` }} />
         </RevealSection>
       </section>
 
-      {/* §5 QUICK START */}
+      {/* S5 QUICK START */}
       <section className="section" id="quickstart">
         <RevealSection className="column">
-          <span className="section__number">&sect; 5</span>
-          <h2 className="section__title">Quick Start</h2>
-          <p className="section__lead">
-            Give your AI memory in just a few lines of code. Choose from Python, TypeScript, REST,
-            or MCP-backed workflows.
-          </p>
+          <span className="section__number">{dict.quickStart.number}</span>
+          <h2 className="section__title">{dict.quickStart.title}</h2>
+          <p className="section__lead">{dict.quickStart.lead}</p>
 
           <div className="code-block" style={{ marginBottom: '2rem' }}>
             <div className="code-block__header">
@@ -799,45 +692,45 @@ export default function HomeContent() {
             />
           </div>
 
-          <CodeTabs />
+          <CodeTabs dict={dict} />
         </RevealSection>
       </section>
 
       <div className="sep"><div className="sep__diamond" /></div>
 
-      {/* §6 ECOSYSTEM */}
+      {/* S6 ECOSYSTEM */}
       <section className="section section--alt" id="ecosystem">
         <RevealSection className="column column--wide">
-          <span className="section__number">&sect; 6</span>
-          <h2 className="section__title">Ecosystem &amp; SDKs</h2>
+          <span className="section__number">{dict.ecosystem.number}</span>
+          <h2 className="section__title">{dict.ecosystem.title}</h2>
 
-          <h3 className="subsection-title">SDKs</h3>
+          <h3 className="subsection-title">{dict.ecosystem.sdksTitle}</h3>
           <div className="sdk-row">
             <div className="sdk-badge">
               <div className="sdk-badge__icon">Py</div>
               <div>
-                <div className="sdk-badge__name">Python SDK</div>
+                <div className="sdk-badge__name">{dict.ecosystem.pythonSdk}</div>
                 <div className="sdk-badge__pkg">pip install cerememory</div>
               </div>
             </div>
             <div className="sdk-badge">
               <div className="sdk-badge__icon">TS</div>
               <div>
-                <div className="sdk-badge__name">TypeScript SDK</div>
+                <div className="sdk-badge__name">{dict.ecosystem.typescriptSdk}</div>
                 <div className="sdk-badge__pkg">npm i @cerememory/sdk</div>
               </div>
             </div>
             <div className="sdk-badge">
               <div className="sdk-badge__icon">Rs</div>
               <div>
-                <div className="sdk-badge__name">Native Bindings</div>
+                <div className="sdk-badge__name">{dict.ecosystem.nativeBindings}</div>
                 <div className="sdk-badge__pkg">PyO3 &middot; napi-rs</div>
               </div>
             </div>
           </div>
 
           <h3 className="subsection-title" style={{ marginTop: '2.5rem' }}>
-            LLM Adapters
+            {dict.ecosystem.llmAdaptersTitle}
           </h3>
           <div className="adapters-row">
             {['Anthropic Claude', 'OpenAI GPT', 'Google Gemini'].map((name) => (
@@ -849,41 +742,10 @@ export default function HomeContent() {
           </div>
 
           <h3 className="subsection-title" style={{ marginTop: '2.5rem' }}>
-            Capabilities
+            {dict.ecosystem.capabilitiesTitle}
           </h3>
           <div className="features">
-            {[
-              {
-                icon: 'M',
-                title: 'Multimodal',
-                desc: 'Text, image, audio, and structured blocks are supported today, with provider-backed image/audio recall and auto-embedding.',
-              },
-              {
-                icon: 'H',
-                title: 'Secure Defaults',
-                desc: 'Localhost-first HTTP, Bearer auth, trusted-proxy-aware rate limiting, and enforced gRPC TLS on exposed deployments.',
-              },
-              {
-                icon: 'O',
-                title: 'Observability',
-                desc: 'Opt-in protected Prometheus metrics, /health and /readiness probes, plus x-request-id correlation for production debugging.',
-              },
-              {
-                icon: 'V',
-                title: 'Vector Search',
-                desc: 'Semantic similarity search via HNSW algorithm. Combined with Tantivy full-text search for hybrid retrieval.',
-              },
-              {
-                icon: 'A',
-                title: 'Spreading Activation',
-                desc: 'Weighted breadth-first traversal for associative recall. Configurable decay factor, threshold, and depth.',
-              },
-              {
-                icon: 'W',
-                title: 'Workflow Stability',
-                desc: 'Persisted inferred associations, safe CMA export/import flows, and rebuilt coordinators before stateful CLI operations.',
-              },
-            ].map((f) => (
+            {dict.ecosystem.capabilities.map((f) => (
               <div key={f.title} className="feature">
                 <div className="feature__icon">{f.icon}</div>
                 <div className="feature__title">{f.title}</div>
@@ -894,30 +756,17 @@ export default function HomeContent() {
         </RevealSection>
       </section>
 
-      {/* §7 TECHNICAL */}
+      {/* S7 TECHNICAL */}
       <section className="section" id="technical">
         <RevealSection className="column">
-          <span className="section__number">&sect; 7</span>
-          <h2 className="section__title">Technical Foundation</h2>
+          <span className="section__number">{dict.technical.number}</span>
+          <h2 className="section__title">{dict.technical.title}</h2>
           <div className="section__body">
-            <p>
-              Cerememory&apos;s core engine is implemented in <strong>Rust</strong> &mdash; the only
-              choice that delivers memory safety, zero-cost concurrency, and predictable performance.
-              Tokio handles async I/O while Rayon powers CPU-intensive operations like decay
-              computation and spreading activation, with thread pools optimally separated by workload
-              characteristics.
-            </p>
+            <p dangerouslySetInnerHTML={{ __html: dict.technical.body }} />
           </div>
 
           <div className="features" style={{ marginTop: '2rem' }}>
-            {[
-              { title: 'redb', desc: 'Embedded key-value store with ACID transactions. Zero-copy reads for maximum throughput.' },
-              { title: 'Tantivy', desc: 'Rust-native Lucene equivalent. High-performance full-text search index.' },
-              { title: 'hnsw_rs', desc: 'Lightweight embedded HNSW. High-dimensional approximate nearest neighbor search.' },
-              { title: 'MessagePack', desc: 'Compact binary serialization. Fast internal data transfer with minimal overhead.' },
-              { title: 'Axum + Tonic', desc: 'Transport layer supporting both HTTP/REST and gRPC protocols.' },
-              { title: 'SQLite (CMA)', desc: 'Universal single-file archive format. Full data portability with optional encryption.' },
-            ].map((f) => (
+            {dict.technical.tools.map((f) => (
               <div key={f.title} className="feature">
                 <div className="feature__title">{f.title}</div>
                 <div className="feature__desc">{f.desc}</div>
@@ -929,44 +778,19 @@ export default function HomeContent() {
 
       <div className="sep"><div className="sep__diamond" /></div>
 
-      {/* §8 PHILOSOPHY */}
+      {/* S8 PHILOSOPHY */}
       <section className="section section--alt" id="philosophy">
         <RevealSection className="column">
-          <span className="section__number">&sect; 8</span>
-          <h2 className="section__title">Design Philosophy</h2>
+          <span className="section__number">{dict.philosophy.number}</span>
+          <h2 className="section__title">{dict.philosophy.title}</h2>
 
           <div className="philosophy-quote">
-            <p>
-              Memory is the foundation of identity. A system that stores, evolves, and retrieves the
-              accumulated context of a person&apos;s interaction with AI is too important to be
-              controlled by any single entity.
-            </p>
-            <cite>&mdash; Cerememory Whitepaper</cite>
+            <p>{dict.philosophy.quote}</p>
+            <cite>{dict.philosophy.quoteAttribution}</cite>
           </div>
 
           <div className="principles">
-            {[
-              {
-                num: 'I',
-                title: 'User Sovereignty',
-                desc: 'Local-first. Fully exportable. Ownership of memory data always belongs to the user.',
-              },
-              {
-                num: 'II',
-                title: 'No Vendor Lock-in',
-                desc: 'LLM-agnostic protocol. Claude, GPT, Gemini \u2014 any model can share the same memory layer.',
-              },
-              {
-                num: 'III',
-                title: 'Living Data',
-                desc: 'Memories breathe. Decay, interference, reactivation, consolidation \u2014 not static storage, but a dynamic memory system.',
-              },
-              {
-                num: 'IV',
-                title: 'Brain-Inspired',
-                desc: 'Grounded in neuroscience research. Faithfully models the five subsystems of human memory.',
-              },
-            ].map((p) => (
+            {dict.philosophy.principles.map((p) => (
               <div key={p.num} className="principle">
                 <div className="principle__num">{p.num}</div>
                 <div className="principle__title">{p.title}</div>
@@ -980,11 +804,8 @@ export default function HomeContent() {
       {/* CTA */}
       <section className="cta-section">
         <div className="column">
-          <h2 className="cta__title">Give Your AI a Memory</h2>
-          <p className="cta__desc">
-            Cerememory is open source. Get started now and give your AI systems persistent, evolving
-            memory.
-          </p>
+          <h2 className="cta__title">{dict.cta.title}</h2>
+          <p className="cta__desc">{dict.cta.desc}</p>
           <div className="cta__buttons">
             <a
               href="https://github.com/co-r-e/cerememory"
@@ -992,10 +813,10 @@ export default function HomeContent() {
               target="_blank"
               rel="noopener"
             >
-              GitHub Repository
+              {dict.cta.githubButton}
             </a>
             <a href="#quickstart" className="btn btn--secondary">
-              Quick Start Guide
+              {dict.cta.quickStartButton}
             </a>
           </div>
           <div className="install-block">
@@ -1018,10 +839,10 @@ export default function HomeContent() {
               <img src={`${basePath}/logo.svg`} alt="Cerememory" className="footer__logo" />
             </div>
             <ul className="footer__links">
-              <li><a href={`${basePath}/docs`}>Docs</a></li>
+              <li><a href={`${basePath}/docs`}>{dict.footer.docs}</a></li>
               <li>
                 <a href="https://github.com/co-r-e/cerememory" target="_blank" rel="noopener">
-                  GitHub
+                  {dict.footer.github}
                 </a>
               </li>
               <li>
@@ -1030,14 +851,14 @@ export default function HomeContent() {
                   target="_blank"
                   rel="noopener"
                 >
-                  Contributing
+                  {dict.footer.contributing}
                 </a>
               </li>
-              <li><a href="#protocol">CMP Spec</a></li>
-              <li><a href="#architecture">Architecture</a></li>
+              <li><a href="#protocol">{dict.footer.cmpSpec}</a></li>
+              <li><a href="#architecture">{dict.footer.architecture}</a></li>
             </ul>
           </div>
-          <div className="footer__copy">Open Source &middot; MIT License &middot; Built with Rust</div>
+          <div className="footer__copy">{dict.footer.copy}</div>
         </div>
       </footer>
     </>

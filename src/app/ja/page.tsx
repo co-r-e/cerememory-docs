@@ -1,23 +1,23 @@
 import type { Metadata } from 'next'
-import { en } from '@/i18n'
-import HomeContent from './HomeContent'
+import { ja } from '@/i18n'
+import HomeContent from '../HomeContent'
 
-const title = 'Cerememory - A Living Memory Database for the Age of AI'
-const description =
-  'Cerememory is an open-source, neuroscience-inspired memory database that gives AI systems persistent, evolving memory. LLM-agnostic. User-sovereign. Brain-inspired.'
+const title = ja.meta.title
+const description = ja.meta.description
 const base = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
 
 export const metadata: Metadata = {
   title,
   description,
   alternates: {
-    canonical: `${base}/`,
+    canonical: `${base}/ja`,
   },
   openGraph: {
     title,
     description,
     type: 'website',
     siteName: 'Cerememory',
+    locale: 'ja_JP',
   },
   twitter: {
     card: 'summary',
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   },
 }
 
-export default function Home() {
+export default function JaHome() {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://cerememory.dev'
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
 
@@ -35,7 +35,7 @@ export default function Home() {
     '@type': 'SoftwareApplication',
     name: 'Cerememory',
     description,
-    url: `${baseUrl}${base}`,
+    url: `${baseUrl}${base}/ja`,
     applicationCategory: 'DeveloperApplication',
     operatingSystem: 'Linux, macOS, Windows',
     offers: {
@@ -57,7 +57,7 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLd }}
       />
-      <HomeContent dict={en} locale="en" />
+      <HomeContent dict={ja} locale="ja" />
     </>
   )
 }

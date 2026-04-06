@@ -1,0 +1,5 @@
+export { en } from './en'
+export { ja } from './ja'
+export type { Dictionary } from './types'
+export { LOCALES, DEFAULT_LOCALE } from './config'
+export type { Locale } from './config'

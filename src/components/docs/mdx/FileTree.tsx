@@ -127,7 +127,7 @@ function TreeNode({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Main export — supports both APIs                                   */
+/*  Main export - supports both APIs                                   */
 /* ------------------------------------------------------------------ */
 
 interface FileTreePropsData {

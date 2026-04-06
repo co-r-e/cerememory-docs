@@ -48,7 +48,7 @@ export function CodeBlock({
         setTimeout(() => setCopied(false), 2000);
       },
       () => {
-        // Clipboard API failed — silently ignore
+        // Clipboard API failed - silently ignore
       }
     );
   }, []);

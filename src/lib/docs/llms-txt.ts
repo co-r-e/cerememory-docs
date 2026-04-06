@@ -83,7 +83,7 @@ export async function generateLlmsFullTxt(): Promise<string> {
   const pages = await getAllPages();
 
   const sections: string[] = [
-    "# Cerememory — Full Documentation",
+    "# Cerememory - Full Documentation",
     "",
     "> A neuroscience-inspired memory database that gives AI systems persistent, evolving memory.",
     "",

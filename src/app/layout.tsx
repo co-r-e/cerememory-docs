@@ -26,7 +26,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://cerememory.dev'),
-  title: 'Cerememory — A Living Memory Database for the Age of AI',
+  title: 'Cerememory - A Living Memory Database for the Age of AI',
   description:
     'Cerememory is an open-source, neuroscience-inspired memory database that gives AI systems persistent, evolving memory. LLM-agnostic. User-sovereign. Brain-inspired.',
   verification: {
