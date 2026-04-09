@@ -44,6 +44,14 @@ Cerememory is organized as a layered system where each layer has a single respon
    │  │  (redb)   │ │ (memory)│                          │
    │  └───────────┘ └─────────┘                          │
    └─────────────────────────────────────────────────────┘
+          │
+   ┌──────▼─────────────────────────────────────────────┐
+   │              Raw Journal                            │
+   │  ┌────────────────────────────────────────────┐    │
+   │  │ Raw Store (redb + Tantivy full-text)       │    │
+   │  │ Verbatim conversation preservation         │    │
+   │  └────────────────────────────────────────────┘    │
+   └─────────────────────────────────────────────────────┘
 ```
 
 ## Crate Structure
@@ -69,6 +77,8 @@ Cerememory is organized as a layered system where each layer has a single respon
       <FileTree.Folder name="cerememory-store-procedural" />
       <FileTree.Folder name="cerememory-store-emotional" />
       <FileTree.Folder name="cerememory-store-working" />
+      <FileTree.Folder name="cerememory-store-raw" />
+      <FileTree.Folder name="cerememory-store-common" />
       <FileTree.Folder name="cerememory-transport-http" />
       <FileTree.Folder name="cerememory-transport-grpc" />
       <FileTree.Folder name="cerememory-transport-mcp" />
@@ -78,6 +88,7 @@ Cerememory is organized as a layered system where each layer has a single respon
       <FileTree.Folder name="adapter-claude" />
       <FileTree.Folder name="adapter-openai" />
       <FileTree.Folder name="adapter-gemini" />
+      <FileTree.Folder name="adapter-common" />
     </FileTree.Folder>
     <FileTree.Folder name="bindings">
       <FileTree.Folder name="python" />
@@ -96,7 +107,7 @@ Three transport bindings expose CMP externally:
 
 - **HTTP/REST** (axum) -- primary network transport. Binds to `127.0.0.1:8420` by default and includes Bearer auth, request IDs, trusted-proxy-aware rate limiting, optional CORS, and opt-in Prometheus metrics.
 - **gRPC** (tonic) -- optional network transport. Supports export/import streaming and requires TLS when auth is enabled or the deployment is exposed beyond loopback.
-- **MCP** (rmcp) -- stdio transport for Claude Code and MCP-compatible clients. Exposes 11 LLM-friendly tools: `store`, `update`, `batch_store`, `recall`, `timeline`, `associate`, `forget`, `consolidate`, `stats`, `inspect`, and `export`.
+- **MCP** (rmcp) -- stdio transport for Claude Code and MCP-compatible clients. Exposes 15 LLM-friendly tools including `store`, `store_raw`, `batch_store`, `batch_store_raw`, `update`, `recall`, `recall_raw`, `timeline`, `associate`, `inspect`, `forget`, `dream_tick`, `consolidate`, `stats`, and `export`.
 
 ### Engine Layer
 
@@ -109,7 +120,7 @@ The `CerememoryEngine` is the central coordinator. It implements encode, recall,
 
 ### Store Layer
 
-Five specialized stores implement the common `Store` trait:
+Five specialized curated stores implement the common `Store` trait:
 
 - **Episodic**
 - **Semantic**
@@ -118,6 +129,8 @@ Five specialized stores implement the common `Store` trait:
 - **Working**
 
 All persistent stores are backed by redb. Working memory is intentionally in-memory only.
+
+A sixth store, the **Raw Journal**, operates alongside the curated stores. It preserves verbatim conversation content using redb with a dedicated Tantivy full-text search index, enabling forensic recall and dream-tick summarization.
 
 ### Supporting Engines
 

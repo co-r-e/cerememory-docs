@@ -1,6 +1,6 @@
 ---
 title: "Recall Operations"
-description: "Query and retrieve memories using multimodal cues, association traversal, timelines, and graphs."
+description: "Query and retrieve memories using multimodal cues, association traversal, timelines, graph subgraphs, and raw journal forensic recall."
 ---
 
 ## recall.query
@@ -193,6 +193,13 @@ Retrieve a subgraph of memory nodes and their association edges, suitable for vi
 }
 ```
 
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `center_id` | Uuid | No | None | Anchor node for traversal |
+| `depth` | u32 | No | 2 | Maximum traversal hops |
+| `edge_types` | string[] | No | All types | Filter by association type names |
+| `limit_nodes` | u32 | No | 10 | Maximum nodes to return |
+
 ### Response
 
 ```json
@@ -206,6 +213,69 @@ Retrieve a subgraph of memory nodes and their association edges, suitable for vi
   "total_nodes": 12
 }
 ```
+
+## recall.raw_query
+
+Forensic recall over the preserved raw journal. Returns verbatim raw journal entries matching the query, without any decay or noise applied.
+
+**Endpoint:** `POST /v1/recall/raw`
+
+### Request
+
+```json
+{
+  "session_id": "sess_abc123",
+  "query": "user mentioned their favorite editor",
+  "temporal": {
+    "start": "2026-03-01T00:00:00Z",
+    "end": "2026-03-19T23:59:59Z"
+  },
+  "limit": 10,
+  "include_private_scratch": false,
+  "include_sealed": false,
+  "secrecy_levels": ["public", "sensitive"]
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `session_id` | string | No | None | Filter to a specific session |
+| `query` | string | No | None | Full-text search query over raw journal content |
+| `temporal` | TemporalRange | No | None | Filter by time range |
+| `limit` | u32 | No | 10 | Maximum results to return |
+| `include_private_scratch` | bool | No | `false` | Include `private_scratch` visibility entries |
+| `include_sealed` | bool | No | `false` | Include `sealed` (encrypted) entries |
+| `secrecy_levels` | SecrecyLevel[] | No | All levels | Restrict to specific secrecy levels |
+
+### Response
+
+```json
+{
+  "records": [
+    {
+      "id": "01916e3a-5678-7000-8000-000000000003",
+      "session_id": "sess_abc123",
+      "turn_id": "turn_001",
+      "topic_id": null,
+      "source": "conversation",
+      "speaker": "user",
+      "visibility": "normal",
+      "secrecy_level": "public",
+      "created_at": "2026-03-15T14:30:00Z",
+      "updated_at": "2026-03-15T14:30:00Z",
+      "content": { /* MemoryContent */ },
+      "metadata": {},
+      "derived_memory_ids": ["01916e3a-aaaa-..."],
+      "suppressed": false
+    }
+  ],
+  "total_candidates": 42
+}
+```
+
+<Callout type="info">
+Raw journal recall always returns verbatim content -- no fidelity degradation or noise is applied. Use `recall.query` for curated memory retrieval with living dynamics.
+</Callout>
 
 ## Next Steps
 

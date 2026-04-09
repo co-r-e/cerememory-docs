@@ -42,6 +42,8 @@ CMP organizes all operations into four categories:
 | `encode.store` | Store a new memory record |
 | `encode.batch` | Store multiple records with optional association inference |
 | `encode.update` | Update an existing record's content, emotion, or metadata |
+| `encode.store_raw` | Store a raw journal entry (verbatim preservation) |
+| `encode.batch_raw` | Store multiple raw journal entries |
 
 ### Recall
 
@@ -51,6 +53,7 @@ CMP organizes all operations into four categories:
 | `recall.associate` | Traverse the association graph from a given record |
 | `recall.timeline` | Time-bucketed retrieval within a date range |
 | `recall.graph` | Retrieve a subgraph of memory nodes and edges |
+| `recall.raw_query` | Forensic recall over the preserved raw journal |
 
 ### Lifecycle
 
@@ -58,10 +61,11 @@ CMP organizes all operations into four categories:
 |-----------|-------------|
 | `lifecycle.consolidate` | Migrate mature episodic memories to semantic store |
 | `lifecycle.decay_tick` | Manually trigger a decay computation cycle |
+| `lifecycle.dream_tick` | Summarize raw journal entries into episodic/semantic memory |
 | `lifecycle.set_mode` | Switch between Human and Perfect recall modes |
 | `lifecycle.forget` | Permanently delete records |
-| `lifecycle.export` | Export records to a CMA archive; gRPC exposes streaming bytes and CLI/MCP wrap the workflow |
-| `lifecycle.import` | Import records from a CMA archive; available through gRPC streaming and the CLI |
+| `lifecycle.export` | Export records to a CMA archive (HTTP, gRPC, CLI, MCP) |
+| `lifecycle.import` | Import records from a CMA archive (HTTP, gRPC, CLI) |
 
 ### Introspect
 

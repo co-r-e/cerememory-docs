@@ -153,6 +153,84 @@ pub enum AssociationType {
 }
 ```
 
+## RawJournalRecord
+
+The fundamental unit of the raw journal plane. Raw journal records preserve verbatim conversation content without curation, enabling forensic recall and dream-tick summarization.
+
+```rust
+pub struct RawJournalRecord {
+    pub id: Uuid,                            // UUIDv7 (time-ordered)
+    pub session_id: String,                  // session grouping key
+    pub turn_id: Option<String>,             // turn within a session
+    pub topic_id: Option<String>,            // topic grouping for dream processing
+    pub source: RawSource,                   // where this entry came from
+    pub speaker: RawSpeaker,                 // who produced this content
+    pub visibility: RawVisibility,           // visibility level
+    pub secrecy_level: SecrecyLevel,         // secrecy classification
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub content: MemoryContent,              // verbatim content blocks
+    pub metadata: serde_json::Value,         // arbitrary key-value pairs
+    pub derived_memory_ids: Vec<Uuid>,       // backlinks to curated memories created from this entry
+    pub suppressed: bool,                    // whether this entry is suppressed from dream processing
+}
+```
+
+<Callout type="info">
+Unlike curated `MemoryRecord`s, raw journal records are not subject to decay, noise, or fidelity dynamics. They preserve the original material exactly as received.
+</Callout>
+
+## RawSource
+
+Identifies the origin of a raw journal entry:
+
+```rust
+pub enum RawSource {
+    Conversation,  // user/assistant dialogue
+    ToolIO,        // tool input/output
+    Scratchpad,    // agent scratchpad content
+    Summary,       // generated summary
+    Imported,      // imported from external source
+}
+```
+
+## RawSpeaker
+
+Identifies who produced the raw journal content:
+
+```rust
+pub enum RawSpeaker {
+    User,
+    Assistant,
+    System,
+    Tool,
+}
+```
+
+## RawVisibility
+
+Controls how a raw journal entry is treated:
+
+```rust
+pub enum RawVisibility {
+    Normal,          // standard visibility
+    PrivateScratch,  // hidden from normal recall
+    Sealed,          // encrypted at rest
+}
+```
+
+## SecrecyLevel
+
+Classification level for dream-tick redaction:
+
+```rust
+pub enum SecrecyLevel {
+    Public,     // no redaction during dream summarization
+    Sensitive,  // partial redaction in dream summaries
+    Secret,     // full redaction -- excluded from dream output
+}
+```
+
 ## RecallMode
 
 Controls whether recall applies living dynamics or returns pristine data:

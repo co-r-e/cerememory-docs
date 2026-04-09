@@ -33,6 +33,12 @@ Retrieve system-wide statistics including record counts, average fidelity, backg
   "oldest_record": "2026-01-15T08:30:00Z",
   "newest_record": "2026-03-19T09:45:00Z",
   "total_recall_count": 1567,
+  "raw_journal_records": 1280,
+  "raw_journal_pending_dream": 45,
+  "dream_episodic_summaries": 60,
+  "dream_semantic_nodes": 25,
+  "last_dream_tick_at": "2026-03-19T06:00:00Z",
+  "background_dream_enabled": true,
   "evolution_metrics": {
     "parameter_adjustments": [],
     "detected_patterns": [],
@@ -52,6 +58,12 @@ Retrieve system-wide statistics including record counts, average fidelity, backg
 | `oldest_record` | DateTime | Timestamp of the oldest record |
 | `newest_record` | DateTime | Timestamp of the newest record |
 | `total_recall_count` | u64 | Total recall operations performed |
+| `raw_journal_records` | u32 | Total raw journal entries |
+| `raw_journal_pending_dream` | u32 | Raw journal entries not yet processed by dream tick |
+| `dream_episodic_summaries` | u32 | Episodic summaries created from dream processing |
+| `dream_semantic_nodes` | u32 | Semantic nodes promoted from dream processing |
+| `last_dream_tick_at` | DateTime or null | Timestamp of the last dream tick |
+| `background_dream_enabled` | bool | Whether background dream processing is running |
 | `evolution_metrics` | EvolutionMetrics or null | Adaptive tuning metrics when available |
 | `background_decay_enabled` | bool | Whether background decay is running |
 

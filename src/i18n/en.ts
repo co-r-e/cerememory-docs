@@ -151,7 +151,7 @@ export const en: Dictionary = {
   protocol: {
     number: '\u00a7 4',
     title: 'Cerememory Protocol (CMP)',
-    lead: 'CMP is a standardized, transport-agnostic interface connecting any LLM to Cerememory. HTTP and gRPC expose the full protocol surface, while MCP provides a focused 11-tool interface for agent workflows.',
+    lead: 'CMP is a standardized, transport-agnostic interface connecting any LLM to Cerememory. HTTP and gRPC expose the full protocol surface, while MCP provides a focused 15-tool interface for agent workflows.',
     encode: {
       category: 'Encode',
       title: 'Write Memories',
@@ -159,6 +159,8 @@ export const en: Dictionary = {
         'encode.store \u2013 Store a single record',
         'encode.batch \u2013 Batch store with auto-association',
         'encode.update \u2013 Update an existing record',
+        'encode.store_raw \u2013 Store verbatim journal entry',
+        'encode.batch_raw \u2013 Batch store journal entries',
       ],
     },
     recall: {
@@ -169,6 +171,7 @@ export const en: Dictionary = {
         'recall.associate \u2013 Get associations',
         'recall.timeline \u2013 Time-series retrieval',
         'recall.graph \u2013 Subgraph retrieval',
+        'recall.raw_query \u2013 Forensic journal recall',
       ],
     },
     lifecycle: {
@@ -177,6 +180,7 @@ export const en: Dictionary = {
       ops: [
         'lifecycle.consolidate \u2013 Trigger consolidation',
         'lifecycle.decay_tick \u2013 Run decay engine',
+        'lifecycle.dream_tick \u2013 Summarize journal to memory',
         'lifecycle.forget \u2013 Permanently delete',
         'lifecycle.set_mode \u2013 Human / Perfect mode',
       ],

@@ -38,6 +38,8 @@ Health endpoints (`/health`, `/readiness`) bypass authentication and rate limiti
 | POST | `/v1/encode` | Yes | `EncodeStoreRequest` | `EncodeStoreResponse` (200) |
 | POST | `/v1/encode/batch` | Yes | `EncodeBatchRequest` | `EncodeBatchResponse` (200) |
 | PATCH | `/v1/encode/:record_id` | Yes | `EncodeUpdateRequest` | 204 No Content |
+| POST | `/v1/encode/raw` | Yes | `EncodeStoreRawRequest` | `EncodeStoreRawResponse` (200) |
+| POST | `/v1/encode/raw/batch` | Yes | `EncodeBatchStoreRawRequest` | `EncodeBatchStoreRawResponse` (200) |
 
 ### Recall
 
@@ -47,6 +49,7 @@ Health endpoints (`/health`, `/readiness`) bypass authentication and rate limiti
 | POST | `/v1/recall/associate/:record_id` | Yes | `RecallAssociateRequest` | `RecallAssociateResponse` (200) |
 | POST | `/v1/recall/timeline` | Yes | `RecallTimelineRequest` | `RecallTimelineResponse` (200) |
 | POST | `/v1/recall/graph` | Yes | `RecallGraphRequest` | `RecallGraphResponse` (200) |
+| POST | `/v1/recall/raw` | Yes | `RecallRawQueryRequest` | `RecallRawQueryResponse` (200) |
 
 ### Lifecycle
 
@@ -54,8 +57,11 @@ Health endpoints (`/health`, `/readiness`) bypass authentication and rate limiti
 |--------|------|------|-------------|----------|
 | POST | `/v1/lifecycle/consolidate` | Yes | `ConsolidateRequest` | `ConsolidateResponse` (200) |
 | POST | `/v1/lifecycle/decay-tick` | Yes | `DecayTickRequest` | `DecayTickResponse` (200) |
+| POST | `/v1/lifecycle/dream-tick` | Yes | `DreamTickRequest` | `DreamTickResponse` (200) |
 | PUT | `/v1/lifecycle/mode` | Yes | `SetModeRequest` | 204 No Content |
 | DELETE | `/v1/lifecycle/forget` | Yes | `ForgetRequest` | `{"records_deleted": N}` (200) |
+| POST | `/v1/lifecycle/export` | Yes | `ExportRequest` | `ExportResponse` (200) |
+| POST | `/v1/lifecycle/import` | Yes | `ImportRequest` | `ImportResponse` (200) |
 
 ### Introspect
 
@@ -111,7 +117,7 @@ Default limits: 100 requests/second with a burst of 50.
 
 ## Request Size Limits
 
-HTTP API routes under `/v1/*` are capped at **2 MiB** request bodies. This is separate from modality-level limits enforced by the engine itself.
+HTTP API routes under `/v1/*` are capped at **64 MB** request bodies (large enough for archive imports). This is separate from modality-level limits enforced by the engine itself.
 
 ## CORS
 

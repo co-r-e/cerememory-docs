@@ -69,6 +69,53 @@ In server mode, Cerememory also runs decay automatically in the background at th
 }
 ```
 
+## lifecycle.dream_tick
+
+Trigger dream processing -- summarize raw journal entries into curated episodic and semantic memories. This is analogous to memory consolidation during sleep.
+
+**Endpoint:** `POST /v1/lifecycle/dream-tick`
+
+### Request
+
+```json
+{
+  "session_id": "sess_abc123",
+  "dry_run": false,
+  "max_groups": 10,
+  "include_private_scratch": false,
+  "include_sealed": false,
+  "promote_semantic": true,
+  "secrecy_levels": ["public", "sensitive"]
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `session_id` | string | No | None | Process only entries from this session. When omitted, processes all pending entries |
+| `dry_run` | bool | No | `false` | Preview summarization without creating records |
+| `max_groups` | u32 | No | `10` | Maximum number of topic groups to process per call |
+| `include_private_scratch` | bool | No | `false` | Include `private_scratch` visibility entries |
+| `include_sealed` | bool | No | `false` | Include `sealed` (encrypted) entries |
+| `promote_semantic` | bool | No | `true` | Promote factual content to the semantic store |
+| `secrecy_levels` | SecrecyLevel[] | No | All levels | Restrict to specific secrecy levels |
+
+### Response
+
+```json
+{
+  "groups_processed": 5,
+  "raw_records_processed": 45,
+  "episodic_summaries_created": 8,
+  "semantic_nodes_created": 3
+}
+```
+
+<Callout type="info">
+Dream tick groups raw journal entries by topic (inferred from time gaps and lexical shift), summarizes each group into episodic memory, and optionally promotes factual content to semantic memory. Entries with `secrecy_level: "secret"` are excluded by default. Created records include backlinks (`derived_memory_ids`) to the source raw journal entries.
+</Callout>
+
+In server mode, Cerememory can run dream processing automatically in the background at the configured interval (`dream.background_interval_secs`).
+
 ## lifecycle.set_mode
 
 Switch the global recall mode between Human and Perfect.
@@ -135,9 +182,7 @@ Forget is irreversible. The protocol always requires `confirm: true`, and the en
 
 Export memory records to a CMA archive.
 
-<Callout type="info">
-HTTP REST does not expose export routes. Export is available through gRPC streaming, the CLI, and the MCP `export` tool.
-</Callout>
+**Endpoint:** `POST /v1/lifecycle/export`
 
 ### Request
 
@@ -145,6 +190,7 @@ HTTP REST does not expose export routes. Export is available through gRPC stream
 {
   "format": "cma",
   "stores": ["episodic", "semantic"],
+  "include_raw_journal": true,
   "encrypt": true,
   "encryption_key": "correct horse battery staple"
 }
@@ -154,6 +200,7 @@ HTTP REST does not expose export routes. Export is available through gRPC stream
 |-------|------|----------|---------|-------------|
 | `format` | string | No | `cma` | Archive format; `cma` is currently the only supported value |
 | `stores` | StoreType[] | No | All stores | Limit export to specific stores |
+| `include_raw_journal` | bool | No | `false` | Include raw journal entries in the archive |
 | `encrypt` | bool | No | `false` | Encrypt the archive |
 | `encryption_key` | string | No | None | Archive passphrase when `encrypt` is `true` |
 
@@ -180,9 +227,7 @@ In gRPC, this metadata is sent with the first streamed chunk of archive bytes. I
 
 Import records from a CMA archive.
 
-<Callout type="info">
-HTTP REST and MCP do not currently expose import. Use the CLI or the gRPC streaming API.
-</Callout>
+**Endpoint:** `POST /v1/lifecycle/import`
 
 ### CMP Request
 

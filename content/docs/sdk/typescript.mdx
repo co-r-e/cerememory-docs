@@ -94,6 +94,75 @@ await client.forget(recordId, {
 });
 ```
 
+### `storeRaw(text, options)`
+
+Store a verbatim raw journal entry.
+
+```typescript
+const rawId = await client.storeRaw(
+  "The user said they prefer Neovim",
+  {
+    sessionId: "sess_001",
+    topicId: "editor-preferences",
+    source: "conversation",
+    speaker: "user",
+  }
+);
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `sessionId` | `string` | -- | Required. Session identifier |
+| `topicId` | `string` | None | Topic identifier for dream grouping |
+| `source` | `RawSource` | `"conversation"` | `conversation`, `tool_io`, `scratchpad`, `summary`, or `imported` |
+| `speaker` | `RawSpeaker` | `"user"` | `user`, `assistant`, `system`, or `tool` |
+| `visibility` | `RawVisibility` | `"normal"` | `normal`, `private_scratch`, or `sealed` |
+| `secrecyLevel` | `SecrecyLevel` | `"public"` | `public`, `sensitive`, or `secret` |
+
+### `recallRaw(options)`
+
+Query the raw journal for verbatim entries.
+
+```typescript
+const entries = await client.recallRaw({
+  query: "editor preference",
+  sessionId: "sess_001",
+  limit: 10,
+});
+
+for (const entry of entries) {
+  console.log(entry.session_id, entry.speaker);
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `query` | `string` | None | Full-text search query |
+| `sessionId` | `string` | None | Filter by session |
+| `limit` | `number` | `10` | Maximum results |
+| `includePrivateScratch` | `boolean` | `false` | Include `private_scratch` entries |
+| `includeSealed` | `boolean` | `false` | Include `sealed` entries |
+| `secrecyLevels` | `SecrecyLevel[]` | None | Restrict to specific secrecy levels |
+
+### `dreamTick(options)`
+
+Summarize raw journal entries into curated episodic and semantic memories.
+
+```typescript
+const result = await client.dreamTick({ sessionId: "sess_001" });
+console.log(result.episodic_summaries_created, result.semantic_nodes_created);
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `session_id` | `string` | None | Process only entries from this session |
+| `dry_run` | `boolean` | `false` | Preview without creating records |
+| `max_groups` | `number` | `10` | Maximum topic groups to process |
+| `include_private_scratch` | `boolean` | `false` | Include `private_scratch` entries |
+| `include_sealed` | `boolean` | `false` | Include `sealed` entries |
+| `promote_semantic` | `boolean` | `true` | Promote factual content to the semantic store |
+| `secrecy_levels` | `SecrecyLevel[]` | None | Restrict to specific secrecy levels |
+
 ### `stats()` and `health()`
 
 ```typescript
@@ -101,7 +170,7 @@ const stats = await client.stats();
 const health = await client.health();
 ```
 
-`stats()` returns the full `StatsResponse`, including `background_decay_enabled` and optional `evolution_metrics`.
+`stats()` returns the full `StatsResponse`, including `background_decay_enabled`, `background_dream_enabled`, raw journal counts, dream processing status, and optional `evolution_metrics`.
 
 ## Full CMP Methods
 
@@ -111,15 +180,21 @@ The client also exposes protocol-level methods for the full REST surface:
 |--------|---------|
 | `encodeStore()` | `POST /v1/encode` |
 | `encodeBatch()` | `POST /v1/encode/batch` |
+| `encodeStoreRaw()` | `POST /v1/encode/raw` |
+| `encodeBatchStoreRaw()` | `POST /v1/encode/raw/batch` |
 | `encodeUpdate(recordId, request)` | `PATCH /v1/encode/:record_id` |
 | `recallQuery()` | `POST /v1/recall/query` |
 | `recallAssociate(recordId, request)` | `POST /v1/recall/associate/:record_id` |
 | `recallTimeline()` | `POST /v1/recall/timeline` |
 | `recallGraph()` | `POST /v1/recall/graph` |
+| `recallRawQuery()` | `POST /v1/recall/raw` |
 | `lifecycleConsolidate()` | `POST /v1/lifecycle/consolidate` |
 | `lifecycleDecayTick()` | `POST /v1/lifecycle/decay-tick` |
 | `lifecycleSetMode()` | `PUT /v1/lifecycle/mode` |
 | `lifecycleForget()` | `DELETE /v1/lifecycle/forget` |
+| `lifecycleDreamTick()` | `POST /v1/lifecycle/dream-tick` |
+| `lifecycleExport()` | `POST /v1/lifecycle/export` |
+| `lifecycleImport()` | `POST /v1/lifecycle/import` |
 | `introspectStats()` | `GET /v1/introspect/stats` |
 | `introspectRecord(recordId)` | `GET /v1/introspect/record/:record_id` |
 | `introspectDecayForecast()` | `POST /v1/introspect/decay-forecast` |
@@ -187,10 +262,13 @@ The SDK exports protocol and model types such as:
 ```typescript
 import type {
   EncodeStoreRequest,
+  EncodeStoreRawRequest,
   MemoryRecord,
+  RawJournalRecord,
   RecalledMemory,
   StatsResponse,
   EvolutionMetrics,
+  DreamTickResponse,
 } from "@cerememory/sdk";
 ```
 

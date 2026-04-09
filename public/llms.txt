@@ -19,7 +19,7 @@
 
 - [CMP Protocol Overview](https://cerememory.dev/docs/protocol/overview): Introduction to the Cerememory Protocol (CMP) -- the transport-agnostic API for living memory.
 - [Encode Operations](https://cerememory.dev/docs/protocol/encode): Store and update memories using CMP encode operations.
-- [Recall Operations](https://cerememory.dev/docs/protocol/recall): Query and retrieve memories using multimodal cues, association traversal, timelines, and graphs.
+- [Recall Operations](https://cerememory.dev/docs/protocol/recall): Query and retrieve memories using multimodal cues, association traversal, timelines, graph subgraphs, and raw journal forensic recall.
 - [Lifecycle Operations](https://cerememory.dev/docs/protocol/lifecycle): Manage memory dynamics: consolidation, decay, mode switching, forgetting, export, and import.
 - [Introspect Operations](https://cerememory.dev/docs/protocol/introspect): Observe system state, inspect records, forecast decay, and monitor evolution.
 

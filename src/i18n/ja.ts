@@ -152,7 +152,7 @@ export const ja: Dictionary = {
   protocol: {
     number: '\u00a7 4',
     title: 'Cerememory Protocol (CMP)',
-    lead: 'CMP は、あらゆる LLM を Cerememory に接続する標準化されたトランスポート非依存のインターフェースです。HTTP と gRPC がプロトコルの全機能を公開し、MCP はエージェントワークフロー向けに11ツールのインターフェースを提供します。',
+    lead: 'CMP は、あらゆる LLM を Cerememory に接続する標準化されたトランスポート非依存のインターフェースです。HTTP と gRPC がプロトコルの全機能を公開し、MCP はエージェントワークフロー向けに15ツールのインターフェースを提供します。',
     encode: {
       category: 'Encode',
       title: '記憶の書き込み',
@@ -160,6 +160,8 @@ export const ja: Dictionary = {
         'encode.store \u2013 単一レコードの保存',
         'encode.batch \u2013 自動連想付きバッチ保存',
         'encode.update \u2013 既存レコードの更新',
+        'encode.store_raw \u2013 生ジャーナルの原文保存',
+        'encode.batch_raw \u2013 ジャーナルのバッチ保存',
       ],
     },
     recall: {
@@ -170,6 +172,7 @@ export const ja: Dictionary = {
         'recall.associate \u2013 連想の取得',
         'recall.timeline \u2013 時系列検索',
         'recall.graph \u2013 サブグラフ検索',
+        'recall.raw_query \u2013 ジャーナルのフォレンジック検索',
       ],
     },
     lifecycle: {
@@ -178,6 +181,7 @@ export const ja: Dictionary = {
       ops: [
         'lifecycle.consolidate \u2013 固定化の実行',
         'lifecycle.decay_tick \u2013 減衰エンジンの実行',
+        'lifecycle.dream_tick \u2013 ジャーナルから記憶への要約',
         'lifecycle.forget \u2013 完全な削除',
         'lifecycle.set_mode \u2013 Human / Perfect モード',
       ],

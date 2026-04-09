@@ -104,6 +104,7 @@ cerememory store <TEXT> [OPTIONS]
 |------|------|---------|-------------|
 | `<TEXT>` | string | -- | Required. Text content to store |
 | `--store` | string | `episodic` | Target store |
+| `--emotion` | string | None | Emotion label (e.g., `joy`, `trust`, `fear`) |
 | `--embedding` | string | None | Comma-separated embedding vector |
 
 <Terminal title="Example: Store a semantic memory">
@@ -115,6 +116,35 @@ cerememory store "The user prefers dark mode" --store semantic
 <Callout type="warning">
 The working store is intentionally in-memory only. Records written there do not survive process restarts.
 </Callout>
+
+---
+
+## store-raw
+
+Store a verbatim raw journal entry.
+
+```bash
+cerememory store-raw <TEXT> [OPTIONS]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `<TEXT>` | string | -- | Required. Text content to preserve |
+| `--session-id` | string | -- | Required. Session identifier |
+| `--topic-id` | string | None | Topic identifier for dream grouping |
+| `--source` | string | `conversation` | `conversation`, `tool_io`, `scratchpad`, `summary`, or `imported` |
+| `--speaker` | string | `user` | `user`, `assistant`, `system`, or `tool` |
+| `--visibility` | string | `normal` | `normal`, `private_scratch`, or `sealed` |
+| `--secrecy-level` | string | `public` | `public`, `sensitive`, or `secret` |
+
+<Terminal title="Example: Store a conversation turn">
+```bash
+cerememory store-raw "I prefer using Neovim for all my coding" \
+  --session-id sess-001 \
+  --source conversation \
+  --speaker user
+```
+</Terminal>
 
 ---
 
@@ -135,6 +165,31 @@ cerememory recall <QUERY> [OPTIONS]
 <Terminal title="Example: Recall with perfect mode">
 ```bash
 cerememory recall "user preferences" --limit 5 --mode perfect
+```
+</Terminal>
+
+---
+
+## recall-raw
+
+Query the raw journal for verbatim entries.
+
+```bash
+cerememory recall-raw [OPTIONS]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--query` | string | None | Full-text search query |
+| `--session-id` | string | None | Filter by session |
+| `--limit` | u32 | `10` | Maximum number of results |
+| `--include-private-scratch` | bool | `false` | Include `private_scratch` entries |
+| `--include-sealed` | bool | `false` | Include `sealed` entries |
+| `--secrecy-levels` | string | All | Comma-separated `public`, `sensitive`, `secret` |
+
+<Terminal title="Example: Search raw journal by session">
+```bash
+cerememory recall-raw --session-id sess-001 --query "editor preference"
 ```
 </Terminal>
 
@@ -188,6 +243,32 @@ cerememory decay-tick --duration 7200
 
 ---
 
+## dream-tick
+
+Run dream processing to summarize raw journal entries into curated episodic and semantic memories.
+
+```bash
+cerememory dream-tick [OPTIONS]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--session-id` | string | None | Process only entries from this session |
+| `--dry-run` | bool | `false` | Preview without creating records |
+| `--max-groups` | u32 | `10` | Maximum topic groups to process per call |
+| `--include-private-scratch` | bool | `false` | Include `private_scratch` entries |
+| `--include-sealed` | bool | `false` | Include `sealed` entries |
+| `--promote-semantic` | bool | `true` | Promote factual content to the semantic store |
+| `--secrecy-levels` | string | All | Comma-separated `public`, `sensitive`, `secret` |
+
+<Terminal title="Example: Dream-process a specific session">
+```bash
+cerememory dream-tick --session-id sess-001 --dry-run
+```
+</Terminal>
+
+---
+
 ## forget
 
 Permanently delete a memory record.
@@ -219,8 +300,9 @@ cerememory export [OPTIONS]
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--output` | path | `./backup.cma` | Output file path |
-| `--format` | string | `cma` | Archive format. `cma` is currently the only supported value |
+| `--format` | string | `cma` | Archive format (`cma` or `jsonl`; the latter is an alias) |
 | `--stores` | string | None | Comma-separated store filter |
+| `--include-raw-journal` | bool | `false` | Include raw journal entries in the archive |
 | `--encrypt` | bool | `false` | Encrypt the archive |
 | `--encryption-key` | string | None | Archive passphrase |
 | `--encryption-key-stdin` | bool | `false` | Read the archive passphrase from stdin |
@@ -248,6 +330,7 @@ cerememory import <PATH> [OPTIONS]
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `<PATH>` | path | -- | Required. CMA archive path |
+| `--strategy` | string | `merge` | `merge` or `replace` |
 | `--decryption-key` | string | None | Decryption passphrase for encrypted archives |
 | `--decryption-key-stdin` | bool | `false` | Read the decryption passphrase from stdin |
 | `--conflict-resolution` | string | `keep_newer` | `keep_existing`, `keep_imported`, or `keep_newer` |
@@ -293,13 +376,17 @@ The MCP server exposes these tools:
 | `store` | Store a new memory record |
 | `update` | Update an existing record's content or emotion |
 | `batch_store` | Store multiple memories at once with inferred associations |
+| `store_raw` | Store a verbatim raw journal entry |
+| `batch_store_raw` | Store multiple raw journal entries |
 | `recall` | Query memories, or list recent ones when `query` is omitted |
+| `recall_raw` | Forensic query over the raw journal |
 | `timeline` | Retrieve memories in time buckets |
 | `associate` | Traverse the association graph from a record |
+| `inspect` | Inspect a specific record |
 | `forget` | Permanently delete records by UUID |
+| `dream_tick` | Summarize raw journal into curated memory |
 | `consolidate` | Trigger episodic-to-semantic consolidation |
 | `stats` | View system statistics |
-| `inspect` | Inspect a specific record |
 | `export` | Export a CMA archive to an explicit output path |
 
 <Callout type="info">

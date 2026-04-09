@@ -90,6 +90,72 @@ deleted = client.forget(record_id, confirm=True, cascade=False)
 print(deleted)
 ```
 
+### `store_raw(text, ...)`
+
+Store a verbatim raw journal entry.
+
+```python
+raw_id = client.store_raw(
+    "The user said they prefer Neovim",
+    session_id="sess_001",
+    topic_id="editor-preferences",
+    source="conversation",
+    speaker="user",
+)
+```
+
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `session_id` | `str` | -- | Required. Session identifier |
+| `topic_id` | `str | None` | `None` | Topic identifier for dream grouping |
+| `source` | `str | RawSource` | `"conversation"` | `conversation`, `tool_io`, `scratchpad`, `summary`, or `imported` |
+| `speaker` | `str | RawSpeaker` | `"user"` | `user`, `assistant`, `system`, or `tool` |
+| `visibility` | `str | RawVisibility` | `"normal"` | `normal`, `private_scratch`, or `sealed` |
+| `secrecy_level` | `str | SecrecyLevel` | `"public"` | `public`, `sensitive`, or `secret` |
+
+### `recall_raw(...)`
+
+Query the raw journal for verbatim entries.
+
+```python
+entries = client.recall_raw(
+    query="editor preference",
+    session_id="sess_001",
+    limit=10,
+)
+
+for entry in entries:
+    print(entry.session_id, entry.speaker)
+```
+
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `query` | `str | None` | `None` | Full-text search query |
+| `session_id` | `str | None` | `None` | Filter by session |
+| `limit` | `int` | `10` | Maximum results |
+| `include_private_scratch` | `bool` | `False` | Include `private_scratch` entries |
+| `include_sealed` | `bool` | `False` | Include `sealed` entries |
+| `secrecy_levels` | `list[str | SecrecyLevel] | None` | `None` | Restrict to specific secrecy levels |
+
+### `dream_tick(...)`
+
+Summarize raw journal entries into curated episodic and semantic memories.
+
+```python
+result = client.dream_tick(session_id="sess_001")
+print(result.episodic_summaries_created, result.semantic_nodes_created)
+```
+
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `session_id` | `str | None` | `None` | Process only entries from this session |
+| `dry_run` | `bool` | `False` | Preview without creating records |
+| `max_groups` | `int` | `10` | Maximum topic groups to process |
+| `include_private_scratch` | `bool` | `False` | Include `private_scratch` entries |
+| `include_sealed` | `bool` | `False` | Include `sealed` entries |
+| `promote_semantic` | `bool` | `True` | Promote factual content to the semantic store |
+| `secrecy_levels` | `list[str | SecrecyLevel] | None` | `None` | Restrict to specific secrecy levels |
+
 ### `stats()`, `get_record()`, `health()`, `readiness()`
 
 ```python
@@ -99,7 +165,7 @@ health = client.health()
 readiness = client.readiness()
 ```
 
-`stats()` returns `background_decay_enabled` and optional `evolution_metrics` in addition to the usual record counters.
+`stats()` returns `background_decay_enabled`, `background_dream_enabled`, raw journal counts, dream processing status, and optional `evolution_metrics` in addition to the usual record counters.
 
 ## Full CMP Methods
 
@@ -109,15 +175,21 @@ The sync client also exposes protocol-level methods:
 |--------|---------|
 | `encode_store()` | `POST /v1/encode` |
 | `encode_batch()` | `POST /v1/encode/batch` |
+| `encode_store_raw()` | `POST /v1/encode/raw` |
+| `encode_batch_store_raw()` | `POST /v1/encode/raw/batch` |
 | `encode_update(record_id, request)` | `PATCH /v1/encode/:record_id` |
 | `recall_query()` | `POST /v1/recall/query` |
 | `recall_associate(record_id, request)` | `POST /v1/recall/associate/:record_id` |
 | `recall_timeline()` | `POST /v1/recall/timeline` |
 | `recall_graph()` | `POST /v1/recall/graph` |
+| `recall_raw_query()` | `POST /v1/recall/raw` |
 | `lifecycle_consolidate()` | `POST /v1/lifecycle/consolidate` |
 | `lifecycle_decay_tick()` | `POST /v1/lifecycle/decay-tick` |
 | `lifecycle_set_mode()` | `PUT /v1/lifecycle/mode` |
 | `lifecycle_forget()` | `DELETE /v1/lifecycle/forget` |
+| `lifecycle_dream_tick()` | `POST /v1/lifecycle/dream-tick` |
+| `lifecycle_export()` | `POST /v1/lifecycle/export` |
+| `lifecycle_import()` | `POST /v1/lifecycle/import` |
 | `introspect_stats()` | `GET /v1/introspect/stats` |
 | `introspect_record(record_id)` | `GET /v1/introspect/record/:record_id` |
 | `introspect_decay_forecast()` | `POST /v1/introspect/decay-forecast` |
@@ -183,10 +255,13 @@ The package exports protocol and model types such as:
 ```python
 from cerememory import (
     EncodeStoreRequest,
+    EncodeStoreRawRequest,
     MemoryRecord,
+    RawJournalRecord,
     RecalledMemory,
     StatsResponse,
     EvolutionMetrics,
+    DreamTickResponse,
 )
 ```
 

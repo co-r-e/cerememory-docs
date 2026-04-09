@@ -45,6 +45,9 @@ base_url = null       # optional base URL override
 [decay]
 background_interval_secs = 3600  # background decay tick interval
 
+[dream]
+background_interval_secs = 86400  # background dream tick interval (default: 24 hours)
+
 [rate_limit]
 requests_per_second = 100
 burst = 50
@@ -82,6 +85,7 @@ All configuration options can be overridden via environment variables with the `
 | `CEREMEMORY_LLM__MODEL` | `llm.model` | None | Model name override |
 | `CEREMEMORY_LLM__BASE_URL` | `llm.base_url` | None | API base URL override |
 | `CEREMEMORY_DECAY__BACKGROUND_INTERVAL_SECS` | `decay.background_interval_secs` | `3600` | Decay tick interval (seconds) |
+| `CEREMEMORY_DREAM__BACKGROUND_INTERVAL_SECS` | `dream.background_interval_secs` | `86400` | Dream tick interval (seconds) |
 | `CEREMEMORY_RATE_LIMIT__REQUESTS_PER_SECOND` | `rate_limit.requests_per_second` | `100` | Rate limit RPS |
 | `CEREMEMORY_RATE_LIMIT__BURST` | `rate_limit.burst` | `50` | Rate limit burst |
 | `CEREMEMORY_LOG__LEVEL` | `log.level` | `info` | Log level |
@@ -107,7 +111,9 @@ If you are only using Cerememory as a local memory database, you do **not** need
 - Store and recall text or structured memories
 - Search by text
 - Search by precomputed embeddings you provide yourself
-- Inspect, stats, timeline, graph, associate
+- Store and recall raw journal entries
+- Dream tick processing (without LLM, outputs raw concatenation)
+- Inspect, stats, timeline, associate
 - Forget, decay tick, mode switching
 - Export and import archives
 - MCP / CLI / SDK basic CRUD flows
@@ -119,6 +125,7 @@ If you are only using Cerememory as a local memory database, you do **not** need
 - Audio transcription / audio recall cues
 - Consolidation summarization
 - Relation extraction during consolidation
+- Dream tick intelligent summarization (topic inference, secrecy-aware redaction)
 - Other multimodal understanding features that call a provider
 
 ## CLI Flag Overrides
@@ -164,8 +171,10 @@ When Cerememory starts, it creates the following structure inside `data_dir`:
     <FileTree.File name="semantic.redb" />
     <FileTree.File name="procedural.redb" />
     <FileTree.File name="emotional.redb" />
+    <FileTree.File name="raw.redb" />
     <FileTree.File name="vectors.redb" />
     <FileTree.Folder name="text_index" />
+    <FileTree.Folder name="raw_text_index" />
   </FileTree.Folder>
 </FileTree>
 

@@ -1,4 +1,4 @@
-# Cerememory — Full Documentation
+# Cerememory - Full Documentation
 
 > A neuroscience-inspired memory database that gives AI systems persistent, evolving memory.
 
@@ -49,11 +49,13 @@ Each store has distinct characteristics for decay rates, consolidation behavior,
 What Can You Do With Cerememory?
 
 - Store memories with automatic store classification, embedding generation, and association inference
+- Preserve verbatim conversations in the raw journal for forensic recall
 - Recall memories with human-like fidelity (noise, decay) or perfect retrieval mode
+- Run dream processing to summarize raw journal entries into curated episodic and semantic memories
 - Traverse association graphs across all memory stores via spreading activation
 - Run background decay ticks that naturally age and prune stale memories
 - Consolidate episodic memories into semantic knowledge over time
-- Export and import encrypted memory archives for portability
+- Export and import encrypted memory archives (including raw journal) for portability
 - Integrate with any LLM via HTTP, gRPC, or MCP transports
 
 Next Steps
@@ -131,6 +133,7 @@ By default Cerememory starts with:
 - In-memory working memory
 - /health and /readiness enabled
 - /metrics disabled until http.metrics_enabled = true
+- Background dream processing (when dream.background_interval_secs is configured)
 
 For agent workflows, run cerememory mcp to expose the MCP tool surface over stdio instead of starting the HTTP server.
 
@@ -186,8 +189,11 @@ Crate Structure
       
       
       
+      
+      
     
     
+      
       
       
       
@@ -208,7 +214,7 @@ Three transport bindings expose CMP externally:
 
 - HTTP/REST (axum) -- primary network transport. Binds to 127.0.0.1:8420 by default and includes Bearer auth, request IDs, trusted-proxy-aware rate limiting, optional CORS, and opt-in Prometheus metrics.
 - gRPC (tonic) -- optional network transport. Supports export/import streaming and requires TLS when auth is enabled or the deployment is exposed beyond loopback.
-- MCP (rmcp) -- stdio transport for Claude Code and MCP-compatible clients. Exposes 11 LLM-friendly tools: store, update, batch_store, recall, timeline, associate, forget, consolidate, stats, inspect, and export.
+- MCP (rmcp) -- stdio transport for Claude Code and MCP-compatible clients. Exposes 15 LLM-friendly tools including store, store_raw, batch_store, batch_store_raw, update, recall, recall_raw, timeline, associate, inspect, forget, dream_tick, consolidate, stats, and export.
 
 Engine Layer
 
@@ -221,7 +227,7 @@ The CerememoryEngine is the central coordinator. It implements encode, recall, l
 
 Store Layer
 
-Five specialized stores implement the common Store trait:
+Five specialized curated stores implement the common Store trait:
 
 - Episodic
 - Semantic
@@ -230,6 +236,8 @@ Five specialized stores implement the common Store trait:
 - Working
 
 All persistent stores are backed by redb. Working memory is intentionally in-memory only.
+
+A sixth store, the Raw Journal, operates alongside the curated stores. It preserves verbatim conversation content using redb with a dedicated Tantivy full-text search index, enabling forensic recall and dream-tick summarization.
 
 Supporting Engines
 
@@ -331,9 +339,24 @@ Key characteristics:
 
 Working memory is intentionally volatile. It represents the current session's active context. Use the episodic or semantic stores for information that must survive restarts.
 
+Raw Journal Store
+
+The raw journal is a separate preservation plane that operates alongside the five curated stores. It holds verbatim conversation content exactly as received, without any curation, decay, or noise processing.
+
+Key characteristics:
+
+- No decay -- Raw journal entries are preserved indefinitely with full fidelity
+- Forensic recall -- Full-text search over preserved content via a dedicated Tantivy index
+- Session-indexed -- Entries are grouped by session and can be filtered by speaker, source, and topic
+- Dream processing -- The lifecycle.dream_tick operation summarizes raw entries into curated episodic/semantic memories, with backlinks to the source entries
+- Secrecy-aware -- Entries marked as secret are redacted during dream summarization; sensitive entries receive partial redaction
+- Suppression -- Individual entries can be suppressed to exclude them from future dream processing
+
+The raw journal is backed by redb for durable storage plus a dedicated Tantivy full-text search index. Unlike the curated stores, it does not implement the Store trait -- it has its own specialized API optimized for conversation preservation and forensic recall.
+
 The Store Trait
 
-All five stores implement the same Store trait, providing a uniform interface:
+All five curated stores implement the same Store trait, providing a uniform interface:
 
 Next Steps
 
@@ -533,6 +556,28 @@ Association
 
 A weighted, typed, bidirectional link between two memory records. Associations enable the spreading activation engine to traverse the memory graph.
 
+RawJournalRecord
+
+The fundamental unit of the raw journal plane. Raw journal records preserve verbatim conversation content without curation, enabling forensic recall and dream-tick summarization.
+
+Unlike curated MemoryRecords, raw journal records are not subject to decay, noise, or fidelity dynamics. They preserve the original material exactly as received.
+
+RawSource
+
+Identifies the origin of a raw journal entry:
+
+RawSpeaker
+
+Identifies who produced the raw journal content:
+
+RawVisibility
+
+Controls how a raw journal entry is treated:
+
+SecrecyLevel
+
+Classification level for dream-tick redaction:
+
 RecallMode
 
 Controls whether recall applies living dynamics or returns pristine data:
@@ -579,6 +624,8 @@ Encode
 | encode.store | Store a new memory record |
 | encode.batch | Store multiple records with optional association inference |
 | encode.update | Update an existing record's content, emotion, or metadata |
+| encode.store_raw | Store a raw journal entry (verbatim preservation) |
+| encode.batch_raw | Store multiple raw journal entries |
 
 Recall
 
@@ -588,6 +635,7 @@ Recall
 | recall.associate | Traverse the association graph from a given record |
 | recall.timeline | Time-bucketed retrieval within a date range |
 | recall.graph | Retrieve a subgraph of memory nodes and edges |
+| recall.raw_query | Forensic recall over the preserved raw journal |
 
 Lifecycle
 
@@ -595,10 +643,11 @@ Lifecycle
 |-----------|-------------|
 | lifecycle.consolidate | Migrate mature episodic memories to semantic store |
 | lifecycle.decay_tick | Manually trigger a decay computation cycle |
+| lifecycle.dream_tick | Summarize raw journal entries into episodic/semantic memory |
 | lifecycle.set_mode | Switch between Human and Perfect recall modes |
 | lifecycle.forget | Permanently delete records |
-| lifecycle.export | Export records to a CMA archive; gRPC exposes streaming bytes and CLI/MCP wrap the workflow |
-| lifecycle.import | Import records from a CMA archive; available through gRPC streaming and the CLI |
+| lifecycle.export | Export records to a CMA archive (HTTP, gRPC, CLI, MCP) |
+| lifecycle.import | Import records from a CMA archive (HTTP, gRPC, CLI) |
 
 Introspect
 
@@ -709,6 +758,44 @@ Returns 204 No Content on success.
 
 Updating a record does not reset its fidelity or decay state. The memory continues to age from its original creation time. If you need to "refresh" a memory, recall it (which triggers reconsolidation) rather than updating it.
 
+encode.store_raw
+
+Store a verbatim raw journal entry. Raw journal entries preserve the exact conversation content without curation, enabling forensic recall and dream-tick summarization.
+
+Endpoint: POST /v1/encode/raw
+
+Request
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| content | MemoryContent | Yes | -- | Verbatim content to preserve |
+| session_id | string | Yes | -- | Session identifier for grouping |
+| turn_id | string | No | None | Turn identifier within the session |
+| topic_id | string | No | None | Topic identifier for dream grouping |
+| source | RawSource | No | conversation | conversation, tool_io, scratchpad, summary, or imported |
+| speaker | RawSpeaker | No | user | user, assistant, system, or tool |
+| visibility | RawVisibility | No | normal | normal, private_scratch, or sealed |
+| secrecy_level | SecrecyLevel | No | public | public, sensitive, or secret |
+| metadata | JSON | No | {} | Arbitrary metadata |
+
+Response
+
+Raw journal entries are stored separately from curated memory records. They are not subject to decay or noise -- they preserve the original material exactly as received.
+
+encode.batch_raw
+
+Store multiple raw journal entries in a single request.
+
+Endpoint: POST /v1/encode/raw/batch
+
+Request
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| records | EncodeStoreRawRequest[] | Yes | Array of raw journal entries |
+
+Response
+
 Next Steps
 
 ---
@@ -788,7 +875,36 @@ Endpoint: POST /v1/recall/graph
 
 Request
 
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| center_id | Uuid | No | None | Anchor node for traversal |
+| depth | u32 | No | 2 | Maximum traversal hops |
+| edge_types | string[] | No | All types | Filter by association type names |
+| limit_nodes | u32 | No | 10 | Maximum nodes to return |
+
 Response
+
+recall.raw_query
+
+Forensic recall over the preserved raw journal. Returns verbatim raw journal entries matching the query, without any decay or noise applied.
+
+Endpoint: POST /v1/recall/raw
+
+Request
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| session_id | string | No | None | Filter to a specific session |
+| query | string | No | None | Full-text search query over raw journal content |
+| temporal | TemporalRange | No | None | Filter by time range |
+| limit | u32 | No | 10 | Maximum results to return |
+| include_private_scratch | bool | No | false | Include private_scratch visibility entries |
+| include_sealed | bool | No | false | Include sealed (encrypted) entries |
+| secrecy_levels | SecrecyLevel[] | No | All levels | Restrict to specific secrecy levels |
+
+Response
+
+Raw journal recall always returns verbatim content -- no fidelity degradation or noise is applied. Use recall.query for curated memory retrieval with living dynamics.
 
 Next Steps
 
@@ -831,6 +947,30 @@ Request
 
 Response
 
+lifecycle.dream_tick
+
+Trigger dream processing -- summarize raw journal entries into curated episodic and semantic memories. This is analogous to memory consolidation during sleep.
+
+Endpoint: POST /v1/lifecycle/dream-tick
+
+Request
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| session_id | string | No | None | Process only entries from this session. When omitted, processes all pending entries |
+| dry_run | bool | No | false | Preview summarization without creating records |
+| max_groups | u32 | No | 10 | Maximum number of topic groups to process per call |
+| include_private_scratch | bool | No | false | Include private_scratch visibility entries |
+| include_sealed | bool | No | false | Include sealed (encrypted) entries |
+| promote_semantic | bool | No | true | Promote factual content to the semantic store |
+| secrecy_levels | SecrecyLevel[] | No | All levels | Restrict to specific secrecy levels |
+
+Response
+
+Dream tick groups raw journal entries by topic (inferred from time gaps and lexical shift), summarizes each group into episodic memory, and optionally promotes factual content to semantic memory. Entries with secrecy_level: "secret" are excluded by default. Created records include backlinks (derived_memory_ids) to the source raw journal entries.
+
+In server mode, Cerememory can run dream processing automatically in the background at the configured interval (dream.background_interval_secs).
+
 lifecycle.set_mode
 
 Switch the global recall mode between Human and Perfect.
@@ -872,7 +1012,7 @@ lifecycle.export
 
 Export memory records to a CMA archive.
 
-HTTP REST does not expose export routes. Export is available through gRPC streaming, the CLI, and the MCP export tool.
+Endpoint: POST /v1/lifecycle/export
 
 Request
 
@@ -880,6 +1020,7 @@ Request
 |-------|------|----------|---------|-------------|
 | format | string | No | cma | Archive format; cma is currently the only supported value |
 | stores | StoreType[] | No | All stores | Limit export to specific stores |
+| include_raw_journal | bool | No | false | Include raw journal entries in the archive |
 | encrypt | bool | No | false | Encrypt the archive |
 | encryption_key | string | No | None | Archive passphrase when encrypt is true |
 
@@ -897,7 +1038,7 @@ lifecycle.import
 
 Import records from a CMA archive.
 
-HTTP REST and MCP do not currently expose import. Use the CLI or the gRPC streaming API.
+Endpoint: POST /v1/lifecycle/import
 
 CMP Request
 
@@ -941,6 +1082,12 @@ Response
 | oldest_record | DateTime | Timestamp of the oldest record |
 | newest_record | DateTime | Timestamp of the newest record |
 | total_recall_count | u64 | Total recall operations performed |
+| raw_journal_records | u32 | Total raw journal entries |
+| raw_journal_pending_dream | u32 | Raw journal entries not yet processed by dream tick |
+| dream_episodic_summaries | u32 | Episodic summaries created from dream processing |
+| dream_semantic_nodes | u32 | Semantic nodes promoted from dream processing |
+| last_dream_tick_at | DateTime or null | Timestamp of the last dream tick |
+| background_dream_enabled | bool | Whether background dream processing is running |
 | evolution_metrics | EvolutionMetrics or null | Adaptive tuning metrics when available |
 | background_decay_enabled | bool | Whether background decay is running |
 
@@ -1034,9 +1181,49 @@ Recall memories matching a text cue.
 
 forget(*record_ids, ...)
 
+store_raw(text, ...)
+
+Store a verbatim raw journal entry.
+
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| session_id | str | -- | Required. Session identifier |
+| topic_id | str | None | None | Topic identifier for dream grouping |
+| source | str | RawSource | "conversation" | conversation, tool_io, scratchpad, summary, or imported |
+| speaker | str | RawSpeaker | "user" | user, assistant, system, or tool |
+| visibility | str | RawVisibility | "normal" | normal, private_scratch, or sealed |
+| secrecy_level | str | SecrecyLevel | "public" | public, sensitive, or secret |
+
+recall_raw(...)
+
+Query the raw journal for verbatim entries.
+
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| query | str | None | None | Full-text search query |
+| session_id | str | None | None | Filter by session |
+| limit | int | 10 | Maximum results |
+| include_private_scratch | bool | False | Include private_scratch entries |
+| include_sealed | bool | False | Include sealed entries |
+| secrecy_levels | list[str | SecrecyLevel] | None | None | Restrict to specific secrecy levels |
+
+dream_tick(...)
+
+Summarize raw journal entries into curated episodic and semantic memories.
+
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| session_id | str | None | None | Process only entries from this session |
+| dry_run | bool | False | Preview without creating records |
+| max_groups | int | 10 | Maximum topic groups to process |
+| include_private_scratch | bool | False | Include private_scratch entries |
+| include_sealed | bool | False | Include sealed entries |
+| promote_semantic | bool | True | Promote factual content to the semantic store |
+| secrecy_levels | list[str | SecrecyLevel] | None | None | Restrict to specific secrecy levels |
+
 stats(), get_record(), health(), readiness()
 
-stats() returns background_decay_enabled and optional evolution_metrics in addition to the usual record counters.
+stats() returns background_decay_enabled, background_dream_enabled, raw journal counts, dream processing status, and optional evolution_metrics in addition to the usual record counters.
 
 Full CMP Methods
 
@@ -1046,15 +1233,21 @@ The sync client also exposes protocol-level methods:
 |--------|---------|
 | encode_store() | POST /v1/encode |
 | encode_batch() | POST /v1/encode/batch |
+| encode_store_raw() | POST /v1/encode/raw |
+| encode_batch_store_raw() | POST /v1/encode/raw/batch |
 | encode_update(record_id, request) | PATCH /v1/encode/:record_id |
 | recall_query() | POST /v1/recall/query |
 | recall_associate(record_id, request) | POST /v1/recall/associate/:record_id |
 | recall_timeline() | POST /v1/recall/timeline |
 | recall_graph() | POST /v1/recall/graph |
+| recall_raw_query() | POST /v1/recall/raw |
 | lifecycle_consolidate() | POST /v1/lifecycle/consolidate |
 | lifecycle_decay_tick() | POST /v1/lifecycle/decay-tick |
 | lifecycle_set_mode() | PUT /v1/lifecycle/mode |
 | lifecycle_forget() | DELETE /v1/lifecycle/forget |
+| lifecycle_dream_tick() | POST /v1/lifecycle/dream-tick |
+| lifecycle_export() | POST /v1/lifecycle/export |
+| lifecycle_import() | POST /v1/lifecycle/import |
 | introspect_stats() | GET /v1/introspect/stats |
 | introspect_record(record_id) | GET /v1/introspect/record/:record_id |
 | introspect_decay_forecast() | POST /v1/introspect/decay-forecast |
@@ -1132,9 +1325,49 @@ forget(recordId, options)
 
 Delete a memory record.
 
+storeRaw(text, options)
+
+Store a verbatim raw journal entry.
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| sessionId | string | -- | Required. Session identifier |
+| topicId | string | None | Topic identifier for dream grouping |
+| source | RawSource | "conversation" | conversation, tool_io, scratchpad, summary, or imported |
+| speaker | RawSpeaker | "user" | user, assistant, system, or tool |
+| visibility | RawVisibility | "normal" | normal, private_scratch, or sealed |
+| secrecyLevel | SecrecyLevel | "public" | public, sensitive, or secret |
+
+recallRaw(options)
+
+Query the raw journal for verbatim entries.
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| query | string | None | Full-text search query |
+| sessionId | string | None | Filter by session |
+| limit | number | 10 | Maximum results |
+| includePrivateScratch | boolean | false | Include private_scratch entries |
+| includeSealed | boolean | false | Include sealed entries |
+| secrecyLevels | SecrecyLevel[] | None | Restrict to specific secrecy levels |
+
+dreamTick(options)
+
+Summarize raw journal entries into curated episodic and semantic memories.
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| session_id | string | None | Process only entries from this session |
+| dry_run | boolean | false | Preview without creating records |
+| max_groups | number | 10 | Maximum topic groups to process |
+| include_private_scratch | boolean | false | Include private_scratch entries |
+| include_sealed | boolean | false | Include sealed entries |
+| promote_semantic | boolean | true | Promote factual content to the semantic store |
+| secrecy_levels | SecrecyLevel[] | None | Restrict to specific secrecy levels |
+
 stats() and health()
 
-stats() returns the full StatsResponse, including background_decay_enabled and optional evolution_metrics.
+stats() returns the full StatsResponse, including background_decay_enabled, background_dream_enabled, raw journal counts, dream processing status, and optional evolution_metrics.
 
 Full CMP Methods
 
@@ -1144,15 +1377,21 @@ The client also exposes protocol-level methods for the full REST surface:
 |--------|---------|
 | encodeStore() | POST /v1/encode |
 | encodeBatch() | POST /v1/encode/batch |
+| encodeStoreRaw() | POST /v1/encode/raw |
+| encodeBatchStoreRaw() | POST /v1/encode/raw/batch |
 | encodeUpdate(recordId, request) | PATCH /v1/encode/:record_id |
 | recallQuery() | POST /v1/recall/query |
 | recallAssociate(recordId, request) | POST /v1/recall/associate/:record_id |
 | recallTimeline() | POST /v1/recall/timeline |
 | recallGraph() | POST /v1/recall/graph |
+| recallRawQuery() | POST /v1/recall/raw |
 | lifecycleConsolidate() | POST /v1/lifecycle/consolidate |
 | lifecycleDecayTick() | POST /v1/lifecycle/decay-tick |
 | lifecycleSetMode() | PUT /v1/lifecycle/mode |
 | lifecycleForget() | DELETE /v1/lifecycle/forget |
+| lifecycleDreamTick() | POST /v1/lifecycle/dream-tick |
+| lifecycleExport() | POST /v1/lifecycle/export |
+| lifecycleImport() | POST /v1/lifecycle/import |
 | introspectStats() | GET /v1/introspect/stats |
 | introspectRecord(recordId) | GET /v1/introspect/record/:record_id |
 | introspectDecayForecast() | POST /v1/introspect/decay-forecast |
@@ -1293,6 +1532,7 @@ All configuration options can be overridden via environment variables with the C
 | CEREMEMORY_LLM__MODEL | llm.model | None | Model name override |
 | CEREMEMORY_LLM__BASE_URL | llm.base_url | None | API base URL override |
 | CEREMEMORY_DECAY__BACKGROUND_INTERVAL_SECS | decay.background_interval_secs | 3600 | Decay tick interval (seconds) |
+| CEREMEMORY_DREAM__BACKGROUND_INTERVAL_SECS | dream.background_interval_secs | 86400 | Dream tick interval (seconds) |
 | CEREMEMORY_RATE_LIMIT__REQUESTS_PER_SECOND | rate_limit.requests_per_second | 100 | Rate limit RPS |
 | CEREMEMORY_RATE_LIMIT__BURST | rate_limit.burst | 50 | Rate limit burst |
 | CEREMEMORY_LOG__LEVEL | log.level | info | Log level |
@@ -1316,7 +1556,9 @@ Features That Work Without An LLM Key
 - Store and recall text or structured memories
 - Search by text
 - Search by precomputed embeddings you provide yourself
-- Inspect, stats, timeline, graph, associate
+- Store and recall raw journal entries
+- Dream tick processing (without LLM, outputs raw concatenation)
+- Inspect, stats, timeline, associate
 - Forget, decay tick, mode switching
 - Export and import archives
 - MCP / CLI / SDK basic CRUD flows
@@ -1328,6 +1570,7 @@ Features That Require An LLM Key
 - Audio transcription / audio recall cues
 - Consolidation summarization
 - Relation extraction during consolidation
+- Dream tick intelligent summarization (topic inference, secrecy-aware redaction)
 - Other multimodal understanding features that call a provider
 
 CLI Flag Overrides
@@ -1362,6 +1605,8 @@ Data Directory Structure
 When Cerememory starts, it creates the following structure inside data_dir:
 
   
+    
+    
     
     
     
@@ -1518,6 +1763,8 @@ Encode
 | POST | /v1/encode | Yes | EncodeStoreRequest | EncodeStoreResponse (200) |
 | POST | /v1/encode/batch | Yes | EncodeBatchRequest | EncodeBatchResponse (200) |
 | PATCH | /v1/encode/:record_id | Yes | EncodeUpdateRequest | 204 No Content |
+| POST | /v1/encode/raw | Yes | EncodeStoreRawRequest | EncodeStoreRawResponse (200) |
+| POST | /v1/encode/raw/batch | Yes | EncodeBatchStoreRawRequest | EncodeBatchStoreRawResponse (200) |
 
 Recall
 
@@ -1527,6 +1774,7 @@ Recall
 | POST | /v1/recall/associate/:record_id | Yes | RecallAssociateRequest | RecallAssociateResponse (200) |
 | POST | /v1/recall/timeline | Yes | RecallTimelineRequest | RecallTimelineResponse (200) |
 | POST | /v1/recall/graph | Yes | RecallGraphRequest | RecallGraphResponse (200) |
+| POST | /v1/recall/raw | Yes | RecallRawQueryRequest | RecallRawQueryResponse (200) |
 
 Lifecycle
 
@@ -1534,8 +1782,11 @@ Lifecycle
 |--------|------|------|-------------|----------|
 | POST | /v1/lifecycle/consolidate | Yes | ConsolidateRequest | ConsolidateResponse (200) |
 | POST | /v1/lifecycle/decay-tick | Yes | DecayTickRequest | DecayTickResponse (200) |
+| POST | /v1/lifecycle/dream-tick | Yes | DreamTickRequest | DreamTickResponse (200) |
 | PUT | /v1/lifecycle/mode | Yes | SetModeRequest | 204 No Content |
 | DELETE | /v1/lifecycle/forget | Yes | ForgetRequest | {"records_deleted": N} (200) |
+| POST | /v1/lifecycle/export | Yes | ExportRequest | ExportResponse (200) |
+| POST | /v1/lifecycle/import | Yes | ImportRequest | ImportResponse (200) |
 
 Introspect
 
@@ -1582,7 +1833,7 @@ Default limits: 100 requests/second with a burst of 50.
 
 Request Size Limits
 
-HTTP API routes under /v1/ are capped at 2 MiB request bodies. This is separate from modality-level limits enforced by the engine itself.
+HTTP API routes under /v1/ are capped at 64 MB request bodies (large enough for archive imports). This is separate from modality-level limits enforced by the engine itself.
 
 CORS
 
@@ -1665,9 +1916,26 @@ Store a new text memory record.
 |------|------|---------|-------------|
 |  | string | -- | Required. Text content to store |
 | --store | string | episodic | Target store |
+| --emotion | string | None | Emotion label (e.g., joy, trust, fear) |
 | --embedding | string | None | Comma-separated embedding vector |
 
 The working store is intentionally in-memory only. Records written there do not survive process restarts.
+
+---
+
+store-raw
+
+Store a verbatim raw journal entry.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+|  | string | -- | Required. Text content to preserve |
+| --session-id | string | -- | Required. Session identifier |
+| --topic-id | string | None | Topic identifier for dream grouping |
+| --source | string | conversation | conversation, tool_io, scratchpad, summary, or imported |
+| --speaker | string | user | user, assistant, system, or tool |
+| --visibility | string | normal | normal, private_scratch, or sealed |
+| --secrecy-level | string | public | public, sensitive, or secret |
 
 ---
 
@@ -1680,6 +1948,21 @@ Recall memories by text query.
 |  | string | -- | Required. Text query |
 | --limit | u32 | 10 | Maximum number of results |
 | --mode | string | human | human or perfect |
+
+---
+
+recall-raw
+
+Query the raw journal for verbatim entries.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| --query | string | None | Full-text search query |
+| --session-id | string | None | Filter by session |
+| --limit | u32 | 10 | Maximum number of results |
+| --include-private-scratch | bool | false | Include private_scratch entries |
+| --include-sealed | bool | false | Include sealed entries |
+| --secrecy-levels | string | All | Comma-separated public, sensitive, secret |
 
 ---
 
@@ -1713,6 +1996,22 @@ Run a manual decay cycle.
 
 ---
 
+dream-tick
+
+Run dream processing to summarize raw journal entries into curated episodic and semantic memories.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| --session-id | string | None | Process only entries from this session |
+| --dry-run | bool | false | Preview without creating records |
+| --max-groups | u32 | 10 | Maximum topic groups to process per call |
+| --include-private-scratch | bool | false | Include private_scratch entries |
+| --include-sealed | bool | false | Include sealed entries |
+| --promote-semantic | bool | true | Promote factual content to the semantic store |
+| --secrecy-levels | string | All | Comma-separated public, sensitive, secret |
+
+---
+
 forget
 
 Permanently delete a memory record.
@@ -1734,8 +2033,9 @@ Export records to a CMA archive file.
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | --output | path | ./backup.cma | Output file path |
-| --format | string | cma | Archive format. cma is currently the only supported value |
+| --format | string | cma | Archive format (cma or jsonl; the latter is an alias) |
 | --stores | string | None | Comma-separated store filter |
+| --include-raw-journal | bool | false | Include raw journal entries in the archive |
 | --encrypt | bool | false | Encrypt the archive |
 | --encryption-key | string | None | Archive passphrase |
 | --encryption-key-stdin | bool | false | Read the archive passphrase from stdin |
@@ -1749,6 +2049,7 @@ Import records from a CMA archive file.
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 |  | path | -- | Required. CMA archive path |
+| --strategy | string | merge | merge or replace |
 | --decryption-key | string | None | Decryption passphrase for encrypted archives |
 | --decryption-key-stdin | bool | false | Read the decryption passphrase from stdin |
 | --conflict-resolution | string | keep_newer | keep_existing, keep_imported, or keep_newer |
@@ -1778,13 +2079,17 @@ The MCP server exposes these tools:
 | store | Store a new memory record |
 | update | Update an existing record's content or emotion |
 | batch_store | Store multiple memories at once with inferred associations |
+| store_raw | Store a verbatim raw journal entry |
+| batch_store_raw | Store multiple raw journal entries |
 | recall | Query memories, or list recent ones when query is omitted |
+| recall_raw | Forensic query over the raw journal |
 | timeline | Retrieve memories in time buckets |
 | associate | Traverse the association graph from a record |
+| inspect | Inspect a specific record |
 | forget | Permanently delete records by UUID |
+| dream_tick | Summarize raw journal into curated memory |
 | consolidate | Trigger episodic-to-semantic consolidation |
 | stats | View system statistics |
-| inspect | Inspect a specific record |
 | export` | Export a CMA archive to an explicit output path |
 
 The MCP surface is intentionally LLM-friendly and does not expose every HTTP/gRPC method one-to-one. For full protocol access, use the REST API or gRPC transport.

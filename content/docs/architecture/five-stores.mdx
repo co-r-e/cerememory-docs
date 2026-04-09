@@ -95,9 +95,38 @@ Key characteristics:
 Working memory is intentionally volatile. It represents the current session's active context. Use the episodic or semantic stores for information that must survive restarts.
 </Callout>
 
+## Raw Journal Store
+
+The raw journal is a separate preservation plane that operates alongside the five curated stores. It holds **verbatim conversation content** exactly as received, without any curation, decay, or noise processing.
+
+Key characteristics:
+
+- **No decay** -- Raw journal entries are preserved indefinitely with full fidelity
+- **Forensic recall** -- Full-text search over preserved content via a dedicated Tantivy index
+- **Session-indexed** -- Entries are grouped by session and can be filtered by speaker, source, and topic
+- **Dream processing** -- The `lifecycle.dream_tick` operation summarizes raw entries into curated episodic/semantic memories, with backlinks to the source entries
+- **Secrecy-aware** -- Entries marked as `secret` are redacted during dream summarization; `sensitive` entries receive partial redaction
+- **Suppression** -- Individual entries can be suppressed to exclude them from future dream processing
+
+```rust
+// Raw journal entries preserve exact conversation content
+let raw = RawJournalRecord {
+    session_id: "sess_001".into(),
+    source: RawSource::Conversation,
+    speaker: RawSpeaker::User,
+    secrecy_level: SecrecyLevel::Public,
+    content: MemoryContent::text("I prefer using Neovim for everything"),
+    ..Default::default()
+};
+```
+
+<Callout type="info">
+The raw journal is backed by redb for durable storage plus a dedicated Tantivy full-text search index. Unlike the curated stores, it does not implement the `Store` trait -- it has its own specialized API optimized for conversation preservation and forensic recall.
+</Callout>
+
 ## The Store Trait
 
-All five stores implement the same `Store` trait, providing a uniform interface:
+All five curated stores implement the same `Store` trait, providing a uniform interface:
 
 ```rust
 pub trait Store: Send + Sync {

@@ -18,7 +18,7 @@ cerememory serve --port 8420
 Example startup output:
 
 ```text
-Cerememory v0.2.0
+Cerememory v0.2.1
 HTTP  listening on 127.0.0.1:8420
 ```
 
@@ -42,6 +42,7 @@ By default Cerememory starts with:
 - In-memory working memory
 - `/health` and `/readiness` enabled
 - `/metrics` disabled until `http.metrics_enabled = true`
+- Background dream processing (when `dream.background_interval_secs` is configured)
 
 <Callout type="info">
 For agent workflows, run `cerememory mcp` to expose the MCP tool surface over stdio instead of starting the HTTP server.

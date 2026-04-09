@@ -173,6 +173,119 @@ Returns `204 No Content` on success.
 Updating a record does **not** reset its fidelity or decay state. The memory continues to age from its original creation time. If you need to "refresh" a memory, recall it (which triggers reconsolidation) rather than updating it.
 </Callout>
 
+## encode.store_raw
+
+Store a verbatim raw journal entry. Raw journal entries preserve the exact conversation content without curation, enabling forensic recall and dream-tick summarization.
+
+**Endpoint:** `POST /v1/encode/raw`
+
+### Request
+
+```json
+{
+  "content": {
+    "blocks": [
+      {
+        "modality": "text",
+        "format": "text/plain",
+        "data": [72, 101, 108, 108, 111]
+      }
+    ]
+  },
+  "session_id": "sess_abc123",
+  "turn_id": "turn_001",
+  "topic_id": null,
+  "source": "conversation",
+  "speaker": "user",
+  "visibility": "normal",
+  "secrecy_level": "public",
+  "metadata": {}
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `content` | MemoryContent | Yes | -- | Verbatim content to preserve |
+| `session_id` | string | Yes | -- | Session identifier for grouping |
+| `turn_id` | string | No | None | Turn identifier within the session |
+| `topic_id` | string | No | None | Topic identifier for dream grouping |
+| `source` | RawSource | No | `conversation` | `conversation`, `tool_io`, `scratchpad`, `summary`, or `imported` |
+| `speaker` | RawSpeaker | No | `user` | `user`, `assistant`, `system`, or `tool` |
+| `visibility` | RawVisibility | No | `normal` | `normal`, `private_scratch`, or `sealed` |
+| `secrecy_level` | SecrecyLevel | No | `public` | `public`, `sensitive`, or `secret` |
+| `metadata` | JSON | No | `{}` | Arbitrary metadata |
+
+### Response
+
+```json
+{
+  "record_id": "01916e3a-5678-7000-8000-000000000003",
+  "session_id": "sess_abc123",
+  "visibility": "normal",
+  "secrecy_level": "public"
+}
+```
+
+<Callout type="info">
+Raw journal entries are stored separately from curated memory records. They are not subject to decay or noise -- they preserve the original material exactly as received.
+</Callout>
+
+## encode.batch_raw
+
+Store multiple raw journal entries in a single request.
+
+**Endpoint:** `POST /v1/encode/raw/batch`
+
+### Request
+
+```json
+{
+  "records": [
+    {
+      "content": {
+        "blocks": [{ "modality": "text", "format": "text/plain", "data": [65, 66, 67] }]
+      },
+      "session_id": "sess_abc123",
+      "source": "conversation",
+      "speaker": "user"
+    },
+    {
+      "content": {
+        "blocks": [{ "modality": "text", "format": "text/plain", "data": [68, 69, 70] }]
+      },
+      "session_id": "sess_abc123",
+      "source": "conversation",
+      "speaker": "assistant"
+    }
+  ]
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `records` | EncodeStoreRawRequest[] | Yes | Array of raw journal entries |
+
+### Response
+
+```json
+{
+  "results": [
+    {
+      "record_id": "01916e3a-aaaa-7000-8000-000000000001",
+      "session_id": "sess_abc123",
+      "visibility": "normal",
+      "secrecy_level": "public"
+    },
+    {
+      "record_id": "01916e3a-bbbb-7000-8000-000000000002",
+      "session_id": "sess_abc123",
+      "visibility": "normal",
+      "secrecy_level": "public"
+    }
+  ]
+}
+```
+
 ## Next Steps
 
 <LinkCard href="/docs/protocol/recall" title="Recall Operations" description="Query and retrieve memories with multimodal cues" />
