@@ -1,11 +1,46 @@
 ---
 title: "CMP Protocol Overview"
-description: "Introduction to the Cerememory Protocol (CMP) -- the transport-agnostic API for living memory."
+description: "Introduction to the Cerememory Protocol (CMP) -- the single transport-agnostic API for living memory. MCP is a transport for CMP, not a separate protocol."
 ---
 
 ## What is CMP?
 
-The **Cerememory Protocol (CMP)** is a versioned, transport-agnostic protocol that defines all operations for interacting with Cerememory's living memory system. CMP messages can be carried over HTTP/REST, gRPC, MCP, or any future transport binding.
+The **Cerememory Protocol (CMP)** is a versioned, transport-agnostic protocol that defines every operation for interacting with Cerememory's living memory system. CMP is the language; HTTP, gRPC, and MCP are just different ways of speaking it.
+
+## CMP vs. MCP -- they are not peers
+
+A common confusion: **MCP is one transport for CMP, not a competing protocol.** Everything flows through CMP. HTTP and gRPC expose the full CMP surface; MCP exposes a curated 15-tool subset tailored for LLM agents.
+
+```text
+        ┌────────────────────────────────────────────┐
+        │             LLM Clients & Agents           │
+        │      Claude  ·  GPT  ·  Gemini  ·  …       │
+        └──────────────────────┬─────────────────────┘
+                               │
+        ┌──────────────┬───────┴───────┬──────────────┐
+        │              │               │              │
+   ┌────┴────┐    ┌────┴────┐     ┌────┴────┐
+   │  HTTP   │    │  gRPC   │     │   MCP   │
+   │  REST   │    │ stream  │     │ 15 tool │
+   │  full   │    │  full   │     │  subset │
+   └────┬────┘    └────┬────┘     └────┬────┘
+        │              │               │
+        └──────────────┴───────┬───────┘
+                               │
+        ┌──────────────────────┴─────────────────────┐
+        │       CMP — Cerememory Protocol            │
+        │   encode · recall · lifecycle · introspect │
+        └──────────────────────┬─────────────────────┘
+                               │
+        ┌──────────────────────┴─────────────────────┐
+        │              Cerememory Engine             │
+        │  Five memory stores · decay · association  │
+        └────────────────────────────────────────────┘
+```
+
+<Callout type="info">
+**Mental model.** If you speak HTTP, you are sending CMP. If you speak gRPC, you are sending CMP. If an LLM agent uses MCP tools, the tools invoke CMP under the hood. There is no "MCP API" that competes with a "CMP API" -- CMP is the only API.
+</Callout>
 
 Every CMP message includes a protocol header with versioning:
 

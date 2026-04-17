@@ -95,6 +95,24 @@ export interface Dictionary {
     number: string
     title: string
     lead: string
+    hierarchy: {
+      caption: string
+      clients: string
+      clientsDesc: string
+      transports: string
+      transportsDesc: string
+      http: string
+      httpDesc: string
+      grpc: string
+      grpcDesc: string
+      mcp: string
+      mcpDesc: string
+      cmp: string
+      cmpDesc: string
+      engine: string
+      engineDesc: string
+      figCaption: string
+    }
     encode: { category: string; title: string; ops: string[] }
     recall: { category: string; title: string; ops: string[] }
     lifecycle: { category: string; title: string; ops: string[] }

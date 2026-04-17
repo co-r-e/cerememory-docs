@@ -4,7 +4,7 @@ import matter from "gray-matter";
 import { getAllPages } from "./content";
 
 function getSiteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "https://cerememory.dev";
+  return process.env.NEXT_PUBLIC_SITE_URL ?? "https://co-r-e.github.io";
 }
 
 function getBasePath(): string {
@@ -36,11 +36,26 @@ function mdxToPlainText(source: string): string {
  */
 export async function generateLlmsTxt(): Promise<string> {
   const pages = await getAllPages();
+  const siteUrl = `${getSiteUrl()}${getBasePath()}`;
 
   const lines: string[] = [
     "# Cerememory",
     "",
-    "> A neuroscience-inspired memory database that gives AI systems persistent, evolving memory. LLM-agnostic. User-sovereign. Brain-inspired.",
+    "> Cerememory is an open-source, neuroscience-inspired memory database that gives AI systems persistent, evolving memory across sessions. It is LLM-agnostic (Claude, GPT, Gemini, and others), user-sovereign, local-first, and built in Rust.",
+    "",
+    "## Core concepts (read this first)",
+    "",
+    "- **CMP (Cerememory Protocol)** is the single, transport-agnostic protocol for every operation against Cerememory. All messages are versioned and organized into four categories: `encode.*`, `recall.*`, `lifecycle.*`, `introspect.*`.",
+    "- **HTTP, gRPC, and MCP are transport bindings for CMP**, not separate APIs. HTTP and gRPC expose the full CMP surface. MCP exposes a curated 15-tool subset designed for LLM agents. When an LLM agent calls an MCP tool, the tool invokes CMP under the hood.",
+    "- **Five memory stores**, each modeled after a brain region: Episodic (hippocampus), Semantic (neocortex), Procedural (basal ganglia), Emotional (amygdala), Working (prefrontal cortex).",
+    "- **Living memory dynamics**: memories decay over time on a power-law curve, accumulate interference noise, are modulated by an 8-dimensional emotion vector, and can reactivate through spreading activation.",
+    "- **Two recall modes**: `Human` (realistic recall with fidelity-weighted noise) and `Perfect` (complete retrieval of original data).",
+    "- **User-sovereign**: local-first, fully exportable to a single-file CMA archive (SQLite), MIT-licensed.",
+    "- **Implementation**: Core engine in Rust (redb, Tantivy, hnsw_rs, MessagePack, Axum + Tonic). SDKs for Python and TypeScript/JavaScript, plus in-process PyO3 and napi-rs bindings.",
+    "",
+    `- Website: ${siteUrl}/`,
+    `- Full documentation (single file for LLMs): ${siteUrl}/llms-full.txt`,
+    "- Source: https://github.com/co-r-e/cerememory",
     "",
   ];
 

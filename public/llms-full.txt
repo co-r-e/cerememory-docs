@@ -6,7 +6,7 @@
 
 ## Introduction
 
-Source: https://cerememory.dev/docs/getting-started/introduction
+Source: https://co-r-e.github.io/cerememory-docs/docs/getting-started/introduction
 
 What is Cerememory?
 
@@ -64,7 +64,7 @@ Next Steps
 
 ## Installation
 
-Source: https://cerememory.dev/docs/getting-started/installation
+Source: https://co-r-e.github.io/cerememory-docs/docs/getting-started/installation
 
 Requirements
 
@@ -117,7 +117,7 @@ Next Steps
 
 ## Quick Start
 
-Source: https://cerememory.dev/docs/getting-started/quick-start
+Source: https://co-r-e.github.io/cerememory-docs/docs/getting-started/quick-start
 
 This guide walks through the core Cerememory workflow: start the server, store a memory, recall it, and remove it.
 
@@ -157,7 +157,7 @@ Next Steps
 
 ## Architecture Overview
 
-Source: https://cerememory.dev/docs/architecture/overview
+Source: https://co-r-e.github.io/cerememory-docs/docs/architecture/overview
 
 System Overview
 
@@ -255,7 +255,7 @@ Next Steps
 
 ## Five Memory Stores
 
-Source: https://cerememory.dev/docs/architecture/five-stores
+Source: https://co-r-e.github.io/cerememory-docs/docs/architecture/five-stores
 
 Overview
 
@@ -364,7 +364,7 @@ Next Steps
 
 ## Living Dynamics
 
-Source: https://cerememory.dev/docs/architecture/living-dynamics
+Source: https://co-r-e.github.io/cerememory-docs/docs/architecture/living-dynamics
 
 Overview
 
@@ -500,7 +500,7 @@ Next Steps
 
 ## Data Model
 
-Source: https://cerememory.dev/docs/architecture/data-model
+Source: https://co-r-e.github.io/cerememory-docs/docs/architecture/data-model
 
 MemoryRecord
 
@@ -594,11 +594,17 @@ Next Steps
 
 ## CMP Protocol Overview
 
-Source: https://cerememory.dev/docs/protocol/overview
+Source: https://co-r-e.github.io/cerememory-docs/docs/protocol/overview
 
 What is CMP?
 
-The Cerememory Protocol (CMP) is a versioned, transport-agnostic protocol that defines all operations for interacting with Cerememory's living memory system. CMP messages can be carried over HTTP/REST, gRPC, MCP, or any future transport binding.
+The Cerememory Protocol (CMP) is a versioned, transport-agnostic protocol that defines every operation for interacting with Cerememory's living memory system. CMP is the language; HTTP, gRPC, and MCP are just different ways of speaking it.
+
+CMP vs. MCP -- they are not peers
+
+A common confusion: MCP is one transport for CMP, not a competing protocol. Everything flows through CMP. HTTP and gRPC expose the full CMP surface; MCP exposes a curated 15-tool subset tailored for LLM agents.
+
+Mental model. If you speak HTTP, you are sending CMP. If you speak gRPC, you are sending CMP. If an LLM agent uses MCP tools, the tools invoke CMP under the hood. There is no "MCP API" that competes with a "CMP API" -- CMP is the only API.
 
 Every CMP message includes a protocol header with versioning:
 
@@ -697,7 +703,7 @@ Next Steps
 
 ## Encode Operations
 
-Source: https://cerememory.dev/docs/protocol/encode
+Source: https://co-r-e.github.io/cerememory-docs/docs/protocol/encode
 
 encode.store
 
@@ -802,7 +808,7 @@ Next Steps
 
 ## Recall Operations
 
-Source: https://cerememory.dev/docs/protocol/recall
+Source: https://co-r-e.github.io/cerememory-docs/docs/protocol/recall
 
 recall.query
 
@@ -912,7 +918,7 @@ Next Steps
 
 ## Lifecycle Operations
 
-Source: https://cerememory.dev/docs/protocol/lifecycle
+Source: https://co-r-e.github.io/cerememory-docs/docs/protocol/lifecycle
 
 lifecycle.consolidate
 
@@ -1062,7 +1068,7 @@ Next Steps
 
 ## Introspect Operations
 
-Source: https://cerememory.dev/docs/protocol/introspect
+Source: https://co-r-e.github.io/cerememory-docs/docs/protocol/introspect
 
 introspect.stats
 
@@ -1140,7 +1146,7 @@ Next Steps
 
 ## Python SDK
 
-Source: https://cerememory.dev/docs/sdk/python
+Source: https://co-r-e.github.io/cerememory-docs/docs/sdk/python
 
 Installation
 
@@ -1282,7 +1288,7 @@ Next Steps
 
 ## TypeScript SDK
 
-Source: https://cerememory.dev/docs/sdk/typescript
+Source: https://co-r-e.github.io/cerememory-docs/docs/sdk/typescript
 
 Installation
 
@@ -1417,7 +1423,7 @@ Next Steps
 
 ## Native Bindings
 
-Source: https://cerememory.dev/docs/sdk/native-bindings
+Source: https://co-r-e.github.io/cerememory-docs/docs/sdk/native-bindings
 
 Overview
 
@@ -1493,7 +1499,7 @@ Next Steps
 
 ## Configuration
 
-Source: https://cerememory.dev/docs/deployment/configuration
+Source: https://co-r-e.github.io/cerememory-docs/docs/deployment/configuration
 
 Configuration Precedence
 
@@ -1621,7 +1627,7 @@ Next Steps
 
 ## Docker
 
-Source: https://cerememory.dev/docs/deployment/docker
+Source: https://co-r-e.github.io/cerememory-docs/docs/deployment/docker
 
 Quick Start
 
@@ -1678,7 +1684,7 @@ Next Steps
 
 ## Kubernetes
 
-Source: https://cerememory.dev/docs/deployment/kubernetes
+Source: https://co-r-e.github.io/cerememory-docs/docs/deployment/kubernetes
 
 Deployment Manifest
 
@@ -1734,7 +1740,7 @@ Next Steps
 
 ## API Endpoints
 
-Source: https://cerememory.dev/docs/reference/api-endpoints
+Source: https://co-r-e.github.io/cerememory-docs/docs/reference/api-endpoints
 
 Base URL
 
@@ -1853,7 +1859,7 @@ Next Steps
 
 ## CLI Reference
 
-Source: https://cerememory.dev/docs/reference/cli
+Source: https://co-r-e.github.io/cerememory-docs/docs/reference/cli
 
 Global Flags
 
@@ -2100,7 +2106,7 @@ Next Steps
 
 ## LLM Adapters
 
-Source: https://cerememory.dev/docs/reference/llm-adapters
+Source: https://co-r-e.github.io/cerememory-docs/docs/reference/llm-adapters
 
 Overview
 
@@ -2198,7 +2204,7 @@ Next Steps
 
 ## Contributing Guide
 
-Source: https://cerememory.dev/docs/contributing/guide
+Source: https://co-r-e.github.io/cerememory-docs/docs/contributing/guide
 
 Getting Started
 
@@ -2289,7 +2295,7 @@ Next Steps
 
 ## Development Setup
 
-Source: https://cerememory.dev/docs/contributing/development
+Source: https://co-r-e.github.io/cerememory-docs/docs/contributing/development
 
 Prerequisites
 

@@ -1,47 +1,61 @@
 # Cerememory
 
-> A neuroscience-inspired memory database that gives AI systems persistent, evolving memory. LLM-agnostic. User-sovereign. Brain-inspired.
+> Cerememory is an open-source, neuroscience-inspired memory database that gives AI systems persistent, evolving memory across sessions. It is LLM-agnostic (Claude, GPT, Gemini, and others), user-sovereign, local-first, and built in Rust.
+
+## Core concepts (read this first)
+
+- **CMP (Cerememory Protocol)** is the single, transport-agnostic protocol for every operation against Cerememory. All messages are versioned and organized into four categories: `encode.*`, `recall.*`, `lifecycle.*`, `introspect.*`.
+- **HTTP, gRPC, and MCP are transport bindings for CMP**, not separate APIs. HTTP and gRPC expose the full CMP surface. MCP exposes a curated 15-tool subset designed for LLM agents. When an LLM agent calls an MCP tool, the tool invokes CMP under the hood.
+- **Five memory stores**, each modeled after a brain region: Episodic (hippocampus), Semantic (neocortex), Procedural (basal ganglia), Emotional (amygdala), Working (prefrontal cortex).
+- **Living memory dynamics**: memories decay over time on a power-law curve, accumulate interference noise, are modulated by an 8-dimensional emotion vector, and can reactivate through spreading activation.
+- **Two recall modes**: `Human` (realistic recall with fidelity-weighted noise) and `Perfect` (complete retrieval of original data).
+- **User-sovereign**: local-first, fully exportable to a single-file CMA archive (SQLite), MIT-licensed.
+- **Implementation**: Core engine in Rust (redb, Tantivy, hnsw_rs, MessagePack, Axum + Tonic). SDKs for Python and TypeScript/JavaScript, plus in-process PyO3 and napi-rs bindings.
+
+- Website: https://co-r-e.github.io/cerememory-docs/
+- Full documentation (single file for LLMs): https://co-r-e.github.io/cerememory-docs/llms-full.txt
+- Source: https://github.com/co-r-e/cerememory
 
 ## Getting Started
 
-- [Introduction](https://cerememory.dev/docs/getting-started/introduction): Learn what Cerememory is and how it gives AI systems persistent, living memory.
-- [Installation](https://cerememory.dev/docs/getting-started/installation): Install Cerememory via cargo, Docker, pip, or npm.
-- [Quick Start](https://cerememory.dev/docs/getting-started/quick-start): Store, recall, and forget your first memory with Cerememory.
+- [Introduction](https://co-r-e.github.io/cerememory-docs/docs/getting-started/introduction): Learn what Cerememory is and how it gives AI systems persistent, living memory.
+- [Installation](https://co-r-e.github.io/cerememory-docs/docs/getting-started/installation): Install Cerememory via cargo, Docker, pip, or npm.
+- [Quick Start](https://co-r-e.github.io/cerememory-docs/docs/getting-started/quick-start): Store, recall, and forget your first memory with Cerememory.
 
 ## Architecture
 
-- [Architecture Overview](https://cerememory.dev/docs/architecture/overview): Understand Cerememory's layered architecture and crate structure.
-- [Five Memory Stores](https://cerememory.dev/docs/architecture/five-stores): Detailed explanation of Cerememory's five brain-inspired memory stores.
-- [Living Dynamics](https://cerememory.dev/docs/architecture/living-dynamics): How memories decay, accumulate noise, respond to emotion, and evolve over time.
-- [Data Model](https://cerememory.dev/docs/architecture/data-model): Core data structures: MemoryRecord, FidelityState, EmotionVector, and more.
+- [Architecture Overview](https://co-r-e.github.io/cerememory-docs/docs/architecture/overview): Understand Cerememory's layered architecture and crate structure.
+- [Five Memory Stores](https://co-r-e.github.io/cerememory-docs/docs/architecture/five-stores): Detailed explanation of Cerememory's five brain-inspired memory stores.
+- [Living Dynamics](https://co-r-e.github.io/cerememory-docs/docs/architecture/living-dynamics): How memories decay, accumulate noise, respond to emotion, and evolve over time.
+- [Data Model](https://co-r-e.github.io/cerememory-docs/docs/architecture/data-model): Core data structures: MemoryRecord, FidelityState, EmotionVector, and more.
 
 ## Protocol
 
-- [CMP Protocol Overview](https://cerememory.dev/docs/protocol/overview): Introduction to the Cerememory Protocol (CMP) -- the transport-agnostic API for living memory.
-- [Encode Operations](https://cerememory.dev/docs/protocol/encode): Store and update memories using CMP encode operations.
-- [Recall Operations](https://cerememory.dev/docs/protocol/recall): Query and retrieve memories using multimodal cues, association traversal, timelines, graph subgraphs, and raw journal forensic recall.
-- [Lifecycle Operations](https://cerememory.dev/docs/protocol/lifecycle): Manage memory dynamics: consolidation, decay, mode switching, forgetting, export, and import.
-- [Introspect Operations](https://cerememory.dev/docs/protocol/introspect): Observe system state, inspect records, forecast decay, and monitor evolution.
+- [CMP Protocol Overview](https://co-r-e.github.io/cerememory-docs/docs/protocol/overview): Introduction to the Cerememory Protocol (CMP) -- the single transport-agnostic API for living memory. MCP is a transport for CMP, not a separate protocol.
+- [Encode Operations](https://co-r-e.github.io/cerememory-docs/docs/protocol/encode): Store and update memories using CMP encode operations.
+- [Recall Operations](https://co-r-e.github.io/cerememory-docs/docs/protocol/recall): Query and retrieve memories using multimodal cues, association traversal, timelines, graph subgraphs, and raw journal forensic recall.
+- [Lifecycle Operations](https://co-r-e.github.io/cerememory-docs/docs/protocol/lifecycle): Manage memory dynamics: consolidation, decay, mode switching, forgetting, export, and import.
+- [Introspect Operations](https://co-r-e.github.io/cerememory-docs/docs/protocol/introspect): Observe system state, inspect records, forecast decay, and monitor evolution.
 
 ## Sdk
 
-- [Python SDK](https://cerememory.dev/docs/sdk/python): Reference for the Cerememory Python SDK with sync and async clients.
-- [TypeScript SDK](https://cerememory.dev/docs/sdk/typescript): Reference for the Cerememory TypeScript/JavaScript SDK.
-- [Native Bindings](https://cerememory.dev/docs/sdk/native-bindings): In-process PyO3 and napi-rs bindings for Python and Node.js.
+- [Python SDK](https://co-r-e.github.io/cerememory-docs/docs/sdk/python): Reference for the Cerememory Python SDK with sync and async clients.
+- [TypeScript SDK](https://co-r-e.github.io/cerememory-docs/docs/sdk/typescript): Reference for the Cerememory TypeScript/JavaScript SDK.
+- [Native Bindings](https://co-r-e.github.io/cerememory-docs/docs/sdk/native-bindings): In-process PyO3 and napi-rs bindings for Python and Node.js.
 
 ## Deployment
 
-- [Configuration](https://cerememory.dev/docs/deployment/configuration): Configure Cerememory via TOML file, environment variables, and CLI flags.
-- [Docker](https://cerememory.dev/docs/deployment/docker): Run Cerememory with Docker and Docker Compose.
-- [Kubernetes](https://cerememory.dev/docs/deployment/kubernetes): Deploy Cerememory to Kubernetes with probes, persistent storage, and scaling.
+- [Configuration](https://co-r-e.github.io/cerememory-docs/docs/deployment/configuration): Configure Cerememory via TOML file, environment variables, and CLI flags.
+- [Docker](https://co-r-e.github.io/cerememory-docs/docs/deployment/docker): Run Cerememory with Docker and Docker Compose.
+- [Kubernetes](https://co-r-e.github.io/cerememory-docs/docs/deployment/kubernetes): Deploy Cerememory to Kubernetes with probes, persistent storage, and scaling.
 
 ## Reference
 
-- [API Endpoints](https://cerememory.dev/docs/reference/api-endpoints): Complete HTTP REST endpoint reference for the Cerememory Protocol.
-- [CLI Reference](https://cerememory.dev/docs/reference/cli): Complete reference for all Cerememory CLI commands and flags.
-- [LLM Adapters](https://cerememory.dev/docs/reference/llm-adapters): Configure and use Claude, GPT, and Gemini adapters for embedding, summarization, and relation extraction.
+- [API Endpoints](https://co-r-e.github.io/cerememory-docs/docs/reference/api-endpoints): Complete HTTP REST endpoint reference for the Cerememory Protocol.
+- [CLI Reference](https://co-r-e.github.io/cerememory-docs/docs/reference/cli): Complete reference for all Cerememory CLI commands and flags.
+- [LLM Adapters](https://co-r-e.github.io/cerememory-docs/docs/reference/llm-adapters): Configure and use Claude, GPT, and Gemini adapters for embedding, summarization, and relation extraction.
 
 ## Contributing
 
-- [Contributing Guide](https://cerememory.dev/docs/contributing/guide): How to contribute to Cerememory: PR process, commit conventions, and code style.
-- [Development Setup](https://cerememory.dev/docs/contributing/development): Set up your local development environment for Cerememory development.
+- [Contributing Guide](https://co-r-e.github.io/cerememory-docs/docs/contributing/guide): How to contribute to Cerememory: PR process, commit conventions, and code style.
+- [Development Setup](https://co-r-e.github.io/cerememory-docs/docs/contributing/development): Set up your local development environment for Cerememory development.

@@ -1,0 +1,31 @@
+{
+  "name": "Cerememory",
+  "short_name": "Cerememory",
+  "description": "A neuroscience-inspired memory database that gives AI systems persistent, evolving memory.",
+  "icons": [
+    {
+      "src": "/cerememory-docs/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/cerememory-docs/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/cerememory-docs/apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "start_url": "/cerememory-docs/",
+  "scope": "/cerememory-docs/",
+  "display": "standalone",
+  "theme_color": "#8B1A2B",
+  "background_color": "#FFFFFF",
+  "lang": "en"
+}

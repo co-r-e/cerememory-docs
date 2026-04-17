@@ -27,37 +27,53 @@ export async function generateStaticParams(): Promise<{ slug?: string[] }[]> {
 /** Generate metadata for each documentation page. */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://co-r-e.github.io";
 
   if (!slug || slug.length === 0) {
     return {
-      title: "Documentation | Cerememory",
-      description: "Cerememory documentation and guides.",
+      title: "Documentation",
+      description: "Cerememory documentation: getting started, architecture, the CMP protocol, SDKs, deployment, and reference material.",
+      alternates: { canonical: `${base}/docs` },
     };
   }
 
   const page = await getPageBySlug(slug);
   if (!page) {
-    return { title: "Not Found | Cerememory Docs" };
+    return { title: "Not Found" };
   }
 
   const { title, description } = page.frontmatter;
-  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const pagePath = `/docs/${slug.join("/")}`;
+  const fullTitle = `${title} | Cerememory Docs`;
 
   return {
-    title: `${title} | Cerememory Docs`,
+    title: fullTitle,
     description,
     alternates: {
-      canonical: `${base}/docs/${slug.join("/")}`,
+      canonical: `${base}${pagePath}`,
     },
     openGraph: {
-      title: `${title} | Cerememory Docs`,
+      title: fullTitle,
       description,
+      url: `${baseUrl}${base}${pagePath}`,
       type: "article",
+      siteName: "Cerememory",
+      images: [
+        {
+          url: `${base}/og-image.png`,
+          width: 1200,
+          height: 630,
+          alt: title,
+          type: "image/png",
+        },
+      ],
     },
     twitter: {
-      card: "summary",
-      title: `${title} | Cerememory Docs`,
+      card: "summary_large_image",
+      title: fullTitle,
       description,
+      images: [`${base}/og-image.png`],
     },
   };
 }
@@ -84,25 +100,66 @@ export default async function DocsPage({ params }: Props): Promise<ReactNode> {
   const showToc = frontmatter.toc !== false && toc.length > 0;
 
   // JSON-LD structured data for SEO
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://cerememory.dev";
-  const jsonLd = JSON.stringify({
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://co-r-e.github.io";
+  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const pageUrl = `${baseUrl}${base}/docs/${slug.join("/")}`;
+
+  const techArticleJsonLd = {
     "@context": "https://schema.org",
     "@type": "TechArticle",
     headline: frontmatter.title,
     description: frontmatter.description,
-    url: `${baseUrl}/docs/${slug.join("/")}`,
+    url: pageUrl,
+    inLanguage: "en",
+    isPartOf: {
+      "@type": "WebSite",
+      name: "Cerememory",
+      url: `${baseUrl}${base}/`,
+    },
     publisher: {
       "@type": "Organization",
       name: "Cerememory",
-      url: baseUrl,
+      url: `${baseUrl}${base}/`,
+      logo: {
+        "@type": "ImageObject",
+        url: `${baseUrl}${base}/logo.svg`,
+      },
     },
-  });
+    mainEntityOfPage: pageUrl,
+  };
+
+  const crumbEntries: { name: string; url: string }[] = [
+    { name: "Home", url: `${baseUrl}${base}/` },
+    { name: "Docs", url: `${baseUrl}${base}/docs` },
+  ];
+  if (slug.length > 1) {
+    crumbEntries.push({
+      name: breadcrumbs[1]?.label ?? slug[0],
+      url: `${baseUrl}${base}/docs/${slug[0]}`,
+    });
+  }
+  crumbEntries.push({ name: frontmatter.title, url: pageUrl });
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: crumbEntries.map((entry, idx) => ({
+      "@type": "ListItem",
+      position: idx + 1,
+      name: entry.name,
+      item: entry.url,
+    })),
+  };
 
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jsonLd }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(techArticleJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
 
       <div className="flex">

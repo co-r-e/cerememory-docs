@@ -341,23 +341,41 @@ function HeroCanvas() {
 }
 
 export default function HomeContent({ dict, locale }: { dict: Dictionary; locale: Locale }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [menuOpen])
+
+  const closeMenu = () => setMenuOpen(false)
+
   return (
     <>
       {/* MASTHEAD */}
-      <header className="masthead">
+      <header className={`masthead ${menuOpen ? 'masthead--open' : ''}`}>
         <div className="column column--wide masthead__inner">
-          <nav>
+          <nav className="masthead__desktop-nav masthead__desktop-nav--left">
             <ul className="masthead__nav masthead__nav--left">
               <li><a href="#architecture">{dict.nav.architecture}</a></li>
               <li><a href="#dynamics">{dict.nav.dynamics}</a></li>
               <li><a href="#protocol">{dict.nav.protocol}</a></li>
             </ul>
           </nav>
-          <a href="#" className="masthead__logo-link">
+          <a href="#" className="masthead__logo-link" onClick={closeMenu}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={`${basePath}/logo.svg`} alt="Cerememory" className="masthead__logo" />
           </a>
-          <nav>
+          <nav className="masthead__desktop-nav masthead__desktop-nav--right">
             <ul className="masthead__nav masthead__nav--right">
               <li><a href="#quickstart">{dict.nav.quickStart}</a></li>
               <li>
@@ -368,7 +386,47 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
               <li><LanguageSwitcher locale={locale} label={dict.langSwitcher.label} /></li>
             </ul>
           </nav>
+          <button
+            type="button"
+            className="masthead__toggle"
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={menuOpen}
+            aria-controls="masthead-drawer"
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            <span className={`masthead__toggle-bars ${menuOpen ? 'is-open' : ''}`} aria-hidden="true" />
+          </button>
         </div>
+        <div
+          id="masthead-drawer"
+          className={`masthead__drawer ${menuOpen ? 'is-open' : ''}`}
+          role="dialog"
+          aria-modal="true"
+          aria-hidden={!menuOpen}
+        >
+          <ul className="masthead__drawer-list">
+            <li><a href="#architecture" onClick={closeMenu}>{dict.nav.architecture}</a></li>
+            <li><a href="#dynamics" onClick={closeMenu}>{dict.nav.dynamics}</a></li>
+            <li><a href="#protocol" onClick={closeMenu}>{dict.nav.protocol}</a></li>
+            <li><a href="#quickstart" onClick={closeMenu}>{dict.nav.quickStart}</a></li>
+            <li>
+              <a
+                href="https://github.com/co-r-e/cerememory"
+                target="_blank"
+                rel="noopener"
+                onClick={closeMenu}
+              >
+                {dict.nav.github}
+              </a>
+            </li>
+            <li className="masthead__drawer-lang">
+              <LanguageSwitcher locale={locale} label={dict.langSwitcher.label} />
+            </li>
+          </ul>
+        </div>
+        {menuOpen && (
+          <div className="masthead__backdrop" onClick={closeMenu} aria-hidden="true" />
+        )}
       </header>
 
       {/* HERO */}
@@ -622,6 +680,47 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
           <span className="section__number">{dict.protocol.number}</span>
           <h2 className="section__title">{dict.protocol.title}</h2>
           <p className="section__lead">{dict.protocol.lead}</p>
+
+          {/* CMP vs MCP hierarchy */}
+          <figure className="cmp-hierarchy" aria-labelledby="cmp-hierarchy-caption">
+            <div className="cmp-hierarchy__tier cmp-hierarchy__tier--clients">
+              <div className="cmp-hierarchy__tier-label">{dict.protocol.hierarchy.clients}</div>
+              <div className="cmp-hierarchy__tier-desc">{dict.protocol.hierarchy.clientsDesc}</div>
+            </div>
+            <div className="cmp-hierarchy__rail" aria-hidden="true" />
+            <div className="cmp-hierarchy__row">
+              <div className="cmp-hierarchy__node">
+                <div className="cmp-hierarchy__node-tag">HTTP</div>
+                <div className="cmp-hierarchy__node-title">{dict.protocol.hierarchy.http}</div>
+                <div className="cmp-hierarchy__node-desc">{dict.protocol.hierarchy.httpDesc}</div>
+              </div>
+              <div className="cmp-hierarchy__node">
+                <div className="cmp-hierarchy__node-tag">gRPC</div>
+                <div className="cmp-hierarchy__node-title">{dict.protocol.hierarchy.grpc}</div>
+                <div className="cmp-hierarchy__node-desc">{dict.protocol.hierarchy.grpcDesc}</div>
+              </div>
+              <div className="cmp-hierarchy__node cmp-hierarchy__node--mcp">
+                <div className="cmp-hierarchy__node-tag">MCP</div>
+                <div className="cmp-hierarchy__node-title">{dict.protocol.hierarchy.mcp}</div>
+                <div className="cmp-hierarchy__node-desc">{dict.protocol.hierarchy.mcpDesc}</div>
+              </div>
+            </div>
+            <div className="cmp-hierarchy__rail" aria-hidden="true" />
+            <div className="cmp-hierarchy__tier cmp-hierarchy__tier--cmp">
+              <div className="cmp-hierarchy__tier-label">{dict.protocol.hierarchy.cmp}</div>
+              <div className="cmp-hierarchy__tier-desc">{dict.protocol.hierarchy.cmpDesc}</div>
+            </div>
+            <div className="cmp-hierarchy__rail" aria-hidden="true" />
+            <div className="cmp-hierarchy__tier cmp-hierarchy__tier--engine">
+              <div className="cmp-hierarchy__tier-label">{dict.protocol.hierarchy.engine}</div>
+              <div className="cmp-hierarchy__tier-desc">{dict.protocol.hierarchy.engineDesc}</div>
+            </div>
+            <figcaption
+              id="cmp-hierarchy-caption"
+              className="cmp-hierarchy__caption"
+              dangerouslySetInnerHTML={{ __html: dict.protocol.hierarchy.figCaption }}
+            />
+          </figure>
 
           <div className="protocol-grid">
             <div className="protocol-card">

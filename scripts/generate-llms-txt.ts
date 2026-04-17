@@ -1,10 +1,13 @@
 import path from "node:path";
 
 // Set NEXT_PUBLIC_BASE_PATH before importing llms-txt module.
-// This mirrors the basePath logic in next.config.ts.
-if (!process.env.NEXT_PUBLIC_BASE_PATH) {
-  process.env.NEXT_PUBLIC_BASE_PATH =
-    process.env.NODE_ENV === "production" ? "/cerememory-docs" : "";
+// This script runs before `next build`, so NODE_ENV isn't yet production.
+// Production deploys always live at /cerememory-docs on GitHub Pages.
+if (process.env.NEXT_PUBLIC_BASE_PATH === undefined) {
+  process.env.NEXT_PUBLIC_BASE_PATH = "/cerememory-docs";
+}
+if (process.env.NEXT_PUBLIC_SITE_URL === undefined) {
+  process.env.NEXT_PUBLIC_SITE_URL = "https://co-r-e.github.io";
 }
 
 import { writeLlmsTxt } from "../src/lib/docs/llms-txt";
