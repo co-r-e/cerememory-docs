@@ -21,6 +21,7 @@
 - [Introduction](https://co-r-e.github.io/cerememory-docs/docs/getting-started/introduction): Learn what Cerememory is and how it gives AI systems persistent, living memory.
 - [Installation](https://co-r-e.github.io/cerememory-docs/docs/getting-started/installation): Install Cerememory via cargo, Docker, pip, or npm.
 - [Quick Start](https://co-r-e.github.io/cerememory-docs/docs/getting-started/quick-start): Store, recall, and forget your first memory with Cerememory.
+- [MCP & Agent Setup](https://co-r-e.github.io/cerememory-docs/docs/getting-started/agent-memory): Connect Cerememory to Claude Code and other MCP-compatible clients over stdio.
 
 ## Architecture
 

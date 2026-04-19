@@ -8,7 +8,7 @@ description: "In-process PyO3 and napi-rs bindings for Python and Node.js."
 Cerememory also ships native bindings that embed the Rust engine directly in your Python or Node.js process. These bindings avoid HTTP overhead and are useful for embedded or single-process workloads.
 
 <Callout type="info">
-The native bindings currently expose a smaller API surface than the HTTP SDKs. They focus on in-process store, recall, inspect, forget, and stats workflows.
+The native bindings now cover the core in-process workflow plus raw-journal helpers: `store_raw`, `recall_raw`, and `dream_tick`. HTTP/gRPC still expose the broader remote/server surface, but native bindings are no longer limited to basic CRUD.
 </Callout>
 
 ## Python Native (`cerememory-native`)
@@ -43,6 +43,9 @@ results = engine.recall("user facts", limit=5, activation_depth=2)
 record = engine.get_record(record_id)
 deleted = engine.forget([record_id], confirm=True)
 stats = engine.stats()
+raw_id = engine.store_raw("verbatim note", session_id="sess-1")
+raw_records = engine.recall_raw(query="verbatim", session_id="sess-1")
+dream = engine.dream_tick(session_id="sess-1")
 ```
 
 ### Exposed Methods
@@ -55,6 +58,9 @@ stats = engine.stats()
 | `get_record(id)` | Returns a full `MemoryRecord` view |
 | `forget(ids, confirm=False)` | Accepts a list of UUID strings |
 | `stats()` | Returns stats plus optional evolution metrics |
+| `store_raw(text, session_id, ...)` | Preserves verbatim raw journal entries |
+| `recall_raw(query=None, session_id=None, ...)` | Queries preserved raw journal entries |
+| `dream_tick(session_id=None, ...)` | Summarizes raw journal groups into curated memory |
 
 ## Node.js Native (`@cerememory/native`)
 
@@ -83,6 +89,9 @@ const results = engine.recall("user preferences", 5, true, 2);
 const record = engine.get_record(recordId);
 const deleted = engine.forget([recordId], true);
 const stats = engine.stats();
+const rawId = engine.storeRaw("verbatim note", "sess-1");
+const rawRecords = engine.recallRaw("verbatim", "sess-1");
+const dream = engine.dreamTick("sess-1");
 ```
 
 <Callout type="warning">
@@ -98,6 +107,9 @@ The Node.js binding methods are synchronous from the caller's perspective. Do no
 | `get_record(id)` | Returns JSON-shaped record data |
 | `forget(ids, confirm?)` | Deletes by UUID list |
 | `stats()` | Returns JSON-shaped stats data |
+| `storeRaw(text, sessionId, topicId?, source?, speaker?, visibility?, secrecyLevel?)` | Preserves verbatim raw journal entries |
+| `recallRaw(query?, sessionId?, limit?, includePrivateScratch?, includeSealed?)` | Queries preserved raw journal entries |
+| `dreamTick(sessionId?, dryRun?, maxGroups?, includePrivateScratch?, includeSealed?, promoteSemantic?)` | Summarizes raw journal groups into curated memory |
 
 ## Native vs HTTP SDK
 

@@ -104,7 +104,6 @@ cerememory store <TEXT> [OPTIONS]
 |------|------|---------|-------------|
 | `<TEXT>` | string | -- | Required. Text content to store |
 | `--store` | string | `episodic` | Target store |
-| `--emotion` | string | None | Emotion label (e.g., `joy`, `trust`, `fear`) |
 | `--embedding` | string | None | Comma-separated embedding vector |
 
 <Terminal title="Example: Store a semantic memory">
@@ -175,12 +174,12 @@ cerememory recall "user preferences" --limit 5 --mode perfect
 Query the raw journal for verbatim entries.
 
 ```bash
-cerememory recall-raw [OPTIONS]
+cerememory recall-raw [QUERY] [OPTIONS]
 ```
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--query` | string | None | Full-text search query |
+| `[QUERY]` | string | None | Optional full-text search query |
 | `--session-id` | string | None | Filter by session |
 | `--limit` | u32 | `10` | Maximum number of results |
 | `--include-private-scratch` | bool | `false` | Include `private_scratch` entries |
@@ -189,7 +188,7 @@ cerememory recall-raw [OPTIONS]
 
 <Terminal title="Example: Search raw journal by session">
 ```bash
-cerememory recall-raw --session-id sess-001 --query "editor preference"
+cerememory recall-raw "editor preference" --session-id sess-001
 ```
 </Terminal>
 
@@ -387,10 +386,10 @@ The MCP server exposes these tools:
 | `dream_tick` | Summarize raw journal into curated memory |
 | `consolidate` | Trigger episodic-to-semantic consolidation |
 | `stats` | View system statistics |
-| `export` | Export a CMA archive to an explicit output path |
+| `export` | Export curated memories to a CMA archive at an explicit output path |
 
 <Callout type="info">
-The MCP surface is intentionally LLM-friendly and does not expose every HTTP/gRPC method one-to-one. For full protocol access, use the REST API or gRPC transport.
+The MCP surface is intentionally LLM-friendly and does not expose every HTTP/gRPC method one-to-one. `export` requires an explicit `output_path`, does not include the raw journal, and archive import is intentionally unavailable over MCP. For full protocol access, use the REST API or gRPC transport.
 </Callout>
 
 ## Next Steps

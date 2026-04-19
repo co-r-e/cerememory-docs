@@ -87,9 +87,13 @@ Install the HTTP client SDK:
 
 Build the in-process native binding from bindings/python-native with maturin when you need embedded, no-HTTP access.
 
+Published native package name: cerememory-native
+
 Install the HTTP client SDK:
 
 Build the in-process native binding from bindings/typescript-native when you need embedded, no-HTTP access.
+
+Published native package name: @cerememory/native
 
 Build from Source
 
@@ -109,7 +113,7 @@ Verify Installation
 
 You should see output like:
 
-The CLI and server are currently v0.2.0. The language SDK packages may publish on their own cadence, so prefer the package manager output for exact SDK package versions.
+The current workspace version is v0.2.2. The language SDK packages publish on their own cadence, so prefer your package manager output for the exact installed SDK version.
 
 Next Steps
 
@@ -133,7 +137,7 @@ By default Cerememory starts with:
 - In-memory working memory
 - /health and /readiness enabled
 - /metrics disabled until http.metrics_enabled = true
-- Background dream processing (when dream.background_interval_secs is configured)
+- Background dream processing enabled by default (dream.background_interval_secs = 86400)
 
 For agent workflows, run cerememory mcp to expose the MCP tool surface over stdio instead of starting the HTTP server.
 
@@ -143,6 +147,12 @@ Recall Memories
 
 In human mode, Cerememory returns rendered_content with fidelity and noise applied. Use perfect mode when you need exact stored content.
 
+Preserve Raw Journal Entries
+
+Raw journal records keep the verbatim source material that dream processing can later summarize into curated episodic and semantic memory.
+
+For agent-first workflows, cerememory mcp exposes the same memory system over stdio so Claude Code and other MCP-compatible clients can use store, store_raw, recall, recall_raw, dream_tick, consolidate, export, and related tools directly.
+
 Forget a Memory
 
 Forget is irreversible. Use --cascade or cascade=True only when you intentionally want associated records deleted as well.
@@ -150,6 +160,71 @@ Forget is irreversible. Use --cascade or cascade=True only when you intentionall
 Check System State
 
 /readiness is unauthenticated and intended for probes. /v1/introspect/stats is the full CMP stats endpoint.
+
+Next Steps
+
+---
+
+## MCP & Agent Setup
+
+Source: https://co-r-e.github.io/cerememory-docs/docs/getting-started/agent-memory
+
+Cerememory's recommended agent integration is the stdio MCP server exposed by:
+
+This gives MCP-compatible clients a curated memory tool surface backed by the same Cerememory engine used by the HTTP and gRPC transports.
+
+Build the Binary
+
+From the main repository:
+
+The binary will be available at:
+
+Claude Code Example
+
+Add Cerememory to your MCP client configuration:
+
+If you need persistent storage, auth, or provider configuration while running MCP mode, pass --config /path/to/cerememory.toml and/or --data-dir /path/to/data before the mcp subcommand.
+
+Example:
+
+Tool Surface
+
+The MCP server exposes these LLM-friendly tools:
+
+| Tool | Description |
+|------|-------------|
+| store | Save a curated memory |
+| update | Edit a curated memory by UUID |
+| batch_store | Save multiple curated memories at once |
+| store_raw | Preserve a verbatim raw journal entry |
+| batch_store_raw | Preserve multiple raw journal entries at once |
+| recall | Search memories, or list recent memories when query is omitted |
+| recall_raw | Query preserved raw journal entries |
+| timeline | Browse memories by time period |
+| associate | Traverse the association graph from a record |
+| inspect | View a full memory record by UUID |
+| forget | Permanently delete memories by UUID |
+| dream_tick | Summarize raw journal entries into curated memory |
+| consolidate | Migrate mature episodic memory to the semantic store |
+| stats | Inspect system statistics and record counts |
+| export | Export curated memories to an explicit output_path |
+
+What MCP Does And Does Not Expose
+
+MCP is a curated transport for agent workflows, not a 1:1 mirror of every CMP operation.
+
+- Best for: Claude Code, agent memory, raw journal capture, dream processing, and lightweight archive export
+- Use HTTP/gRPC/CLI for: health probes, readiness checks, import workflows, full protocol coverage, and remote multi-client access
+
+The MCP export tool requires an explicit output_path, writes the archive file directly from the server process, and skips the raw journal by design. Archive import is available over HTTP, gRPC, and CLI, but is intentionally not exposed as an MCP tool.
+
+Typical Agent Workflow
+
+1. Use store or store_raw as interaction history arrives.
+2. Use recall and associate to bring relevant memory back into the working context.
+3. Periodically run dream_tick to turn raw journal entries into curated episodic and semantic memory.
+4. Run consolidate for episodic-to-semantic migration as memories mature.
+5. Use export for portable backups.
 
 Next Steps
 
@@ -1154,7 +1229,7 @@ For the native in-process binding, see Native Bindings.
 
 Sync Client
 
-Retries are conservative by default in 0.2.0: max_retries defaults to 0, and mutating requests are retried only when retry_mutating_requests=True.
+Retries are conservative by default in 0.2.2: max_retries defaults to 0, and mutating requests are retried only when retry_mutating_requests=True.
 
 High-Level Methods
 
@@ -1296,7 +1371,7 @@ The SDK uses native fetch, so Node.js 18+ or a browser/runtime with fetch is req
 
 Client Setup
 
-Retries are conservative by default in 0.2.0: maxRetries defaults to 0, and mutating requests are retried only when retryMutatingRequests is explicitly enabled.
+Retries are conservative by default in 0.2.2: maxRetries defaults to 0, and mutating requests are retried only when retryMutatingRequests is explicitly enabled.
 
 High-Level Methods
 
@@ -1429,7 +1504,7 @@ Overview
 
 Cerememory also ships native bindings that embed the Rust engine directly in your Python or Node.js process. These bindings avoid HTTP overhead and are useful for embedded or single-process workloads.
 
-The native bindings currently expose a smaller API surface than the HTTP SDKs. They focus on in-process store, recall, inspect, forget, and stats workflows.
+The native bindings now cover the core in-process workflow plus raw-journal helpers: store_raw, recall_raw, and dream_tick. HTTP/gRPC still expose the broader remote/server surface, but native bindings are no longer limited to basic CRUD.
 
 Python Native (cerememory-native)
 
@@ -1449,6 +1524,9 @@ Exposed Methods
 | get_record(id) | Returns a full MemoryRecord view |
 | forget(ids, confirm=False) | Accepts a list of UUID strings |
 | stats() | Returns stats plus optional evolution metrics |
+| store_raw(text, session_id, ...) | Preserves verbatim raw journal entries |
+| recall_raw(query=None, session_id=None, ...) | Queries preserved raw journal entries |
+| dream_tick(session_id=None, ...) | Summarizes raw journal groups into curated memory |
 
 Node.js Native (@cerememory/native)
 
@@ -1467,6 +1545,9 @@ Exposed Methods
 | get_record(id) | Returns JSON-shaped record data |
 | forget(ids, confirm?) | Deletes by UUID list |
 | stats() | Returns JSON-shaped stats data |
+| storeRaw(text, sessionId, topicId?, source?, speaker?, visibility?, secrecyLevel?) | Preserves verbatim raw journal entries |
+| recallRaw(query?, sessionId?, limit?, includePrivateScratch?, includeSealed?) | Queries preserved raw journal entries |
+| dreamTick(sessionId?, dryRun?, maxGroups?, includePrivateScratch?, includeSealed?, promoteSemantic?) | Summarizes raw journal groups into curated memory |
 
 Native vs HTTP SDK
 
@@ -1922,7 +2003,6 @@ Store a new text memory record.
 |------|------|---------|-------------|
 |  | string | -- | Required. Text content to store |
 | --store | string | episodic | Target store |
-| --emotion | string | None | Emotion label (e.g., joy, trust, fear) |
 | --embedding | string | None | Comma-separated embedding vector |
 
 The working store is intentionally in-memory only. Records written there do not survive process restarts.
@@ -1963,7 +2043,7 @@ Query the raw journal for verbatim entries.
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| --query | string | None | Full-text search query |
+| [QUERY] | string | None | Optional full-text search query |
 | --session-id | string | None | Filter by session |
 | --limit | u32 | 10 | Maximum number of results |
 | --include-private-scratch | bool | false | Include private_scratch entries |
@@ -2096,9 +2176,9 @@ The MCP server exposes these tools:
 | dream_tick | Summarize raw journal into curated memory |
 | consolidate | Trigger episodic-to-semantic consolidation |
 | stats | View system statistics |
-| export` | Export a CMA archive to an explicit output path |
+| export | Export curated memories to a CMA archive at an explicit output path |
 
-The MCP surface is intentionally LLM-friendly and does not expose every HTTP/gRPC method one-to-one. For full protocol access, use the REST API or gRPC transport.
+The MCP surface is intentionally LLM-friendly and does not expose every HTTP/gRPC method one-to-one. export requires an explicit output_path`, does not include the raw journal, and archive import is intentionally unavailable over MCP. For full protocol access, use the REST API or gRPC transport.
 
 Next Steps
 

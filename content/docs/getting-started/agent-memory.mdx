@@ -1,0 +1,100 @@
+---
+title: "MCP & Agent Setup"
+description: "Connect Cerememory to Claude Code and other MCP-compatible clients over stdio."
+---
+
+Cerememory's recommended agent integration is the stdio MCP server exposed by:
+
+```bash
+cerememory mcp
+```
+
+This gives MCP-compatible clients a curated memory tool surface backed by the same Cerememory engine used by the HTTP and gRPC transports.
+
+## Build the Binary
+
+From the main repository:
+
+```bash
+cargo build -p cerememory-cli --release
+```
+
+The binary will be available at:
+
+```text
+target/release/cerememory
+```
+
+## Claude Code Example
+
+Add Cerememory to your MCP client configuration:
+
+```json
+{
+  "mcpServers": {
+    "cerememory": {
+      "command": "/absolute/path/to/target/release/cerememory",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+<Callout type="info">
+If you need persistent storage, auth, or provider configuration while running MCP mode, pass `--config /path/to/cerememory.toml` and/or `--data-dir /path/to/data` before the `mcp` subcommand.
+</Callout>
+
+Example:
+
+```bash
+target/release/cerememory \
+  --config ./cerememory.toml \
+  --data-dir ./data \
+  mcp
+```
+
+## Tool Surface
+
+The MCP server exposes these LLM-friendly tools:
+
+| Tool | Description |
+|------|-------------|
+| `store` | Save a curated memory |
+| `update` | Edit a curated memory by UUID |
+| `batch_store` | Save multiple curated memories at once |
+| `store_raw` | Preserve a verbatim raw journal entry |
+| `batch_store_raw` | Preserve multiple raw journal entries at once |
+| `recall` | Search memories, or list recent memories when `query` is omitted |
+| `recall_raw` | Query preserved raw journal entries |
+| `timeline` | Browse memories by time period |
+| `associate` | Traverse the association graph from a record |
+| `inspect` | View a full memory record by UUID |
+| `forget` | Permanently delete memories by UUID |
+| `dream_tick` | Summarize raw journal entries into curated memory |
+| `consolidate` | Migrate mature episodic memory to the semantic store |
+| `stats` | Inspect system statistics and record counts |
+| `export` | Export curated memories to an explicit `output_path` |
+
+## What MCP Does And Does Not Expose
+
+MCP is a curated transport for agent workflows, not a 1:1 mirror of every CMP operation.
+
+- Best for: Claude Code, agent memory, raw journal capture, dream processing, and lightweight archive export
+- Use HTTP/gRPC/CLI for: health probes, readiness checks, import workflows, full protocol coverage, and remote multi-client access
+
+<Callout type="warning">
+The MCP `export` tool requires an explicit `output_path`, writes the archive file directly from the server process, and skips the raw journal by design. Archive import is available over HTTP, gRPC, and CLI, but is intentionally not exposed as an MCP tool.
+</Callout>
+
+## Typical Agent Workflow
+
+1. Use `store` or `store_raw` as interaction history arrives.
+2. Use `recall` and `associate` to bring relevant memory back into the working context.
+3. Periodically run `dream_tick` to turn raw journal entries into curated episodic and semantic memory.
+4. Run `consolidate` for episodic-to-semantic migration as memories mature.
+5. Use `export` for portable backups.
+
+## Next Steps
+
+<LinkCard href="/docs/reference/cli" title="CLI Reference" description="Complete command and subcommand reference" />
+<LinkCard href="/docs/protocol/overview" title="CMP Protocol" description="Understand how MCP fits into the full protocol model" />

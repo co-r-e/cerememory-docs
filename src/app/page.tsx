@@ -58,7 +58,7 @@ export default function Home() {
     applicationCategory: 'DeveloperApplication',
     applicationSubCategory: 'Database',
     operatingSystem: 'Linux, macOS, Windows',
-    softwareVersion: '0.2.1',
+    softwareVersion: '0.2.2',
     programmingLanguage: ['Rust', 'Python', 'TypeScript'],
     offers: {
       '@type': 'Offer',
