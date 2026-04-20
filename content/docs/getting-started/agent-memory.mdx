@@ -1,6 +1,6 @@
 ---
 title: "MCP & Agent Setup"
-description: "Connect Cerememory to Claude Code and other MCP-compatible clients over stdio."
+description: "Connect Cerememory to Claude Code, Codex CLI, Cursor, and any other MCP-compatible client over stdio."
 ---
 
 Cerememory's recommended agent integration is the stdio MCP server exposed by:
@@ -9,7 +9,7 @@ Cerememory's recommended agent integration is the stdio MCP server exposed by:
 cerememory mcp
 ```
 
-This gives MCP-compatible clients a curated memory tool surface backed by the same Cerememory engine used by the HTTP and gRPC transports.
+The same binary plugs into **any MCP-compatible client**, not just Claude Code. Cerememory has been tested with Claude Code, OpenAI Codex CLI, Cursor, Cline, Windsurf, Zed, and Continue, and should work with anything else that speaks the Model Context Protocol.
 
 ## Build the Binary
 
@@ -25,9 +25,13 @@ The binary will be available at:
 target/release/cerememory
 ```
 
-## Claude Code Example
+## Client Configuration
 
-Add Cerememory to your MCP client configuration:
+Pick your client and add the snippet. Every MCP client accepts a stdio server definition — only the config file path and syntax differ.
+
+### Claude Code
+
+`~/.claude/claude_desktop_config.json`:
 
 ```json
 {
@@ -39,6 +43,39 @@ Add Cerememory to your MCP client configuration:
   }
 }
 ```
+
+### OpenAI Codex CLI
+
+`~/.codex/config.toml`:
+
+```toml
+[mcp_servers.cerememory]
+command = "/absolute/path/to/target/release/cerememory"
+args = ["mcp"]
+```
+
+### Cursor
+
+`~/.cursor/mcp.json` (user-wide) or `.cursor/mcp.json` (per-project):
+
+```json
+{
+  "mcpServers": {
+    "cerememory": {
+      "command": "/absolute/path/to/target/release/cerememory",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+### Cline / Continue / Windsurf / Zed
+
+Use the client's MCP settings UI or JSON file. The `command` + `args` pair is the same as above.
+
+### Any Other MCP Client
+
+If the client supports MCP stdio servers, point it at `/absolute/path/to/target/release/cerememory` with the single argument `mcp`. No daemon, port, or auth setup is required for local use.
 
 <Callout type="info">
 If you need persistent storage, auth, or provider configuration while running MCP mode, pass `--config /path/to/cerememory.toml` and/or `--data-dir /path/to/data` before the `mcp` subcommand.
@@ -79,7 +116,7 @@ The MCP server exposes these LLM-friendly tools:
 
 MCP is a curated transport for agent workflows, not a 1:1 mirror of every CMP operation.
 
-- Best for: Claude Code, agent memory, raw journal capture, dream processing, and lightweight archive export
+- Best for: Claude Code, Codex CLI, Cursor, and other MCP clients for agent memory, raw journal capture, dream processing, and lightweight archive export
 - Use HTTP/gRPC/CLI for: health probes, readiness checks, import workflows, full protocol coverage, and remote multi-client access
 
 <Callout type="warning">
@@ -98,3 +135,4 @@ The MCP `export` tool requires an explicit `output_path`, writes the archive fil
 
 <LinkCard href="/docs/reference/cli" title="CLI Reference" description="Complete command and subcommand reference" />
 <LinkCard href="/docs/protocol/overview" title="CMP Protocol" description="Understand how MCP fits into the full protocol model" />
+<LinkCard href="https://modelcontextprotocol.io/clients" title="MCP Client Directory" description="Browse the growing ecosystem of MCP-compatible clients" />

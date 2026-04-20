@@ -782,7 +782,7 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
                 __html: `<span class="cm"># Start the server</span>
 <span class="fn">cargo</span> run -p cerememory-cli -- serve --port <span class="num">8420</span>
 
-<span class="cm"># Claude Code / MCP</span>
+<span class="cm"># MCP stdio (Claude Code, Codex CLI, Cursor, ...)</span>
 <span class="fn">cargo</span> run -p cerememory-cli -- mcp
 
 <span class="cm"># Or via Docker</span>

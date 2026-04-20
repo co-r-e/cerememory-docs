@@ -163,7 +163,7 @@ export const en: Dictionary = {
       grpc: 'gRPC',
       grpcDesc: 'Full surface \u00b7 streaming, low-latency',
       mcp: 'MCP',
-      mcpDesc: 'Curated 15-tool subset \u00b7 LLM agents',
+      mcpDesc: 'Curated 15-tool subset \u00b7 Claude Code, Codex CLI, Cursor, any MCP client',
       cmp: 'CMP \u2013 Cerememory Protocol',
       cmpDesc: 'Unified message format: encode \u00b7 recall \u00b7 lifecycle \u00b7 introspect',
       engine: 'Cerememory Engine',

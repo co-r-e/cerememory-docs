@@ -45,7 +45,7 @@ By default Cerememory starts with:
 - Background dream processing enabled by default (`dream.background_interval_secs = 86400`)
 
 <Callout type="info">
-For agent workflows, run `cerememory mcp` to expose the MCP tool surface over stdio instead of starting the HTTP server.
+For agent workflows, run `cerememory mcp` to expose the MCP tool surface over stdio instead of starting the HTTP server. This works with any MCP-compatible client — Claude Code, Codex CLI, Cursor, Cline, Windsurf, Zed, Continue, and others. See [MCP & Agent Setup](/docs/getting-started/agent-memory) for per-client configuration.
 </Callout>
 
 ## Store a Memory
@@ -242,7 +242,7 @@ cerememory dream-tick --session-id sess_001
 </Tabs>
 
 <Callout type="info">
-For agent-first workflows, `cerememory mcp` exposes the same memory system over stdio so Claude Code and other MCP-compatible clients can use `store`, `store_raw`, `recall`, `recall_raw`, `dream_tick`, `consolidate`, `export`, and related tools directly.
+For agent-first workflows, `cerememory mcp` exposes the same memory system over stdio so Claude Code, OpenAI Codex CLI, Cursor, and any other MCP-compatible client can use `store`, `store_raw`, `recall`, `recall_raw`, `dream_tick`, `consolidate`, `export`, and related tools directly.
 </Callout>
 
 ## Forget a Memory
@@ -291,5 +291,5 @@ curl http://localhost:8420/v1/introspect/stats
 ## Next Steps
 
 <LinkCard href="/docs/architecture/overview" title="Architecture" description="Understand the engine, stores, and memory lifecycle" />
-<LinkCard href="/docs/getting-started/agent-memory" title="MCP & Agent Setup" description="Connect Cerememory to Claude Code and other MCP clients" />
+<LinkCard href="/docs/getting-started/agent-memory" title="MCP & Agent Setup" description="Connect Cerememory to Claude Code, Codex CLI, Cursor, and other MCP clients" />
 <LinkCard href="/docs/protocol/overview" title="CMP Protocol" description="Learn the full Cerememory Protocol specification" />

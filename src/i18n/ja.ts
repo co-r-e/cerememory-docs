@@ -164,7 +164,7 @@ export const ja: Dictionary = {
       grpc: 'gRPC',
       grpcDesc: '全面公開 \u00b7 ストリーミング・低レイテンシ',
       mcp: 'MCP',
-      mcpDesc: '15ツールに絞ったサブセット \u00b7 LLM エージェント向け',
+      mcpDesc: '15ツールに絞ったサブセット \u00b7 Claude Code、Codex CLI、Cursor など任意のMCPクライアント',
       cmp: 'CMP \u2013 Cerememory Protocol',
       cmpDesc: '統一メッセージ形式: encode \u00b7 recall \u00b7 lifecycle \u00b7 introspect',
       engine: 'Cerememory エンジン',
