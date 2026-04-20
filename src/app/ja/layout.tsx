@@ -1,14 +1,5 @@
-'use client'
+import type { ReactNode } from "react";
 
-import { useEffect } from 'react'
-
-export default function JaLayout({ children }: { children: React.ReactNode }) {
-  useEffect(() => {
-    document.documentElement.lang = 'ja'
-    return () => {
-      document.documentElement.lang = 'en'
-    }
-  }, [])
-
-  return children
+export default function JaLayout({ children }: { children: ReactNode }): ReactNode {
+  return <div lang="ja">{children}</div>;
 }

@@ -83,6 +83,14 @@ async function isDirectory(dirPath: string): Promise<boolean> {
   }
 }
 
+async function readLastModified(filePath: string): Promise<Date | null> {
+  try {
+    return (await fs.stat(filePath)).mtime;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Recursively collect all pages in a directory, ordered by meta.json.
  * Shared between getAllPages and getPageTree for consistency.
@@ -177,6 +185,22 @@ export const getPageBySlug = cache(
 export async function getPageSource(page: DocPage): Promise<string> {
   return fs.readFile(page.filePath, "utf-8");
 }
+
+/** Returns the file modified time for a documentation page. */
+export const getPageLastModified = cache(
+  async (filePath: string): Promise<Date | null> => readLastModified(filePath)
+);
+
+/** Returns the freshest modified time across all documentation pages. */
+export const getDocsLastModified = cache(async (): Promise<Date> => {
+  const pages = await getAllPages();
+  const modifiedDates = await Promise.all(
+    pages.map((page) => getPageLastModified(page.filePath))
+  );
+  const validDates = modifiedDates.filter((date): date is Date => date !== null);
+
+  return validDates.sort((a, b) => b.getTime() - a.getTime())[0] ?? new Date();
+});
 
 /** Builds the complete sidebar navigation tree from the file system. */
 export const getPageTree = cache(async (): Promise<SidebarNode[]> => {

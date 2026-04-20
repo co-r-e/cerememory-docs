@@ -1,34 +1,36 @@
 import type { Metadata } from 'next'
 import { ja } from '@/i18n'
+import { absoluteUrl, siteConfig, withBasePath } from '@/lib/site'
 import HomeContent from '../HomeContent'
 
-const title = ja.meta.title
-const description = ja.meta.description
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://co-r-e.github.io'
-const base = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+const title = siteConfig.japaneseTitle
+const description = siteConfig.japaneseDescription
 
 export const metadata: Metadata = {
   title,
   description,
   alternates: {
-    canonical: `${base}/ja`,
+    canonical: withBasePath('/ja'),
     languages: {
-      en: `${base}/`,
-      ja: `${base}/ja`,
-      'x-default': `${base}/`,
+      en: withBasePath('/'),
+      ja: withBasePath('/ja'),
+      'x-default': withBasePath('/'),
+    },
+    types: {
+      'text/plain': withBasePath('/llms.txt'),
     },
   },
   openGraph: {
     title,
     description,
-    url: `${baseUrl}${base}/ja`,
+    url: absoluteUrl('/ja'),
     type: 'website',
-    siteName: 'Cerememory',
+    siteName: siteConfig.name,
     locale: 'ja_JP',
     alternateLocale: ['en_US'],
     images: [
       {
-        url: `${base}/og-image.png`,
+        url: withBasePath(siteConfig.socialImagePath),
         width: 1200,
         height: 630,
         alt: title,
@@ -40,17 +42,17 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title,
     description,
-    images: [`${base}/og-image.png`],
+    images: [absoluteUrl(siteConfig.socialImagePath)],
   },
 }
 
 export default function JaHome() {
-  const pageUrl = `${baseUrl}${base}/ja`
+  const pageUrl = absoluteUrl('/ja')
 
   const softwareAppJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
-    name: 'Cerememory',
+    name: siteConfig.name,
     alternateName: ['Cerememory Protocol', 'CMP'],
     description,
     url: pageUrl,
@@ -66,19 +68,19 @@ export default function JaHome() {
       priceCurrency: 'USD',
     },
     license: 'https://opensource.org/licenses/MIT',
-    codeRepository: 'https://github.com/co-r-e/cerememory',
+    codeRepository: siteConfig.repoUrl,
     author: {
       '@type': 'Organization',
-      name: 'Cerememory',
-      url: baseUrl,
+      name: siteConfig.name,
+      url: absoluteUrl('/'),
     },
     publisher: {
       '@type': 'Organization',
-      name: 'Cerememory',
-      url: baseUrl,
+      name: siteConfig.name,
+      url: absoluteUrl('/'),
       logo: {
         '@type': 'ImageObject',
-        url: `${baseUrl}${base}/logo.svg`,
+        url: absoluteUrl(siteConfig.logoPath),
       },
     },
   }

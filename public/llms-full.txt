@@ -56,7 +56,7 @@ What Can You Do With Cerememory?
 - Run background decay ticks that naturally age and prune stale memories
 - Consolidate episodic memories into semantic knowledge over time
 - Export and import encrypted memory archives (including raw journal) for portability
-- Integrate with any LLM via HTTP, gRPC, or MCP transports
+- Integrate with any LLM via HTTP, gRPC, or MCP transports — the stdio MCP server works with Claude Code, OpenAI Codex CLI, Cursor, Cline, Windsurf, Zed, Continue, and any other MCP-compatible client
 
 Next Steps
 
@@ -139,7 +139,7 @@ By default Cerememory starts with:
 - /metrics disabled until http.metrics_enabled = true
 - Background dream processing enabled by default (dream.background_interval_secs = 86400)
 
-For agent workflows, run cerememory mcp to expose the MCP tool surface over stdio instead of starting the HTTP server.
+For agent workflows, run cerememory mcp to expose the MCP tool surface over stdio instead of starting the HTTP server. This works with any MCP-compatible client — Claude Code, Codex CLI, Cursor, Cline, Windsurf, Zed, Continue, and others. See MCP & Agent Setup for per-client configuration.
 
 Store a Memory
 
@@ -151,7 +151,7 @@ Preserve Raw Journal Entries
 
 Raw journal records keep the verbatim source material that dream processing can later summarize into curated episodic and semantic memory.
 
-For agent-first workflows, cerememory mcp exposes the same memory system over stdio so Claude Code and other MCP-compatible clients can use store, store_raw, recall, recall_raw, dream_tick, consolidate, export, and related tools directly.
+For agent-first workflows, cerememory mcp exposes the same memory system over stdio so Claude Code, OpenAI Codex CLI, Cursor, and any other MCP-compatible client can use store, store_raw, recall, recall_raw, dream_tick, consolidate, export, and related tools directly.
 
 Forget a Memory
 
@@ -171,7 +171,7 @@ Source: https://co-r-e.github.io/cerememory-docs/docs/getting-started/agent-memo
 
 Cerememory's recommended agent integration is the stdio MCP server exposed by:
 
-This gives MCP-compatible clients a curated memory tool surface backed by the same Cerememory engine used by the HTTP and gRPC transports.
+The same binary plugs into any MCP-compatible client, not just Claude Code. Cerememory has been tested with Claude Code, OpenAI Codex CLI, Cursor, Cline, Windsurf, Zed, and Continue, and should work with anything else that speaks the Model Context Protocol.
 
 Build the Binary
 
@@ -179,9 +179,29 @@ From the main repository:
 
 The binary will be available at:
 
-Claude Code Example
+Client Configuration
 
-Add Cerememory to your MCP client configuration:
+Pick your client and add the snippet. Every MCP client accepts a stdio server definition — only the config file path and syntax differ.
+
+Claude Code
+
+~/.claude/claude_desktop_config.json:
+
+OpenAI Codex CLI
+
+~/.codex/config.toml:
+
+Cursor
+
+~/.cursor/mcp.json (user-wide) or .cursor/mcp.json (per-project):
+
+Cline / Continue / Windsurf / Zed
+
+Use the client's MCP settings UI or JSON file. The command + args pair is the same as above.
+
+Any Other MCP Client
+
+If the client supports MCP stdio servers, point it at /absolute/path/to/target/release/cerememory with the single argument mcp. No daemon, port, or auth setup is required for local use.
 
 If you need persistent storage, auth, or provider configuration while running MCP mode, pass --config /path/to/cerememory.toml and/or --data-dir /path/to/data before the mcp subcommand.
 
@@ -213,7 +233,7 @@ What MCP Does And Does Not Expose
 
 MCP is a curated transport for agent workflows, not a 1:1 mirror of every CMP operation.
 
-- Best for: Claude Code, agent memory, raw journal capture, dream processing, and lightweight archive export
+- Best for: Claude Code, Codex CLI, Cursor, and other MCP clients for agent memory, raw journal capture, dream processing, and lightweight archive export
 - Use HTTP/gRPC/CLI for: health probes, readiness checks, import workflows, full protocol coverage, and remote multi-client access
 
 The MCP export tool requires an explicit output_path, writes the archive file directly from the server process, and skips the raw journal by design. Archive import is available over HTTP, gRPC, and CLI, but is intentionally not exposed as an MCP tool.

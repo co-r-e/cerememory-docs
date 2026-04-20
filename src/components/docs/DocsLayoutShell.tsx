@@ -102,7 +102,7 @@ export function DocsLayoutShell({ tree, children }: Props): ReactNode {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <p>&copy; {new Date().getFullYear()} Cerememory Contributors. MIT License.</p>
               <div className="flex gap-6">
-                <a href="https://github.com/cerememory/cerememory" className="transition hover:text-[var(--ink)]" target="_blank" rel="noopener noreferrer">GitHub</a>
+                <a href="https://github.com/co-r-e/cerememory" className="transition hover:text-[var(--ink)]" target="_blank" rel="noopener noreferrer">GitHub</a>
               </div>
             </div>
           </footer>

@@ -1,59 +1,55 @@
 import type { Metadata } from 'next'
 import { en } from '@/i18n'
+import { absoluteUrl, siteConfig, withBasePath } from '@/lib/site'
 import HomeContent from './HomeContent'
 
-const title = 'Cerememory - A Living Memory Database for the Age of AI'
-const description =
-  'Cerememory is an open-source, neuroscience-inspired memory database that gives AI systems persistent, evolving memory across sessions. LLM-agnostic (Claude, GPT, Gemini), user-sovereign, brain-inspired, and built in Rust. Speaks CMP over HTTP, gRPC, and MCP.'
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://co-r-e.github.io'
-const base = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
-
 export const metadata: Metadata = {
-  title,
-  description,
   alternates: {
-    canonical: `${base}/`,
+    canonical: withBasePath('/'),
     languages: {
-      en: `${base}/`,
-      ja: `${base}/ja`,
-      'x-default': `${base}/`,
+      en: withBasePath('/'),
+      ja: withBasePath('/ja'),
+      'x-default': withBasePath('/'),
+    },
+    types: {
+      'text/plain': withBasePath('/llms.txt'),
     },
   },
   openGraph: {
-    title,
-    description,
-    url: `${baseUrl}${base}/`,
+    title: siteConfig.title,
+    description: siteConfig.description,
+    url: absoluteUrl('/'),
     type: 'website',
-    siteName: 'Cerememory',
+    siteName: siteConfig.name,
     locale: 'en_US',
     alternateLocale: ['ja_JP'],
     images: [
       {
-        url: `${base}/og-image.png`,
+        url: withBasePath(siteConfig.socialImagePath),
         width: 1200,
         height: 630,
-        alt: 'Cerememory - A Living Memory Database for the Age of AI',
+        alt: siteConfig.title,
         type: 'image/png',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title,
-    description,
-    images: [`${base}/og-image.png`],
+    title: siteConfig.title,
+    description: siteConfig.description,
+    images: [absoluteUrl(siteConfig.socialImagePath)],
   },
 }
 
 export default function Home() {
-  const homeUrl = `${baseUrl}${base}/`
+  const homeUrl = absoluteUrl('/')
 
   const softwareAppJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
-    name: 'Cerememory',
+    name: siteConfig.name,
     alternateName: ['Cerememory Protocol', 'CMP'],
-    description,
+    description: siteConfig.description,
     url: homeUrl,
     applicationCategory: 'DeveloperApplication',
     applicationSubCategory: 'Database',
@@ -66,19 +62,19 @@ export default function Home() {
       priceCurrency: 'USD',
     },
     license: 'https://opensource.org/licenses/MIT',
-    codeRepository: 'https://github.com/co-r-e/cerememory',
+    codeRepository: siteConfig.repoUrl,
     author: {
       '@type': 'Organization',
-      name: 'Cerememory',
-      url: baseUrl,
+      name: siteConfig.name,
+      url: homeUrl,
     },
     publisher: {
       '@type': 'Organization',
-      name: 'Cerememory',
-      url: baseUrl,
+      name: siteConfig.name,
+      url: homeUrl,
       logo: {
         '@type': 'ImageObject',
-        url: `${baseUrl}${base}/logo.svg`,
+        url: absoluteUrl(siteConfig.logoPath),
       },
     },
   }
@@ -86,24 +82,24 @@ export default function Home() {
   const websiteJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: 'Cerememory',
+    name: siteConfig.name,
     url: homeUrl,
-    description,
+    description: siteConfig.description,
     inLanguage: ['en', 'ja'],
     publisher: {
       '@type': 'Organization',
-      name: 'Cerememory',
-      url: baseUrl,
+      name: siteConfig.name,
+      url: homeUrl,
     },
   }
 
   const orgJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'Cerememory',
-    url: baseUrl,
-    logo: `${baseUrl}${base}/logo.svg`,
-    sameAs: ['https://github.com/co-r-e/cerememory'],
+    name: siteConfig.name,
+    url: homeUrl,
+    logo: absoluteUrl(siteConfig.logoPath),
+    sameAs: [siteConfig.repoUrl],
   }
 
   return (

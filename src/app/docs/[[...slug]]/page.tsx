@@ -1,18 +1,22 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
+import { notFound } from "next/navigation";
 import {
   getPageBySlug,
   getPageSource,
   getAllSlugs,
+  getPageTree,
   getPrevNextPages,
   getBreadcrumbs,
-  getFirstPageSlug,
+  getDocsLastModified,
+  getPageLastModified,
 } from "@/lib/docs/content";
 import { compileMdx } from "@/lib/docs/mdx";
 import { Breadcrumb } from "@/components/docs/Breadcrumb";
 import { PrevNextLinks } from "@/components/docs/PrevNextLinks";
 import { TableOfContents } from "@/components/docs/TableOfContents";
+import { absoluteUrl, siteConfig, withBasePath } from "@/lib/site";
 
 interface Props {
   params: Promise<{ slug?: string[] }>;
@@ -27,14 +31,40 @@ export async function generateStaticParams(): Promise<{ slug?: string[] }[]> {
 /** Generate metadata for each documentation page. */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://co-r-e.github.io";
 
   if (!slug || slug.length === 0) {
     return {
-      title: "Documentation",
-      description: "Cerememory documentation: getting started, architecture, the CMP protocol, SDKs, deployment, and reference material.",
-      alternates: { canonical: `${base}/docs` },
+      title: "Documentation | Cerememory",
+      description: siteConfig.docsDescription,
+      alternates: {
+        canonical: withBasePath("/docs"),
+        types: {
+          "text/plain": withBasePath("/llms.txt"),
+        },
+      },
+      openGraph: {
+        title: "Cerememory Documentation",
+        description: siteConfig.docsDescription,
+        url: absoluteUrl("/docs"),
+        type: "website",
+        siteName: siteConfig.name,
+        locale: "en_US",
+        images: [
+          {
+            url: withBasePath(siteConfig.socialImagePath),
+            width: 1200,
+            height: 630,
+            alt: "Cerememory Documentation",
+            type: "image/png",
+          },
+        ],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: "Cerememory Documentation",
+        description: siteConfig.docsDescription,
+        images: [absoluteUrl(siteConfig.socialImagePath)],
+      },
     };
   }
 
@@ -46,22 +76,30 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { title, description } = page.frontmatter;
   const pagePath = `/docs/${slug.join("/")}`;
   const fullTitle = `${title} | Cerememory Docs`;
+  const lastModified = await getPageLastModified(page.filePath);
 
   return {
     title: fullTitle,
     description,
     alternates: {
-      canonical: `${base}${pagePath}`,
+      canonical: withBasePath(pagePath),
+      types: {
+        "text/plain": withBasePath("/llms.txt"),
+      },
     },
     openGraph: {
       title: fullTitle,
       description,
-      url: `${baseUrl}${base}${pagePath}`,
+      url: absoluteUrl(pagePath),
       type: "article",
-      siteName: "Cerememory",
+      siteName: siteConfig.name,
+      locale: "en_US",
+      modifiedTime: lastModified?.toISOString(),
+      section: slug.length > 1 ? slug[0].replace(/-/g, " ") : "Documentation",
+      tags: slug,
       images: [
         {
-          url: `${base}/og-image.png`,
+          url: withBasePath(siteConfig.socialImagePath),
           width: 1200,
           height: 630,
           alt: title,
@@ -73,7 +111,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       card: "summary_large_image",
       title: fullTitle,
       description,
-      images: [`${base}/og-image.png`],
+      images: [absoluteUrl(siteConfig.socialImagePath)],
     },
   };
 }
@@ -81,10 +119,133 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function DocsPage({ params }: Props): Promise<ReactNode> {
   const { slug } = await params;
 
-  // No slug -> redirect to the first page in the docs tree
   if (!slug || slug.length === 0) {
-    const firstSlug = await getFirstPageSlug();
-    redirect(firstSlug ? `/docs/${firstSlug.join("/")}` : "/");
+    const [tree, lastModified] = await Promise.all([
+      getPageTree(),
+      getDocsLastModified(),
+    ]);
+    const docsUrl = absoluteUrl("/docs");
+    const docLinks = tree.flatMap((section) =>
+      (section.children ?? []).map((child) => ({
+        name: child.title,
+        url: child.href ? absoluteUrl(child.href) : docsUrl,
+      }))
+    );
+
+    const docsIndexJsonLd = {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      name: "Cerememory Documentation",
+      description: siteConfig.docsDescription,
+      url: docsUrl,
+      inLanguage: "en",
+      dateModified: lastModified.toISOString(),
+      isPartOf: {
+        "@type": "WebSite",
+        name: siteConfig.name,
+        url: absoluteUrl("/"),
+      },
+      publisher: {
+        "@type": "Organization",
+        name: siteConfig.name,
+        url: absoluteUrl("/"),
+        logo: {
+          "@type": "ImageObject",
+          url: absoluteUrl(siteConfig.logoPath),
+        },
+      },
+      mainEntity: {
+        "@type": "ItemList",
+        itemListElement: docLinks.map((entry, index) => ({
+            "@type": "ListItem",
+            position: index + 1,
+            name: entry.name,
+            url: entry.url,
+          })),
+      },
+    };
+
+    const docsBreadcrumbJsonLd = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Home",
+          item: absoluteUrl("/"),
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Docs",
+          item: docsUrl,
+        },
+      ],
+    };
+
+    return (
+      <>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(docsIndexJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(docsBreadcrumbJsonLd) }}
+        />
+
+        <article className="px-6 pt-6 pb-16 lg:px-10">
+          <Breadcrumb items={[{ label: "Docs" }]} />
+
+          <header className="mb-10 max-w-3xl">
+            <h1 className="text-3xl font-bold tracking-tight text-[var(--ink)]">
+              Cerememory Documentation
+            </h1>
+            <p className="mt-3 text-lg text-[var(--ink-soft)]">
+              {siteConfig.docsDescription}
+            </p>
+          </header>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {tree.map((section) => (
+              <section
+                key={section.title}
+                className="rounded-2xl border border-[var(--line)] bg-white/60 p-5 shadow-[0_12px_40px_rgba(15,23,42,0.06)]"
+              >
+                <h2 className="text-lg font-semibold text-[var(--ink)]">
+                  {section.title}
+                </h2>
+                {section.children && section.children.length > 0 ? (
+                  <ul className="mt-4 space-y-3">
+                    {section.children.map((child) => (
+                      <li key={child.href ?? child.title}>
+                        {child.href ? (
+                          <Link
+                            href={child.href}
+                            className="text-sm text-[var(--ink-soft)] transition hover:text-[var(--ink)]"
+                          >
+                            {child.title}
+                          </Link>
+                        ) : (
+                          <span className="text-sm text-[var(--ink-soft)]">
+                            {child.title}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-4 text-sm text-[var(--ink-soft)]">
+                    Additional documentation pages will appear here.
+                  </p>
+                )}
+              </section>
+            ))}
+          </div>
+        </article>
+      </>
+    );
   }
 
   const page = await getPageBySlug(slug);
@@ -100,9 +261,8 @@ export default async function DocsPage({ params }: Props): Promise<ReactNode> {
   const showToc = frontmatter.toc !== false && toc.length > 0;
 
   // JSON-LD structured data for SEO
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://co-r-e.github.io";
-  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-  const pageUrl = `${baseUrl}${base}/docs/${slug.join("/")}`;
+  const pageUrl = absoluteUrl(`/docs/${slug.join("/")}`);
+  const lastModified = await getPageLastModified(page.filePath);
 
   const techArticleJsonLd = {
     "@context": "https://schema.org",
@@ -111,31 +271,35 @@ export default async function DocsPage({ params }: Props): Promise<ReactNode> {
     description: frontmatter.description,
     url: pageUrl,
     inLanguage: "en",
+    dateModified: lastModified?.toISOString(),
+    image: absoluteUrl(siteConfig.socialImagePath),
+    about: slug.map((segment) => segment.replace(/-/g, " ")),
+    isAccessibleForFree: true,
     isPartOf: {
       "@type": "WebSite",
-      name: "Cerememory",
-      url: `${baseUrl}${base}/`,
+      name: siteConfig.name,
+      url: absoluteUrl("/"),
     },
     publisher: {
       "@type": "Organization",
-      name: "Cerememory",
-      url: `${baseUrl}${base}/`,
+      name: siteConfig.name,
+      url: absoluteUrl("/"),
       logo: {
         "@type": "ImageObject",
-        url: `${baseUrl}${base}/logo.svg`,
+        url: absoluteUrl(siteConfig.logoPath),
       },
     },
     mainEntityOfPage: pageUrl,
   };
 
   const crumbEntries: { name: string; url: string }[] = [
-    { name: "Home", url: `${baseUrl}${base}/` },
-    { name: "Docs", url: `${baseUrl}${base}/docs` },
+    { name: "Home", url: absoluteUrl("/") },
+    { name: "Docs", url: absoluteUrl("/docs") },
   ];
   if (slug.length > 1) {
     crumbEntries.push({
       name: breadcrumbs[1]?.label ?? slug[0],
-      url: `${baseUrl}${base}/docs/${slug[0]}`,
+      url: absoluteUrl(`/docs/${slug[0]}`),
     });
   }
   crumbEntries.push({ name: frontmatter.title, url: pageUrl });

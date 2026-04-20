@@ -1,17 +1,27 @@
 import type { MetadataRoute } from "next";
+import { absoluteUrl, getSiteUrl, withBasePath } from "@/lib/site";
 
 export const dynamic = "force-static";
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://co-r-e.github.io";
-  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const crawlDisallow = [
+    withBasePath("/_next/"),
+    withBasePath("/api/"),
+    withBasePath("/docs/search-index.json"),
+  ];
+  const publicSiteRoot = withBasePath("/");
 
   return {
     rules: [
       {
+        userAgent: ["Googlebot", "Bingbot", "DuckDuckBot", "Slurp"],
+        allow: publicSiteRoot,
+        disallow: [...crawlDisallow, withBasePath("/llms-full.txt")],
+      },
+      {
         userAgent: "*",
-        allow: "/",
-        disallow: ["/_next/", "/api/"],
+        allow: publicSiteRoot,
+        disallow: crawlDisallow,
       },
       {
         userAgent: [
@@ -27,10 +37,14 @@ export default function robots(): MetadataRoute.Robots {
           "Meta-ExternalAgent",
           "Bytespider",
         ],
-        allow: "/",
+        allow: [
+          publicSiteRoot,
+          withBasePath("/llms.txt"),
+          withBasePath("/llms-full.txt"),
+        ],
       },
     ],
-    sitemap: `${baseUrl}${base}/sitemap.xml`,
-    host: baseUrl,
+    sitemap: absoluteUrl("/sitemap.xml"),
+    host: new URL(getSiteUrl()).host,
   };
 }

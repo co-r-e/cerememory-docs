@@ -1,63 +1,69 @@
 import type { MetadataRoute } from "next";
-import { getAllPages } from "@/lib/docs/content";
+import { getAllPages, getDocsLastModified, getPageLastModified } from "@/lib/docs/content";
+import { absoluteUrl } from "@/lib/site";
 
 export const dynamic = "force-static";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://co-r-e.github.io";
-  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-  const lastModified = new Date();
+  const [pages, docsLastModified] = await Promise.all([
+    getAllPages(),
+    getDocsLastModified(),
+  ]);
 
-  const pages = await getAllPages();
-
-  const docEntries: MetadataRoute.Sitemap = pages.map((page) => {
+  const docEntries: MetadataRoute.Sitemap = await Promise.all(pages.map(async (page) => {
     const pagePath = `/docs/${page.slug.join("/")}`;
     return {
-      url: `${baseUrl}${base}${pagePath}`,
-      lastModified,
+      url: absoluteUrl(pagePath),
+      lastModified: await getPageLastModified(page.filePath) ?? docsLastModified,
       changeFrequency: "weekly",
       priority: 0.7,
       alternates: {
         languages: {
-          en: `${baseUrl}${base}${pagePath}`,
-          'x-default': `${baseUrl}${base}${pagePath}`,
+          en: absoluteUrl(pagePath),
+          'x-default': absoluteUrl(pagePath),
         },
       },
     };
-  });
+  }));
 
   return [
     {
-      url: `${baseUrl}${base}/`,
-      lastModified,
+      url: absoluteUrl("/"),
+      lastModified: docsLastModified,
       changeFrequency: "monthly",
       priority: 1.0,
       alternates: {
         languages: {
-          en: `${baseUrl}${base}/`,
-          ja: `${baseUrl}${base}/ja`,
-          'x-default': `${baseUrl}${base}/`,
+          en: absoluteUrl("/"),
+          ja: absoluteUrl("/ja"),
+          'x-default': absoluteUrl("/"),
         },
       },
     },
     {
-      url: `${baseUrl}${base}/ja`,
-      lastModified,
+      url: absoluteUrl("/ja"),
+      lastModified: docsLastModified,
       changeFrequency: "monthly",
       priority: 0.9,
       alternates: {
         languages: {
-          en: `${baseUrl}${base}/`,
-          ja: `${baseUrl}${base}/ja`,
-          'x-default': `${baseUrl}${base}/`,
+          en: absoluteUrl("/"),
+          ja: absoluteUrl("/ja"),
+          'x-default': absoluteUrl("/"),
         },
       },
     },
     {
-      url: `${baseUrl}${base}/docs`,
-      lastModified,
+      url: absoluteUrl("/docs"),
+      lastModified: docsLastModified,
       changeFrequency: "weekly",
       priority: 0.9,
+      alternates: {
+        languages: {
+          en: absoluteUrl("/docs"),
+          "x-default": absoluteUrl("/docs"),
+        },
+      },
     },
     ...docEntries,
   ];

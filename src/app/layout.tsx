@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Cormorant_Garamond, Figtree, JetBrains_Mono } from 'next/font/google'
+import { absoluteUrl, getSiteUrl, siteConfig, withBasePath } from '@/lib/site'
 import './globals.css'
 
 const figtree = Figtree({
@@ -24,20 +25,13 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ['300', '400', '500'],
 })
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://co-r-e.github.io'
-const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
-const TITLE = 'Cerememory - A Living Memory Database for the Age of AI'
-const DESCRIPTION =
-  'Cerememory is an open-source, neuroscience-inspired memory database that gives AI systems persistent, evolving memory across sessions. LLM-agnostic (Claude, GPT, Gemini), user-sovereign, brain-inspired, and built in Rust. Speaks CMP over HTTP, gRPC, and MCP.'
+const SITE_URL = getSiteUrl()
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: {
-    default: TITLE,
-    template: '%s | Cerememory',
-  },
-  description: DESCRIPTION,
-  applicationName: 'Cerememory',
+  title: siteConfig.title,
+  description: siteConfig.description,
+  applicationName: siteConfig.applicationName,
   generator: 'Next.js',
   keywords: [
     'Cerememory',
@@ -63,55 +57,59 @@ export const metadata: Metadata = {
     'local-first',
     'user-sovereign',
   ],
-  authors: [{ name: 'Cerememory' }],
-  creator: 'Cerememory',
-  publisher: 'Cerememory',
+  authors: [{ name: siteConfig.name }],
+  creator: siteConfig.name,
+  publisher: siteConfig.name,
   category: 'technology',
   referrer: 'origin-when-cross-origin',
   alternates: {
-    canonical: `${BASE_PATH}/`,
+    canonical: withBasePath('/'),
     languages: {
-      en: `${BASE_PATH}/`,
-      ja: `${BASE_PATH}/ja`,
-      'x-default': `${BASE_PATH}/`,
+      en: withBasePath('/'),
+      ja: withBasePath('/ja'),
+      'x-default': withBasePath('/'),
+    },
+    types: {
+      'text/plain': withBasePath('/llms.txt'),
     },
   },
   icons: {
     icon: [
-      { url: `${BASE_PATH}/favicon.ico`, sizes: '48x48', type: 'image/x-icon' },
-      { url: `${BASE_PATH}/icon.svg`, type: 'image/svg+xml' },
-      { url: `${BASE_PATH}/icon-192.png`, sizes: '192x192', type: 'image/png' },
-      { url: `${BASE_PATH}/icon-512.png`, sizes: '512x512', type: 'image/png' },
+      { url: withBasePath('/favicon.ico'), sizes: 'any', type: 'image/x-icon' },
+      { url: withBasePath('/favicon-48.png'), sizes: '48x48', type: 'image/png' },
+      { url: withBasePath('/icon.svg'), sizes: 'any', type: 'image/svg+xml' },
+      { url: withBasePath('/icon-192.png'), sizes: '192x192', type: 'image/png' },
+      { url: withBasePath('/icon-512.png'), sizes: '512x512', type: 'image/png' },
     ],
-    shortcut: [`${BASE_PATH}/favicon.ico`],
+    shortcut: [withBasePath('/favicon.ico')],
     apple: [
-      { url: `${BASE_PATH}/apple-icon.png`, sizes: '180x180', type: 'image/png' },
+      { url: withBasePath('/apple-icon.png'), sizes: '180x180', type: 'image/png' },
     ],
   },
-  manifest: `${BASE_PATH}/site.webmanifest`,
+  manifest: withBasePath('/manifest.webmanifest'),
   openGraph: {
-    title: TITLE,
-    description: DESCRIPTION,
-    url: `${SITE_URL}${BASE_PATH}/`,
-    siteName: 'Cerememory',
+    title: siteConfig.title,
+    description: siteConfig.description,
+    url: absoluteUrl('/'),
+    siteName: siteConfig.name,
     type: 'website',
     locale: 'en_US',
     alternateLocale: ['ja_JP'],
     images: [
       {
-        url: `${BASE_PATH}/og-image.png`,
+        url: withBasePath(siteConfig.socialImagePath),
         width: 1200,
         height: 630,
-        alt: 'Cerememory - A Living Memory Database for the Age of AI',
+        alt: siteConfig.title,
         type: 'image/png',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: TITLE,
-    description: DESCRIPTION,
-    images: [`${BASE_PATH}/og-image.png`],
+    title: siteConfig.title,
+    description: siteConfig.description,
+    images: [absoluteUrl(siteConfig.socialImagePath)],
   },
   robots: {
     index: true,
@@ -132,8 +130,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#FFFFFF' },
-    { media: '(prefers-color-scheme: dark)', color: '#02001A' },
+    { media: '(prefers-color-scheme: light)', color: siteConfig.themeColorLight },
+    { media: '(prefers-color-scheme: dark)', color: siteConfig.themeColorDark },
   ],
   colorScheme: 'light dark',
   width: 'device-width',
