@@ -48,6 +48,10 @@ By default Cerememory starts with:
 For agent workflows, run `cerememory mcp` to expose the MCP tool surface over stdio instead of starting the HTTP server. This works with any MCP-compatible client — Claude Code, Codex CLI, Cursor, Cline, Windsurf, Zed, Continue, and others. See [MCP & Agent Setup](/docs/getting-started/agent-memory) for per-client configuration.
 </Callout>
 
+<Callout type="warning">
+`cerememory mcp` without `--server-url` opens the embedded `redb` and Tantivy stores directly. Only one Cerememory process can use the same `data_dir` at a time. If you need shared access across multiple terminal sessions or MCP clients, run a single `cerememory serve` process for that directory and point each MCP client at it with `mcp --server-url http://127.0.0.1:8420`.
+</Callout>
+
 ## Store a Memory
 
 <Tabs items="Python,TypeScript,curl,CLI">

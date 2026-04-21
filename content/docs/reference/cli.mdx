@@ -368,6 +368,17 @@ Start the stdio MCP server for Claude Code and other MCP-compatible clients.
 cerememory mcp
 ```
 
+Shared parallel setup:
+
+```bash
+cerememory serve --port 8420
+cerememory mcp --server-url http://127.0.0.1:8420
+```
+
+<Callout type="warning">
+`cerememory mcp` without `--server-url` opens the embedded `redb` and Tantivy stores directly. Only one Cerememory process can use the same `data_dir` at a time. For shared multi-client access, run one long-lived `cerememory serve` process and point every MCP client at it with `mcp --server-url http://127.0.0.1:8420`.
+</Callout>
+
 The MCP server exposes these tools:
 
 | Tool | Description |
