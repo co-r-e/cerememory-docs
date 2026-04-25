@@ -1,9 +1,46 @@
 ---
 title: "Docker"
-description: "Run Cerememory with Docker and Docker Compose."
+description: "Build a Cerememory container image from source and run it with Docker or Docker Compose."
 ---
 
-## Quick Start
+Cerememory does not publish container images. There is no `ghcr.io/co-r-e/cerememory` registry image to pull. If you want to run Cerememory in a container, build the image yourself from the main repository and push it to whichever registry your deployment uses.
+
+## Build the Image
+
+Cerememory ships a `docker-compose.yml` at the root of the repository that builds a local image from the repo's Dockerfile.
+
+```bash
+git clone https://github.com/co-r-e/cerememory.git
+cd cerememory
+docker compose build
+```
+
+If you prefer a hand-written Dockerfile, this is the canonical shape:
+
+```dockerfile
+FROM rust:1.88-bookworm AS builder
+WORKDIR /app
+COPY . .
+RUN cargo build --release -p cerememory-cli
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /app/target/release/cerememory /usr/local/bin/
+ENV CEREMEMORY_DATA_DIR=/data
+EXPOSE 8420
+VOLUME ["/data"]
+ENTRYPOINT ["cerememory"]
+CMD ["serve"]
+```
+
+Tag and push it to your own registry:
+
+```bash
+docker build -t registry.example.com/cerememory:0.2.3 .
+docker push registry.example.com/cerememory:0.2.3
+```
+
+## Docker Run
 
 ```bash
 docker run -d \
@@ -11,10 +48,10 @@ docker run -d \
   -p 8420:8420 \
   -v cerememory-data:/data \
   -e CEREMEMORY_HTTP__BIND_ADDRESS=0.0.0.0 \
-  ghcr.io/co-r-e/cerememory:latest
+  registry.example.com/cerememory:0.2.3
 ```
 
-This starts Cerememory with default settings: HTTP on port 8420, data persisted in a Docker volume, and background decay enabled.
+This starts Cerememory with default settings: HTTP on port 8420, data persisted in a named Docker volume, and background decay enabled.
 
 ## Docker Run with Full Configuration
 
@@ -29,7 +66,7 @@ docker run -d \
   -e CEREMEMORY_LLM__PROVIDER=claude \
   -e CEREMEMORY_LLM__API_KEY=sk-ant-... \
   -e CEREMEMORY_HTTP__BIND_ADDRESS=0.0.0.0 \
-  ghcr.io/co-r-e/cerememory:latest \
+  registry.example.com/cerememory:0.2.3 \
   serve --config /etc/cerememory/cerememory.toml
 ```
 
@@ -38,7 +75,7 @@ docker run -d \
 ```yaml
 services:
   cerememory:
-    image: ghcr.io/co-r-e/cerememory:latest
+    build: .
     container_name: cerememory
     ports:
       - "8420:8420"
@@ -60,12 +97,6 @@ services:
       retries: 3
       start_period: 10s
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 128M
 
 volumes:
   cerememory-data:
@@ -77,6 +108,10 @@ Store sensitive values like API keys in a `.env` file or a secrets manager. The 
 
 <Callout type="warning">
 Expose gRPC from Docker only when you also configure TLS. Cerememory rejects gRPC startup on non-loopback binds when auth is enabled and TLS is missing.
+</Callout>
+
+<Callout type="warning">
+Only one Cerememory process may open a given `data_dir` at a time. Do not run multiple containers against the same mounted volume — they will deadlock on `redb` file locks. For multi-client agent access, run one container and connect every MCP client to it via `cerememory mcp --server-url`.
 </Callout>
 
 ## Health Checks
@@ -95,26 +130,6 @@ For Docker's HEALTHCHECK, use the built-in CLI command:
 ```dockerfile
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD cerememory healthcheck --port 8420
-```
-
-## Building the Image
-
-To build from source:
-
-```dockerfile
-FROM rust:1.88-bookworm AS builder
-WORKDIR /app
-COPY . .
-RUN cargo build --release -p cerememory-cli
-
-FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /app/target/release/cerememory /usr/local/bin/
-ENV CEREMEMORY_DATA_DIR=/data
-EXPOSE 8420
-VOLUME ["/data"]
-ENTRYPOINT ["cerememory"]
-CMD ["serve"]
 ```
 
 ## Volumes and Data Persistence

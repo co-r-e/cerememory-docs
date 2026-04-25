@@ -9,8 +9,9 @@
 - **Five memory stores**, each modeled after a brain region: Episodic (hippocampus), Semantic (neocortex), Procedural (basal ganglia), Emotional (amygdala), Working (prefrontal cortex).
 - **Living memory dynamics**: memories decay over time on a power-law curve, accumulate interference noise, are modulated by an 8-dimensional emotion vector, and can reactivate through spreading activation.
 - **Two recall modes**: `Human` (realistic recall with fidelity-weighted noise) and `Perfect` (complete retrieval of original data).
-- **User-sovereign**: local-first, fully exportable to a single-file CMA archive (SQLite), MIT-licensed.
-- **Implementation**: Core engine in Rust (redb, Tantivy, hnsw_rs, MessagePack, Axum + Tonic). SDKs for Python and TypeScript/JavaScript, plus in-process PyO3 and napi-rs bindings.
+- **User-sovereign**: local-first, fully exportable to a single-file JSON Lines CMA archive (with optional ChaCha20-Poly1305 + Argon2id encryption), MIT-licensed.
+- **Implementation**: Core engine in Rust (redb, Tantivy, hnsw_rs, MessagePack, Axum + Tonic + rmcp). Distributed as source only — you clone the repository and build the `cerememory` binary with `cargo build -p cerememory-cli --release`. There are no published GitHub Releases, crates.io, Docker, PyPI, or npm artifacts.
+- **MCP operation mode**: run one long-lived `cerememory serve` process per data directory and point every MCP client at it with `cerememory mcp --server-url http://127.0.0.1:8420`. `--server-url` is required — there is no embedded-store MCP mode.
 
 - Website: https://co-r-e.github.io/cerememory-docs/
 - Full documentation (single file for LLMs): https://co-r-e.github.io/cerememory-docs/llms-full.txt
@@ -19,9 +20,9 @@
 ## Getting Started
 
 - [Introduction](https://co-r-e.github.io/cerememory-docs/docs/getting-started/introduction): Learn what Cerememory is and how it gives AI systems persistent, living memory.
-- [Installation](https://co-r-e.github.io/cerememory-docs/docs/getting-started/installation): Install Cerememory via cargo, Docker, pip, or npm.
-- [Quick Start](https://co-r-e.github.io/cerememory-docs/docs/getting-started/quick-start): Store, recall, and forget your first memory with Cerememory.
-- [MCP & Agent Setup](https://co-r-e.github.io/cerememory-docs/docs/getting-started/agent-memory): Connect Cerememory to Claude Code, Codex CLI, Cursor, and any other MCP-compatible client over stdio.
+- [Installation](https://co-r-e.github.io/cerememory-docs/docs/getting-started/installation): Build Cerememory from source and verify the binary.
+- [Quick Start](https://co-r-e.github.io/cerememory-docs/docs/getting-started/quick-start): Start the shared Cerememory server, connect an MCP client, and store your first memory.
+- [MCP & Agent Setup](https://co-r-e.github.io/cerememory-docs/docs/getting-started/agent-memory): Run one Cerememory server and point every MCP client at it over the supported shared-server mode.
 
 ## Architecture
 
@@ -38,16 +39,10 @@
 - [Lifecycle Operations](https://co-r-e.github.io/cerememory-docs/docs/protocol/lifecycle): Manage memory dynamics: consolidation, decay, mode switching, forgetting, export, and import.
 - [Introspect Operations](https://co-r-e.github.io/cerememory-docs/docs/protocol/introspect): Observe system state, inspect records, forecast decay, and monitor evolution.
 
-## Sdk
-
-- [Python SDK](https://co-r-e.github.io/cerememory-docs/docs/sdk/python): Reference for the Cerememory Python SDK with sync and async clients.
-- [TypeScript SDK](https://co-r-e.github.io/cerememory-docs/docs/sdk/typescript): Reference for the Cerememory TypeScript/JavaScript SDK.
-- [Native Bindings](https://co-r-e.github.io/cerememory-docs/docs/sdk/native-bindings): In-process PyO3 and napi-rs bindings for Python and Node.js.
-
 ## Deployment
 
 - [Configuration](https://co-r-e.github.io/cerememory-docs/docs/deployment/configuration): Configure Cerememory via TOML file, environment variables, and CLI flags.
-- [Docker](https://co-r-e.github.io/cerememory-docs/docs/deployment/docker): Run Cerememory with Docker and Docker Compose.
+- [Docker](https://co-r-e.github.io/cerememory-docs/docs/deployment/docker): Build a Cerememory container image from source and run it with Docker or Docker Compose.
 - [Kubernetes](https://co-r-e.github.io/cerememory-docs/docs/deployment/kubernetes): Deploy Cerememory to Kubernetes with probes, persistent storage, and scaling.
 
 ## Reference

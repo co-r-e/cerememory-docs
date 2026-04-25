@@ -21,6 +21,7 @@ pub struct MemoryRecord {
     pub associations: Vec<Association>,
     pub metadata: serde_json::Value,    // arbitrary key-value pairs
     pub version: u32,                   // optimistic concurrency control
+    pub meta: MetaMemory,               // structured "why" and context graph
 }
 ```
 
@@ -153,6 +154,69 @@ pub enum AssociationType {
 }
 ```
 
+## MetaMemory
+
+Structured meta-memory is attached to every curated `MemoryRecord` and every `RawJournalRecord`. It records why the memory exists, why the agent or user believed or did something, and how that rationale links to other memories.
+
+```rust
+pub struct MetaMemory {
+    pub schema_version: u32,
+    pub capture_status: MetaCaptureStatus, // provided | inferred | legacy | unavailable
+    pub intent: Option<String>,
+    pub rationale: Option<String>,
+    pub trigger: Option<String>,
+    pub goals: Vec<String>,
+    pub evidence: Vec<MetaEvidenceRef>,
+    pub assumptions: Vec<String>,
+    pub alternatives: Vec<MetaAlternative>,
+    pub decision: Option<String>,
+    pub confidence: Option<f64>,
+    pub source_record_ids: Vec<Uuid>,
+    pub parent_meta_ids: Vec<Uuid>,
+    pub context_edges: Vec<MetaEdge>,
+    pub tags: Vec<String>,
+    pub captured_at: Option<DateTime<Utc>>,
+}
+```
+
+`capture_status` separates explicit rationale from engine-derived or missing rationale:
+
+| Status | Meaning |
+|--------|---------|
+| `provided` | Supplied by a client or user during encode/update |
+| `inferred` | Created deterministically by engine lifecycle work, such as `dream_tick` |
+| `legacy` | Record was created before typed meta-memory existed |
+| `unavailable` | New record has no explicit rationale at ingest time |
+
+Context edges form the meta-memory graph:
+
+```rust
+pub struct MetaEdge {
+    pub source_id: Option<Uuid>,
+    pub target_id: Uuid,
+    pub relation: MetaRelation,
+    pub rationale: Option<String>,
+    pub evidence: Vec<MetaEvidenceRef>,
+    pub confidence: Option<f64>,
+    pub created_at: Option<DateTime<Utc>>,
+}
+
+pub enum MetaRelation {
+    MotivatedBy,
+    CausedBy,
+    DerivedFrom,
+    Supports,
+    Contradicts,
+    ChoseOver,
+    Explains,
+    ContextOf,
+}
+```
+
+<Callout type="info">
+Meta-memory is not a sixth memory store. It is a cross-cutting plane that can be inspected directly and included in `recall.graph` with `include_meta: true`.
+</Callout>
+
 ## RawJournalRecord
 
 The fundamental unit of the raw journal plane. Raw journal records preserve verbatim conversation content without curation, enabling forensic recall and dream-tick summarization.
@@ -173,6 +237,7 @@ pub struct RawJournalRecord {
     pub metadata: serde_json::Value,         // arbitrary key-value pairs
     pub derived_memory_ids: Vec<Uuid>,       // backlinks to curated memories created from this entry
     pub suppressed: bool,                    // whether this entry is suppressed from dream processing
+    pub meta: MetaMemory,                    // structured "why" and context graph
 }
 ```
 

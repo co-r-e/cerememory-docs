@@ -6,10 +6,7 @@ description: "Set up your local development environment for Cerememory developme
 ## Prerequisites
 
 - **Rust 1.88+** -- Install via [rustup](https://rustup.rs/)
-- **Protobuf compiler** -- Required for gRPC code generation
-- **Node.js 18+** -- Required for TypeScript native bindings (optional)
-- **Python 3.10+** -- Required for Python native bindings (optional)
-- **maturin** -- Required for building Python native bindings (optional)
+- **Protobuf compiler** (`protoc`) -- Required for gRPC code generation
 
 ## Clone and Build
 
@@ -127,7 +124,6 @@ Key directories for development:
 | `crates/cerememory-config/` | Configuration loading and validation |
 | `crates/cerememory-store-*/` | Individual store implementations |
 | `adapters/adapter-*/` | LLM provider adapters |
-| `bindings/` | PyO3 and napi-rs native bindings |
 | `tests/integration/` | End-to-end integration tests |
 
 ## Adding a New Store Operation

@@ -35,6 +35,12 @@ Store a new memory record. This is the primary way to add memories to Cerememory
     "source": "chat-session-42",
     "session_id": "sess_abc123"
   },
+  "meta": {
+    "intent": "Remember why this preference matters",
+    "rationale": "The user repeatedly asked for low-load workflows during long test runs.",
+    "decision": "Prefer low-load verification commands by default",
+    "confidence": 0.9
+  },
   "associations": [
     {
       "target_id": "01916e3a-0000-7000-8000-000000000001",
@@ -51,6 +57,7 @@ Store a new memory record. This is the primary way to add memories to Cerememory
 | `store` | StoreType | No | Engine auto-selects | Target store (episodic, semantic, procedural, emotional, working) |
 | `emotion` | EmotionVector | No | Neutral | Emotional context for this memory |
 | `context` | EncodeContext | No | None | Source, session, spatial, and temporal context |
+| `meta` | MetaMemory | No | unavailable | Structured intent, rationale, evidence, assumptions, alternatives, decision, and context-graph edges |
 | `associations` | ManualAssociation[] | No | None | Explicit associations to existing records |
 
 ### Response
@@ -127,7 +134,7 @@ When `infer_associations` is true, the engine creates temporal and sequential as
 
 ## encode.update
 
-Update an existing record's content, emotion, or metadata. Uses optimistic concurrency control via the record's `version` field.
+Update an existing record's content, emotion, metadata, or structured meta-memory. Uses optimistic concurrency control via the record's `version` field.
 
 **Endpoint:** `PATCH /v1/encode/:record_id`
 
@@ -153,6 +160,11 @@ Update an existing record's content, emotion, or metadata. Uses optimistic concu
   "metadata": {
     "reviewed": true,
     "source": "manual-correction"
+  },
+  "meta": {
+    "intent": "Correct the explanation attached to this memory",
+    "rationale": "The previous rationale omitted the security reason for the decision.",
+    "capture_status": "provided"
   }
 }
 ```
@@ -162,6 +174,7 @@ Update an existing record's content, emotion, or metadata. Uses optimistic concu
 | `content` | MemoryContent | No | Replace content entirely |
 | `emotion` | EmotionVector | No | Replace emotion vector |
 | `metadata` | JSON | No | Replace metadata object |
+| `meta` | MetaMemory | No | Replace structured meta-memory |
 
 All fields are optional -- only provided fields are updated. The record's `updated_at` timestamp and `version` are automatically incremented.
 
@@ -199,7 +212,11 @@ Store a verbatim raw journal entry. Raw journal entries preserve the exact conve
   "speaker": "user",
   "visibility": "normal",
   "secrecy_level": "public",
-  "metadata": {}
+  "metadata": {},
+  "meta": {
+    "intent": "Preserve the exact source turn before summarization",
+    "rationale": "The raw wording may be needed for forensic recall or later dream processing."
+  }
 }
 ```
 
@@ -214,6 +231,7 @@ Store a verbatim raw journal entry. Raw journal entries preserve the exact conve
 | `visibility` | RawVisibility | No | `normal` | `normal`, `private_scratch`, or `sealed` |
 | `secrecy_level` | SecrecyLevel | No | `public` | `public`, `sensitive`, or `secret` |
 | `metadata` | JSON | No | `{}` | Arbitrary metadata |
+| `meta` | MetaMemory | No | unavailable | Structured explanation for why this raw entry is preserved |
 
 ### Response
 

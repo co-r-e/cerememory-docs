@@ -127,10 +127,8 @@ export interface Dictionary {
   ecosystem: {
     number: string
     title: string
-    sdksTitle: string
-    pythonSdk: string
-    typescriptSdk: string
-    nativeBindings: string
+    integrationsTitle: string
+    integrations: Array<{ tag: string; name: string; desc: string }>
     llmAdaptersTitle: string
     capabilitiesTitle: string
     capabilities: Array<{ icon: string; title: string; desc: string }>

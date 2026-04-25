@@ -51,9 +51,13 @@ Each store has distinct characteristics for decay rates, consolidation behavior,
 - Run background decay ticks that naturally age and prune stale memories
 - Consolidate episodic memories into semantic knowledge over time
 - Export and import encrypted memory archives (including raw journal) for portability
-- Integrate with any LLM via HTTP, gRPC, or MCP transports — the stdio MCP server works with Claude Code, OpenAI Codex CLI, Cursor, Cline, Windsurf, Zed, Continue, and any other MCP-compatible client
+- Integrate with any LLM via HTTP, gRPC, or MCP transports — the MCP proxy works with Claude Code, OpenAI Codex CLI, Cursor, Cline, Windsurf, Zed, Continue, and any other MCP-compatible client
+
+## How It Is Distributed
+
+Cerememory is distributed as source. You clone the repository and run `cargo build -p cerememory-cli --release` to produce the single `cerememory` binary. There are no published binary artifacts, no crates.io / PyPI / npm packages, and no prebuilt Docker images — every deployment runs a binary you built and verified yourself.
 
 ## Next Steps
 
-<LinkCard href="/docs/getting-started/installation" title="Installation" description="Install Cerememory via cargo, Docker, pip, or npm" />
-<LinkCard href="/docs/getting-started/quick-start" title="Quick Start" description="Store, recall, and forget your first memory in minutes" />
+<LinkCard href="/docs/getting-started/installation" title="Installation" description="Build Cerememory from source and verify the binary" />
+<LinkCard href="/docs/getting-started/quick-start" title="Quick Start" description="Start the shared server and connect an MCP client" />

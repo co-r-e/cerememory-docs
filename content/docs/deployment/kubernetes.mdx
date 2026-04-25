@@ -3,6 +3,10 @@ title: "Kubernetes"
 description: "Deploy Cerememory to Kubernetes with probes, persistent storage, and scaling."
 ---
 
+<Callout type="info">
+Cerememory does not publish a container image. Build and push your own image to a private registry first — see [Docker](/docs/deployment/docker) for the build recipe — then reference that registry path from the manifests below.
+</Callout>
+
 ## Deployment Manifest
 
 ```yaml
@@ -24,7 +28,7 @@ spec:
     spec:
       containers:
         - name: cerememory
-          image: ghcr.io/co-r-e/cerememory:latest
+          image: registry.example.com/cerememory:0.2.3
           args: ["serve", "--config", "/etc/cerememory/cerememory.toml"]
           ports:
             - name: http

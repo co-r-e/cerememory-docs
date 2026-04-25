@@ -220,15 +220,29 @@ export const ja: Dictionary = {
   quickStart: {
     number: '\u00a7 5',
     title: 'クイックスタート',
-    lead: '数行のコードで AI に記憶を与えましょう。Python、TypeScript、REST、MCP ベースのワークフローから選べます。',
+    lead: 'ソースから 1 本のバイナリをビルドし、共有の HTTP サーバーを起動。各 MCP クライアントはその共有サーバーへプロキシ接続します。',
   },
   ecosystem: {
     number: '\u00a7 6',
-    title: 'エコシステムと SDK',
-    sdksTitle: 'SDK',
-    pythonSdk: 'Python SDK',
-    typescriptSdk: 'TypeScript SDK',
-    nativeBindings: 'Native Bindings',
+    title: '統合ポイント',
+    integrationsTitle: 'トランスポート',
+    integrations: [
+      {
+        tag: 'MCP',
+        name: 'MCP クライアント',
+        desc: '推奨経路。`cerememory mcp --server-url` で共有 HTTP サーバーへプロキシ接続。Claude Code / Codex CLI / Cursor / Cline / Windsurf / Zed / Continue など任意の MCP クライアントで動作。',
+      },
+      {
+        tag: 'HTTP',
+        name: 'HTTP / REST',
+        desc: 'ブラウザ、サービス、任意の HTTP クライアントから CMP の全面へアクセス。',
+      },
+      {
+        tag: 'gRPC',
+        name: 'gRPC',
+        desc: 'ストリーミング、低レイテンシ、TLS 強制の本番向けトランスポート。',
+      },
+    ],
     llmAdaptersTitle: 'LLM Adapters',
     capabilitiesTitle: '主な機能',
     capabilities: [
@@ -286,12 +300,12 @@ export const ja: Dictionary = {
         desc: 'コンパクトなバイナリシリアライゼーション。最小限のオーバーヘッドで高速な内部データ転送。',
       },
       {
-        title: 'Axum + Tonic',
-        desc: 'HTTP/REST と gRPC の両方をサポートするトランスポート層。',
+        title: 'Axum + Tonic + rmcp',
+        desc: 'HTTP / REST、gRPC、MCP stdio の3トランスポートを同一エンジン上で提供。',
       },
       {
-        title: 'SQLite (CMA)',
-        desc: '汎用的な単一ファイルアーカイブ形式。オプション暗号化付きの完全なデータポータビリティ。',
+        title: 'JSON Lines CMA',
+        desc: '検査可能な単一ファイルアーカイブ形式。ChaCha20-Poly1305 + Argon2id による任意暗号化と完全なデータポータビリティ。',
       },
     ],
   },
@@ -338,5 +352,5 @@ export const ja: Dictionary = {
     architecture: 'アーキテクチャ',
     copy: 'Open Source \u00b7 MIT License \u00b7 Built with Rust',
   },
-  langSwitcher: { label: 'EN' },
+  langSwitcher: { label: 'JA' },
 }

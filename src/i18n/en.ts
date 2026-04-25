@@ -219,15 +219,29 @@ export const en: Dictionary = {
   quickStart: {
     number: '\u00a7 5',
     title: 'Quick Start',
-    lead: 'Give your AI memory in just a few lines of code. Choose from Python, TypeScript, REST, or MCP-backed workflows.',
+    lead: 'Build one binary from source, start the shared HTTP server, then point every MCP client at it.',
   },
   ecosystem: {
     number: '\u00a7 6',
-    title: 'Ecosystem & SDKs',
-    sdksTitle: 'SDKs',
-    pythonSdk: 'Python SDK',
-    typescriptSdk: 'TypeScript SDK',
-    nativeBindings: 'Native Bindings',
+    title: 'Integration Points',
+    integrationsTitle: 'Transports',
+    integrations: [
+      {
+        tag: 'MCP',
+        name: 'MCP clients',
+        desc: 'Recommended path. `cerememory mcp --server-url` proxies to the shared HTTP server. Works with Claude Code, Codex CLI, Cursor, Cline, Windsurf, Zed, Continue, and any other MCP-compatible client.',
+      },
+      {
+        tag: 'HTTP',
+        name: 'HTTP / REST',
+        desc: 'Full CMP surface for browsers, services, and any HTTP client.',
+      },
+      {
+        tag: 'gRPC',
+        name: 'gRPC',
+        desc: 'Streaming, low latency, TLS-enforced transport for production.',
+      },
+    ],
     llmAdaptersTitle: 'LLM Adapters',
     capabilitiesTitle: 'Capabilities',
     capabilities: [
@@ -285,12 +299,12 @@ export const en: Dictionary = {
         desc: 'Compact binary serialization. Fast internal data transfer with minimal overhead.',
       },
       {
-        title: 'Axum + Tonic',
-        desc: 'Transport layer supporting both HTTP/REST and gRPC protocols.',
+        title: 'Axum + Tonic + rmcp',
+        desc: 'HTTP/REST, gRPC, and MCP stdio transports all served from the same engine.',
       },
       {
-        title: 'SQLite (CMA)',
-        desc: 'Universal single-file archive format. Full data portability with optional encryption.',
+        title: 'JSON Lines CMA',
+        desc: 'Inspectable single-file archive bundle with optional ChaCha20-Poly1305 + Argon2id encryption. Full data portability.',
       },
     ],
   },
@@ -337,5 +351,5 @@ export const en: Dictionary = {
     architecture: 'Architecture',
     copy: 'Open Source \u00b7 MIT License \u00b7 Built with Rust',
   },
-  langSwitcher: { label: 'JA' },
+  langSwitcher: { label: 'EN' },
 }

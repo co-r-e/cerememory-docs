@@ -46,7 +46,7 @@ function RevealSection({
 }
 
 function CodeTabs({ dict }: { dict: Dictionary }) {
-  const [active, setActive] = useState<'python' | 'typescript' | 'rest'>('python')
+  const [active, setActive] = useState<'mcp' | 'cli' | 'rest'>('mcp')
 
   // Suppress unused-var lint - dict is accepted for future tab-label i18n
   void dict
@@ -54,71 +54,68 @@ function CodeTabs({ dict }: { dict: Dictionary }) {
   return (
     <div className="code-tabs">
       <div className="code-tabs__nav">
-        {(['python', 'typescript', 'rest'] as const).map((tab) => (
+        {(['mcp', 'cli', 'rest'] as const).map((tab) => (
           <button
             key={tab}
             className={`code-tabs__btn ${active === tab ? 'active' : ''}`}
             onClick={() => setActive(tab)}
           >
-            {tab === 'rest' ? 'REST API' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {tab === 'mcp'
+              ? 'MCP Client'
+              : tab === 'cli'
+                ? 'CLI'
+                : 'REST API'}
           </button>
         ))}
       </div>
 
-      {active === 'python' && (
+      {active === 'mcp' && (
         <div className="code-tabs__panel active">
           <div className="code-block">
             <div className="code-block__header">
-              <span className="code-block__lang">Python</span>
+              <span className="code-block__lang">TOML &middot; Codex CLI config</span>
               <span className="code-block__dot" />
             </div>
             <pre
               dangerouslySetInnerHTML={{
-                __html: `<span class="kw">from</span> cerememory <span class="kw">import</span> Client
+                __html: `<span class="cm"># ~/.codex/config.toml &mdash; point every MCP client at one shared server</span>
+[mcp_servers.cerememory]
+command = <span class="str">"/absolute/path/to/target/release/cerememory"</span>
+args = [<span class="str">"mcp"</span>, <span class="str">"--server-url"</span>, <span class="str">"http://127.0.0.1:8420"</span>]
 
-client <span class="op">=</span> <span class="fn">Client</span>(<span class="str">"http://localhost:8420"</span>)
-
-<span class="cm"># Store an episodic memory</span>
-record_id <span class="op">=</span> client.<span class="fn">store</span>(
-    <span class="str">"Had coffee with Alice at the park"</span>,
-    store<span class="op">=</span><span class="str">"episodic"</span>
-)
-
-<span class="cm"># Recall memories about Alice</span>
-memories <span class="op">=</span> client.<span class="fn">recall</span>(<span class="str">"Alice"</span>, limit<span class="op">=</span><span class="num">5</span>)
-
-<span class="cm"># Forget a memory</span>
-client.<span class="fn">forget</span>(record_id, confirm<span class="op">=</span><span class="var-hl">True</span>)`,
+<span class="cm"># Claude Code uses the same shape in ~/.claude/claude_desktop_config.json</span>
+<span class="cm"># {
+#   "mcpServers": {
+#     "cerememory": {
+#       "command": "/absolute/path/to/target/release/cerememory",
+#       "args": ["mcp", "--server-url", "http://127.0.0.1:8420"]
+#     }
+#   }
+# }</span>`,
               }}
             />
           </div>
         </div>
       )}
 
-      {active === 'typescript' && (
+      {active === 'cli' && (
         <div className="code-tabs__panel active">
           <div className="code-block">
             <div className="code-block__header">
-              <span className="code-block__lang">TypeScript</span>
+              <span className="code-block__lang">Shell</span>
               <span className="code-block__dot" />
             </div>
             <pre
               dangerouslySetInnerHTML={{
-                __html: `<span class="kw">import</span> { CerememoryClient } <span class="kw">from</span> <span class="str">"@cerememory/sdk"</span>;
+                __html: `<span class="cm"># Store, recall, and forget directly from the CLI</span>
+<span class="fn">cerememory</span> store <span class="str">"Had coffee with Alice at the park"</span> --store episodic
 
-<span class="kw">const</span> client <span class="op">=</span> <span class="kw">new</span> <span class="fn">CerememoryClient</span>(<span class="str">"http://localhost:8420"</span>);
+<span class="fn">cerememory</span> recall <span class="str">"Alice"</span> --limit <span class="num">5</span> --mode human
 
-<span class="cm">// Store an episodic memory</span>
-<span class="kw">const</span> recordId <span class="op">=</span> <span class="kw">await</span> client.<span class="fn">store</span>(
-  <span class="str">"Had coffee with Alice at the park"</span>,
-  { store: <span class="str">"episodic"</span> }
-);
+<span class="fn">cerememory</span> forget <span class="num">01916e3a-1234-7000-8000-000000000001</span> --confirm
 
-<span class="cm">// Recall memories about Alice</span>
-<span class="kw">const</span> memories <span class="op">=</span> <span class="kw">await</span> client.<span class="fn">recall</span>(<span class="str">"Alice"</span>, { limit: <span class="num">5</span> });
-
-<span class="cm">// Forget a memory</span>
-<span class="kw">await</span> client.<span class="fn">forget</span>(recordId, { confirm: <span class="var-hl">true</span> });`,
+<span class="cm"># Summarize raw journal entries into curated memory</span>
+<span class="fn">cerememory</span> dream-tick --session-id sess_001`,
               }}
             />
           </div>
@@ -135,7 +132,7 @@ client.<span class="fn">forget</span>(record_id, confirm<span class="op">=</span
             <pre
               dangerouslySetInnerHTML={{
                 __html: `<span class="cm"># Store a memory</span>
-<span class="fn">curl</span> -X POST http://localhost:<span class="num">8420</span>/v1/encode \\
+<span class="fn">curl</span> -X POST http://127.0.0.1:<span class="num">8420</span>/v1/encode \\
   -H <span class="str">"Content-Type: application/json"</span> \\
   -d <span class="str">'{
     "content": {
@@ -151,12 +148,12 @@ client.<span class="fn">forget</span>(record_id, confirm<span class="op">=</span
   }'</span>
 
 <span class="cm"># Query memories</span>
-<span class="fn">curl</span> -X POST http://localhost:<span class="num">8420</span>/v1/recall/query \\
+<span class="fn">curl</span> -X POST http://127.0.0.1:<span class="num">8420</span>/v1/recall/query \\
   -H <span class="str">"Content-Type: application/json"</span> \\
   -d <span class="str">'{"cue": {"text": "Alice"}, "limit": 5, "recall_mode": "human"}'</span>
 
 <span class="cm"># Check system stats</span>
-<span class="fn">curl</span> http://localhost:<span class="num">8420</span>/v1/introspect/stats`,
+<span class="fn">curl</span> http://127.0.0.1:<span class="num">8420</span>/v1/introspect/stats`,
               }}
             />
           </div>
@@ -779,14 +776,16 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
             </div>
             <pre
               dangerouslySetInnerHTML={{
-                __html: `<span class="cm"># Start the server</span>
-<span class="fn">cargo</span> run -p cerememory-cli -- serve --port <span class="num">8420</span>
+                __html: `<span class="cm"># Build the binary from source</span>
+<span class="fn">git</span> clone https://github.com/co-r-e/cerememory.git
+<span class="kw">cd</span> cerememory
+<span class="fn">cargo</span> build -p cerememory-cli --release
 
-<span class="cm"># MCP stdio (Claude Code, Codex CLI, Cursor, ...)</span>
-<span class="fn">cargo</span> run -p cerememory-cli -- mcp
+<span class="cm"># Start the one long-lived server that owns the data directory</span>
+target/release/<span class="fn">cerememory</span> serve --data-dir ~/.cerememory/data
 
-<span class="cm"># Or via Docker</span>
-<span class="fn">docker</span> run --rm -p <span class="num">8420</span>:<span class="num">8420</span> ghcr.io/co-r-e/cerememory:latest`,
+<span class="cm"># Point every MCP client (Claude Code, Codex CLI, Cursor, ...) at that shared server</span>
+target/release/<span class="fn">cerememory</span> mcp --server-url http://127.0.0.1:<span class="num">8420</span>`,
               }}
             />
           </div>
@@ -803,29 +802,25 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
           <span className="section__number">{dict.ecosystem.number}</span>
           <h2 className="section__title">{dict.ecosystem.title}</h2>
 
-          <h3 className="subsection-title">{dict.ecosystem.sdksTitle}</h3>
+          <h3 className="subsection-title">{dict.ecosystem.integrationsTitle}</h3>
           <div className="sdk-row">
-            <div className="sdk-badge">
-              <div className="sdk-badge__icon">Py</div>
-              <div>
-                <div className="sdk-badge__name">{dict.ecosystem.pythonSdk}</div>
-                <div className="sdk-badge__pkg">pip install cerememory</div>
+            {dict.ecosystem.integrations.map((integration) => (
+              <div key={integration.tag} className="sdk-badge">
+                <div className="sdk-badge__icon">{integration.tag}</div>
+                <div>
+                  <div className="sdk-badge__name">{integration.name}</div>
+                  <div
+                    className="sdk-badge__pkg"
+                    dangerouslySetInnerHTML={{
+                      __html: integration.desc.replace(
+                        /`([^`]+)`/g,
+                        '<code>$1</code>'
+                      ),
+                    }}
+                  />
+                </div>
               </div>
-            </div>
-            <div className="sdk-badge">
-              <div className="sdk-badge__icon">TS</div>
-              <div>
-                <div className="sdk-badge__name">{dict.ecosystem.typescriptSdk}</div>
-                <div className="sdk-badge__pkg">npm i @cerememory/sdk</div>
-              </div>
-            </div>
-            <div className="sdk-badge">
-              <div className="sdk-badge__icon">Rs</div>
-              <div>
-                <div className="sdk-badge__name">{dict.ecosystem.nativeBindings}</div>
-                <div className="sdk-badge__pkg">PyO3 &middot; napi-rs</div>
-              </div>
-            </div>
+            ))}
           </div>
 
           <h3 className="subsection-title" style={{ marginTop: '2.5rem' }}>
@@ -920,10 +915,10 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
           </div>
           <div className="install-block">
             <div className="install-cmd">
-              <span className="install-cmd__prompt">$</span> pip install cerememory
+              <span className="install-cmd__prompt">$</span> git clone https://github.com/co-r-e/cerememory.git
             </div>
             <div className="install-cmd">
-              <span className="install-cmd__prompt">$</span> npm i @cerememory/sdk
+              <span className="install-cmd__prompt">$</span> cargo build -p cerememory-cli --release
             </div>
           </div>
         </div>

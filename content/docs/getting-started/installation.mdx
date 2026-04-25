@@ -1,83 +1,15 @@
 ---
 title: "Installation"
-description: "Install Cerememory via cargo, Docker, pip, or npm."
+description: "Build Cerememory from source and verify the binary."
 ---
+
+Cerememory is distributed as source. You build the `cerememory` binary yourself from the main repository. There are no published binary artifacts — no GitHub Releases, crates.io, Docker registry, PyPI, or npm packages. This keeps the surface area small and ensures every deployment runs a binary you built and verified.
 
 ## Requirements
 
-- **Rust 1.88+** for building the CLI from source
-- **Python 3.9+** for the Python SDK and native bindings
-- **Node.js 18+** for the TypeScript SDK and Node native bindings
-- No external database required -- Cerememory uses embedded `redb` for persistent storage
-
-## Installation Methods
-
-<Tabs items="cargo,Docker,pip,npm">
-
-<div>
-
-Install the CLI from crates.io:
-
-```bash
-cargo install cerememory-cli
-```
-
-Build with only the adapters you need:
-
-```bash
-cargo install cerememory-cli --no-default-features --features llm-claude
-```
-
-</div>
-
-<div>
-
-Pull the published container image:
-
-```bash
-docker pull ghcr.io/co-r-e/cerememory:latest
-```
-
-Run it with a persistent volume:
-
-```bash
-docker run --rm \
-  -p 8420:8420 \
-  -v cerememory-data:/data \
-  ghcr.io/co-r-e/cerememory:latest
-```
-
-</div>
-
-<div>
-
-Install the HTTP client SDK:
-
-```bash
-pip install cerememory
-```
-
-Build the in-process native binding from `bindings/python-native` with `maturin` when you need embedded, no-HTTP access.
-
-Published native package name: `cerememory-native`
-
-</div>
-
-<div>
-
-Install the HTTP client SDK:
-
-```bash
-npm install @cerememory/sdk
-```
-
-Build the in-process native binding from `bindings/typescript-native` when you need embedded, no-HTTP access.
-
-Published native package name: `@cerememory/native`
-
-</div>
-
-</Tabs>
+- **Rust 1.88+** for building the CLI from source (install via [rustup](https://rustup.rs/))
+- **Protobuf compiler** (`protoc`) for gRPC code generation
+- No external database required — Cerememory uses embedded `redb` for persistent storage
 
 ## Build from Source
 
@@ -87,11 +19,21 @@ cd cerememory
 cargo build -p cerememory-cli --release
 ```
 
-The binary will be available at `target/release/cerememory`.
+The binary will be available at:
+
+```text
+target/release/cerememory
+```
+
+Subsequent incremental builds are fast. Use `cargo build -p cerememory-core` to build a specific crate during focused development.
 
 ## Feature Flags
 
-The CLI enables all LLM adapters by default. You can trim binary size by disabling unused providers.
+The CLI enables all LLM adapters by default. Trim binary size by disabling unused providers:
+
+```bash
+cargo build -p cerememory-cli --release --no-default-features --features llm-claude
+```
 
 | Feature | Description | Default |
 |---------|-------------|---------|
@@ -102,19 +44,20 @@ The CLI enables all LLM adapters by default. You can trim binary size by disabli
 ## Verify Installation
 
 ```bash
-cerememory --version
+target/release/cerememory --version
 ```
 
 You should see output like:
 
 ```text
-cerememory 0.2.2
+cerememory 0.2.3
 ```
 
 <Callout type="info">
-The current workspace version is `v0.2.2`. The language SDK packages publish on their own cadence, so prefer your package manager output for the exact installed SDK version.
+Place `target/release/cerememory` somewhere on your `PATH` (or reference it by absolute path in your MCP client config). The CLI does not install itself anywhere else automatically.
 </Callout>
 
 ## Next Steps
 
-<LinkCard href="/docs/getting-started/quick-start" title="Quick Start" description="Store, recall, and forget your first memory" />
+<LinkCard href="/docs/getting-started/quick-start" title="Quick Start" description="Start the server and connect an MCP client" />
+<LinkCard href="/docs/getting-started/agent-memory" title="MCP & Agent Setup" description="Wire Claude Code, Codex CLI, Cursor, and any other MCP client into the shared server" />

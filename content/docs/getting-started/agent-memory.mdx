@@ -1,22 +1,19 @@
 ---
 title: "MCP & Agent Setup"
-description: "Connect Cerememory to Claude Code, Codex CLI, Cursor, and any other MCP-compatible client over stdio."
+description: "Run one Cerememory server and point every MCP client at it over the supported shared-server mode."
 ---
 
-Cerememory's recommended agent integration is the stdio MCP server exposed by:
+Cerememory supports exactly one MCP operating mode: a **shared HTTP server** that owns the data directory, plus any number of lightweight `cerememory mcp` stdio proxies that forward MCP tool calls to it.
 
 ```bash
-cerememory mcp
+# 1. Start the one long-lived server that owns the data directory
+target/release/cerememory serve --data-dir ~/.cerememory/data
+
+# 2. In each MCP client, launch a stdio proxy that targets that server
+target/release/cerememory mcp --server-url http://127.0.0.1:8420
 ```
 
-For shared memory across multiple terminal sessions or multiple MCP clients in parallel, run a single HTTP server for the shared `data_dir` and point each MCP process at it:
-
-```bash
-cerememory serve --port 8420
-cerememory mcp --server-url http://127.0.0.1:8420
-```
-
-If the shared HTTP server requires auth, prefer setting `CEREMEMORY_SERVER_API_KEY` in the client environment instead of passing `--server-api-key` on the command line. For long-running upstream operations, `--server-timeout-secs` can be used to set an explicit request timeout; if omitted, per-request timeout is disabled.
+This is the only supported mode: `--server-url` is **required**. Running `cerememory mcp` against the embedded store directly is no longer available, because only one process can open the same `redb` / Tantivy files at a time and agent tooling that spawns multiple MCP processes would otherwise fight over the lock.
 
 The same binary plugs into **any MCP-compatible client**, not just Claude Code. Cerememory has been tested with Claude Code, OpenAI Codex CLI, Cursor, Cline, Windsurf, Zed, and Continue, and should work with anything else that speaks the Model Context Protocol.
 
@@ -25,6 +22,8 @@ The same binary plugs into **any MCP-compatible client**, not just Claude Code. 
 From the main repository:
 
 ```bash
+git clone https://github.com/co-r-e/cerememory.git
+cd cerememory
 cargo build -p cerememory-cli --release
 ```
 
@@ -34,9 +33,25 @@ The binary will be available at:
 target/release/cerememory
 ```
 
+## Start the Shared Server
+
+```bash
+target/release/cerememory serve --data-dir ~/.cerememory/data
+```
+
+Keep this process running (or supervise it with launchd, systemd, tmux, or a process manager of your choice). Every MCP client in every terminal session will talk to this one process.
+
+If you want auth, enable it in `cerememory.toml` and pass the token to each client:
+
+```bash
+export CEREMEMORY_SERVER_API_KEY="sk-cerememory-…"
+```
+
+The MCP proxy reads that env var automatically; prefer it over passing `--server-api-key` on the command line so the token does not end up in process listings or shell history.
+
 ## Client Configuration
 
-Pick your client and add the snippet. Every MCP client accepts a stdio server definition — only the config file path and syntax differ.
+Every MCP client accepts a stdio server definition — only the config file path and syntax differ. The snippets below all target the shared `cerememory serve` process on `127.0.0.1:8420`.
 
 ### Claude Code
 
@@ -47,7 +62,7 @@ Pick your client and add the snippet. Every MCP client accepts a stdio server de
   "mcpServers": {
     "cerememory": {
       "command": "/absolute/path/to/target/release/cerememory",
-      "args": ["mcp"]
+      "args": ["mcp", "--server-url", "http://127.0.0.1:8420"]
     }
   }
 }
@@ -56,14 +71,6 @@ Pick your client and add the snippet. Every MCP client accepts a stdio server de
 ### OpenAI Codex CLI
 
 `~/.codex/config.toml`:
-
-```toml
-[mcp_servers.cerememory]
-command = "/absolute/path/to/target/release/cerememory"
-args = ["mcp"]
-```
-
-Parallel-safe shared-memory setup:
 
 ```toml
 [mcp_servers.cerememory]
@@ -80,7 +87,7 @@ args = ["mcp", "--server-url", "http://127.0.0.1:8420"]
   "mcpServers": {
     "cerememory": {
       "command": "/absolute/path/to/target/release/cerememory",
-      "args": ["mcp"]
+      "args": ["mcp", "--server-url", "http://127.0.0.1:8420"]
     }
   }
 }
@@ -92,24 +99,19 @@ Use the client's MCP settings UI or JSON file. The `command` + `args` pair is th
 
 ### Any Other MCP Client
 
-If the client supports MCP stdio servers, point it at `/absolute/path/to/target/release/cerememory` with the single argument `mcp`. No daemon, port, or auth setup is required for single-client local use.
+If the client supports MCP stdio servers, point it at `/absolute/path/to/target/release/cerememory` with `mcp --server-url http://127.0.0.1:8420`.
 
-<Callout type="info">
-If you need persistent storage, auth, or provider configuration while running MCP mode, pass `--config /path/to/cerememory.toml` and/or `--data-dir /path/to/data` before the `mcp` subcommand.
-</Callout>
+## Proxy Flags
+
+| Flag | Env Var | Required | Description |
+|------|---------|----------|-------------|
+| `--server-url` | — | Yes | URL of the shared `cerememory serve` process |
+| `--server-api-key` | `CEREMEMORY_SERVER_API_KEY` | When auth is enabled upstream | Bearer token for the upstream server |
+| `--server-timeout-secs` | — | No | Per-request upstream timeout (omit to disable) |
 
 <Callout type="warning">
-`cerememory mcp` without `--server-url` opens the embedded `redb` and Tantivy stores directly. Only one Cerememory process can use the same `data_dir` at a time. For shared multi-client access, run one long-lived `cerememory serve` process and point every MCP client at it with `mcp --server-url http://127.0.0.1:8420`.
+Do not pass secrets as command-line arguments when you can avoid it. Prefer `CEREMEMORY_SERVER_API_KEY` so the token never appears in `ps` output or shell history.
 </Callout>
-
-Example:
-
-```bash
-target/release/cerememory \
-  --config ./cerememory.toml \
-  --data-dir ./data \
-  mcp
-```
 
 ## Tool Surface
 

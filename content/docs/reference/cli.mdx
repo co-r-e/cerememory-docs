@@ -105,6 +105,7 @@ cerememory store <TEXT> [OPTIONS]
 | `<TEXT>` | string | -- | Required. Text content to store |
 | `--store` | string | `episodic` | Target store |
 | `--embedding` | string | None | Comma-separated embedding vector |
+| `--meta-json` | JSON string | None | Structured MetaMemory with intent, rationale, evidence, and decision context |
 
 <Terminal title="Example: Store a semantic memory">
 ```bash
@@ -135,6 +136,7 @@ cerememory store-raw <TEXT> [OPTIONS]
 | `--speaker` | string | `user` | `user`, `assistant`, `system`, or `tool` |
 | `--visibility` | string | `normal` | `normal`, `private_scratch`, or `sealed` |
 | `--secrecy-level` | string | `public` | `public`, `sensitive`, or `secret` |
+| `--meta-json` | JSON string | None | Structured MetaMemory describing why the raw entry is preserved |
 
 <Terminal title="Example: Store a conversation turn">
 ```bash
@@ -206,7 +208,7 @@ cerememory inspect <RECORD_ID>
 |------|------|-------------|
 | `<RECORD_ID>` | UUID | Required. Record UUID |
 
-The output includes fidelity state, emotion vector, associations, metadata, and version.
+The output includes fidelity state, emotion vector, associations, metadata, meta-memory, and version.
 
 ---
 
@@ -362,32 +364,36 @@ Returns exit code `0` when healthy and non-zero otherwise.
 
 ## mcp
 
-Start the stdio MCP server for Claude Code and other MCP-compatible clients.
+Start a stdio MCP proxy that forwards tool calls to an existing long-lived `cerememory serve` process. `--server-url` is **required** — `cerememory mcp` is a proxy only; there is no embedded-store MCP mode.
 
 ```bash
-cerememory mcp
-```
-
-Shared parallel setup:
-
-```bash
-cerememory serve --port 8420
+cerememory serve --data-dir ~/.cerememory/data
 cerememory mcp --server-url http://127.0.0.1:8420
 ```
 
+| Flag | Env Var | Required | Description |
+|------|---------|----------|-------------|
+| `--server-url` | — | Yes | URL of the shared `cerememory serve` process (e.g., `http://127.0.0.1:8420`) |
+| `--server-api-key` | `CEREMEMORY_SERVER_API_KEY` | When upstream auth is enabled | Bearer token for the upstream Cerememory HTTP server |
+| `--server-timeout-secs` | — | No | Optional per-request upstream timeout in seconds; omit to disable per-request timeout |
+
+<Callout type="info">
+Prefer `CEREMEMORY_SERVER_API_KEY` over `--server-api-key` so the token never appears in `ps` output or shell history.
+</Callout>
+
 <Callout type="warning">
-`cerememory mcp` without `--server-url` opens the embedded `redb` and Tantivy stores directly. Only one Cerememory process can use the same `data_dir` at a time. For shared multi-client access, run one long-lived `cerememory serve` process and point every MCP client at it with `mcp --server-url http://127.0.0.1:8420`.
+Only one process may open a given `data_dir` at a time. Run exactly one `cerememory serve` per data directory, and point every MCP client at it with `cerememory mcp --server-url http://127.0.0.1:8420`. Attempting to launch multiple embedded servers on the same directory will fail on `redb` file locks.
 </Callout>
 
 The MCP server exposes these tools:
 
 | Tool | Description |
 |------|-------------|
-| `store` | Store a new memory record |
-| `update` | Update an existing record's content or emotion |
+| `store` | Store a new memory record; accepts optional `meta_json` |
+| `update` | Update an existing record's content, emotion, or `meta_json` |
 | `batch_store` | Store multiple memories at once with inferred associations |
-| `store_raw` | Store a verbatim raw journal entry |
-| `batch_store_raw` | Store multiple raw journal entries |
+| `store_raw` | Store a verbatim raw journal entry; accepts optional `meta_json` |
+| `batch_store_raw` | Store multiple raw journal entries; each entry may include `meta_json` |
 | `recall` | Query memories, or list recent ones when `query` is omitted |
 | `recall_raw` | Forensic query over the raw journal |
 | `timeline` | Retrieve memories in time buckets |

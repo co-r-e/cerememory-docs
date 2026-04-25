@@ -1,5 +1,0 @@
-{
-  "title": "SDKs",
-  "icon": "code",
-  "pages": ["python", "typescript", "native-bindings"]
-}

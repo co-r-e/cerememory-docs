@@ -124,6 +124,22 @@ let raw = RawJournalRecord {
 The raw journal is backed by redb for durable storage plus a dedicated Tantivy full-text search index. Unlike the curated stores, it does not implement the `Store` trait -- it has its own specialized API optimized for conversation preservation and forensic recall.
 </Callout>
 
+## Meta-Memory Plane
+
+Meta-memory is a cross-cutting plane attached to both curated memories and raw journal records. It preserves the **why** around every memory rather than storing another content item.
+
+Key characteristics:
+
+- **Typed rationale** -- `MetaMemory` stores intent, rationale, trigger, goals, assumptions, alternatives, decisions, confidence, and evidence references
+- **Explicit absence** -- new records without a supplied rationale receive an `unavailable` capture status instead of fabricated reasoning
+- **Lifecycle traceability** -- engine-generated records, such as dream summaries, receive `inferred` meta-memory explaining why they were created
+- **Context graph** -- `MetaEdge` relations such as `derived_from`, `motivated_by`, `supports`, and `chose_over` connect rationale across memories
+- **Opt-in graph exposure** -- `recall.graph` returns `meta` and `meta_edges` only when `include_meta` is true
+
+<Callout type="info">
+Meta-memory is intentionally not modeled as a sixth store. It is a first-class field on the existing records so every memory can carry its own explanatory context while normal recall remains focused on memory content.
+</Callout>
+
 ## The Store Trait
 
 All five curated stores implement the same `Store` trait, providing a uniform interface:

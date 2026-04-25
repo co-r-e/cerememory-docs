@@ -56,7 +56,11 @@ What Can You Do With Cerememory?
 - Run background decay ticks that naturally age and prune stale memories
 - Consolidate episodic memories into semantic knowledge over time
 - Export and import encrypted memory archives (including raw journal) for portability
-- Integrate with any LLM via HTTP, gRPC, or MCP transports — the stdio MCP server works with Claude Code, OpenAI Codex CLI, Cursor, Cline, Windsurf, Zed, Continue, and any other MCP-compatible client
+- Integrate with any LLM via HTTP, gRPC, or MCP transports — the MCP proxy works with Claude Code, OpenAI Codex CLI, Cursor, Cline, Windsurf, Zed, Continue, and any other MCP-compatible client
+
+How It Is Distributed
+
+Cerememory is distributed as source. You clone the repository and run cargo build -p cerememory-cli --release to produce the single cerememory binary. There are no published binary artifacts, no crates.io / PyPI / npm packages, and no prebuilt Docker images — every deployment runs a binary you built and verified yourself.
 
 Next Steps
 
@@ -66,42 +70,23 @@ Next Steps
 
 Source: https://co-r-e.github.io/cerememory-docs/docs/getting-started/installation
 
+Cerememory is distributed as source. You build the cerememory binary yourself from the main repository. There are no published binary artifacts — no GitHub Releases, crates.io, Docker registry, PyPI, or npm packages. This keeps the surface area small and ensures every deployment runs a binary you built and verified.
+
 Requirements
 
-- Rust 1.88+ for building the CLI from source
-- Python 3.9+ for the Python SDK and native bindings
-- Node.js 18+ for the TypeScript SDK and Node native bindings
-- No external database required -- Cerememory uses embedded redb for persistent storage
-
-Installation Methods
-
-Install the CLI from crates.io:
-
-Build with only the adapters you need:
-
-Pull the published container image:
-
-Run it with a persistent volume:
-
-Install the HTTP client SDK:
-
-Build the in-process native binding from bindings/python-native with maturin when you need embedded, no-HTTP access.
-
-Published native package name: cerememory-native
-
-Install the HTTP client SDK:
-
-Build the in-process native binding from bindings/typescript-native when you need embedded, no-HTTP access.
-
-Published native package name: @cerememory/native
+- Rust 1.88+ for building the CLI from source (install via rustup)
+- Protobuf compiler (protoc) for gRPC code generation
+- No external database required — Cerememory uses embedded redb for persistent storage
 
 Build from Source
 
-The binary will be available at target/release/cerememory.
+The binary will be available at:
+
+Subsequent incremental builds are fast. Use cargo build -p cerememory-core to build a specific crate during focused development.
 
 Feature Flags
 
-The CLI enables all LLM adapters by default. You can trim binary size by disabling unused providers.
+The CLI enables all LLM adapters by default. Trim binary size by disabling unused providers:
 
 | Feature | Description | Default |
 |---------|-------------|---------|
@@ -113,7 +98,7 @@ Verify Installation
 
 You should see output like:
 
-The current workspace version is v0.2.2. The language SDK packages publish on their own cadence, so prefer your package manager output for the exact installed SDK version.
+Place target/release/cerememory somewhere on your PATH (or reference it by absolute path in your MCP client config). The CLI does not install itself anywhere else automatically.
 
 Next Steps
 
@@ -123,27 +108,39 @@ Next Steps
 
 Source: https://co-r-e.github.io/cerememory-docs/docs/getting-started/quick-start
 
-This guide walks through the core Cerememory workflow: start the server, store a memory, recall it, and remove it.
+This guide walks through the core Cerememory workflow: start one long-lived server for your data directory, point every MCP client (or any HTTP/gRPC client) at it, and store, recall, and forget a memory.
 
-Start the Server
+Start the Shared Server
+
+Cerememory's only supported operating mode is one long-lived server process per data directory. The server owns the embedded redb and Tantivy stores exclusively. Every MCP client, CLI invocation, and HTTP caller then talks to that shared server.
 
 Example startup output:
 
-By default Cerememory starts with:
+Default behavior:
 
 - HTTP bound to 127.0.0.1:8420
-- Background decay enabled
-- Persistent redb stores for episodic, semantic, procedural, and emotional memory
-- In-memory working memory
+- Persistent redb stores for episodic, semantic, procedural, emotional, and raw journal memory
+- In-memory working memory (never persisted)
+- Background decay tick (decay.background_interval_secs = 3600)
+- Background dream processing (dream.background_interval_secs = 86400)
 - /health and /readiness enabled
 - /metrics disabled until http.metrics_enabled = true
-- Background dream processing enabled by default (dream.background_interval_secs = 86400)
 
-For agent workflows, run cerememory mcp to expose the MCP tool surface over stdio instead of starting the HTTP server. This works with any MCP-compatible client — Claude Code, Codex CLI, Cursor, Cline, Windsurf, Zed, Continue, and others. See MCP & Agent Setup for per-client configuration.
+Only one process may open a given data_dir at a time. Starting a second cerememory serve or an embedded-mode client on the same directory will fail because redb holds an exclusive lock. If you need multi-client access, use the shared MCP setup below instead of running multiple servers.
 
-cerememory mcp without --server-url opens the embedded redb and Tantivy stores directly. Only one Cerememory process can use the same data_dir at a time. If you need shared access across multiple terminal sessions or MCP clients, run a single cerememory serve process for that directory and point each MCP client at it with mcp --server-url http://127.0.0.1:8420.
+Connect an MCP Client
+
+cerememory mcp is a thin stdio proxy that speaks MCP to the client and CMP/HTTP to the shared server. --server-url is required.
+
+Point every MCP-compatible client at that same server. The same binary works with Claude Code, OpenAI Codex CLI, Cursor, Cline, Windsurf, Zed, Continue, and any other client that speaks MCP.
+
+If the shared server requires auth, set CEREMEMORY_SERVER_API_KEY in the MCP client's environment instead of passing the token on the command line. For long-running upstream operations, use --server-timeout-secs; omitting it disables per-request timeouts.
+
+See MCP & Agent Setup for per-client configuration snippets.
 
 Store a Memory
+
+Once a client is connected, call the store tool:
 
 Recall Memories
 
@@ -153,11 +150,9 @@ Preserve Raw Journal Entries
 
 Raw journal records keep the verbatim source material that dream processing can later summarize into curated episodic and semantic memory.
 
-For agent-first workflows, cerememory mcp exposes the same memory system over stdio so Claude Code, OpenAI Codex CLI, Cursor, and any other MCP-compatible client can use store, store_raw, recall, recall_raw, dream_tick, consolidate, export, and related tools directly.
-
 Forget a Memory
 
-Forget is irreversible. Use --cascade or cascade=True only when you intentionally want associated records deleted as well.
+Forget is irreversible. Use --cascade (CLI) or cascade=true (MCP/HTTP) only when you intentionally want associated records deleted as well.
 
 Check System State
 
@@ -171,11 +166,9 @@ Next Steps
 
 Source: https://co-r-e.github.io/cerememory-docs/docs/getting-started/agent-memory
 
-Cerememory's recommended agent integration is the stdio MCP server exposed by:
+Cerememory supports exactly one MCP operating mode: a shared HTTP server that owns the data directory, plus any number of lightweight cerememory mcp stdio proxies that forward MCP tool calls to it.
 
-For shared memory across multiple terminal sessions or multiple MCP clients in parallel, run a single HTTP server for the shared data_dir and point each MCP process at it:
-
-If the shared HTTP server requires auth, prefer setting CEREMEMORY_SERVER_API_KEY in the client environment instead of passing --server-api-key on the command line. For long-running upstream operations, --server-timeout-secs can be used to set an explicit request timeout; if omitted, per-request timeout is disabled.
+This is the only supported mode: --server-url is required. Running cerememory mcp against the embedded store directly is no longer available, because only one process can open the same redb / Tantivy files at a time and agent tooling that spawns multiple MCP processes would otherwise fight over the lock.
 
 The same binary plugs into any MCP-compatible client, not just Claude Code. Cerememory has been tested with Claude Code, OpenAI Codex CLI, Cursor, Cline, Windsurf, Zed, and Continue, and should work with anything else that speaks the Model Context Protocol.
 
@@ -185,9 +178,17 @@ From the main repository:
 
 The binary will be available at:
 
+Start the Shared Server
+
+Keep this process running (or supervise it with launchd, systemd, tmux, or a process manager of your choice). Every MCP client in every terminal session will talk to this one process.
+
+If you want auth, enable it in cerememory.toml and pass the token to each client:
+
+The MCP proxy reads that env var automatically; prefer it over passing --server-api-key on the command line so the token does not end up in process listings or shell history.
+
 Client Configuration
 
-Pick your client and add the snippet. Every MCP client accepts a stdio server definition — only the config file path and syntax differ.
+Every MCP client accepts a stdio server definition — only the config file path and syntax differ. The snippets below all target the shared cerememory serve process on 127.0.0.1:8420.
 
 Claude Code
 
@@ -196,8 +197,6 @@ Claude Code
 OpenAI Codex CLI
 
 ~/.codex/config.toml:
-
-Parallel-safe shared-memory setup:
 
 Cursor
 
@@ -209,13 +208,17 @@ Use the client's MCP settings UI or JSON file. The command + args pair is the sa
 
 Any Other MCP Client
 
-If the client supports MCP stdio servers, point it at /absolute/path/to/target/release/cerememory with the single argument mcp. No daemon, port, or auth setup is required for single-client local use.
+If the client supports MCP stdio servers, point it at /absolute/path/to/target/release/cerememory with mcp --server-url http://127.0.0.1:8420.
 
-If you need persistent storage, auth, or provider configuration while running MCP mode, pass --config /path/to/cerememory.toml and/or --data-dir /path/to/data before the mcp subcommand.
+Proxy Flags
 
-cerememory mcp without --server-url opens the embedded redb and Tantivy stores directly. Only one Cerememory process can use the same data_dir at a time. For shared multi-client access, run one long-lived cerememory serve process and point every MCP client at it with mcp --server-url http://127.0.0.1:8420.
+| Flag | Env Var | Required | Description |
+|------|---------|----------|-------------|
+| --server-url | — | Yes | URL of the shared cerememory serve process |
+| --server-api-key | CEREMEMORY_SERVER_API_KEY | When auth is enabled upstream | Bearer token for the upstream server |
+| --server-timeout-secs | — | No | Per-request upstream timeout (omit to disable) |
 
-Example:
+Do not pass secrets as command-line arguments when you can avoid it. Prefer CEREMEMORY_SERVER_API_KEY so the token never appears in ps output or shell history.
 
 Tool Surface
 
@@ -292,12 +295,6 @@ Crate Structure
       
       
       
-      
-      
-      
-      
-    
-    
       
       
       
@@ -458,6 +455,20 @@ Key characteristics:
 - Suppression -- Individual entries can be suppressed to exclude them from future dream processing
 
 The raw journal is backed by redb for durable storage plus a dedicated Tantivy full-text search index. Unlike the curated stores, it does not implement the Store trait -- it has its own specialized API optimized for conversation preservation and forensic recall.
+
+Meta-Memory Plane
+
+Meta-memory is a cross-cutting plane attached to both curated memories and raw journal records. It preserves the why around every memory rather than storing another content item.
+
+Key characteristics:
+
+- Typed rationale -- MetaMemory stores intent, rationale, trigger, goals, assumptions, alternatives, decisions, confidence, and evidence references
+- Explicit absence -- new records without a supplied rationale receive an unavailable capture status instead of fabricated reasoning
+- Lifecycle traceability -- engine-generated records, such as dream summaries, receive inferred meta-memory explaining why they were created
+- Context graph -- MetaEdge relations such as derived_from, motivated_by, supports, and chose_over connect rationale across memories
+- Opt-in graph exposure -- recall.graph returns meta and meta_edges only when include_meta is true
+
+Meta-memory is intentionally not modeled as a sixth store. It is a first-class field on the existing records so every memory can carry its own explanatory context while normal recall remains focused on memory content.
 
 The Store Trait
 
@@ -661,6 +672,23 @@ Association
 
 A weighted, typed, bidirectional link between two memory records. Associations enable the spreading activation engine to traverse the memory graph.
 
+MetaMemory
+
+Structured meta-memory is attached to every curated MemoryRecord and every RawJournalRecord. It records why the memory exists, why the agent or user believed or did something, and how that rationale links to other memories.
+
+capture_status separates explicit rationale from engine-derived or missing rationale:
+
+| Status | Meaning |
+|--------|---------|
+| provided | Supplied by a client or user during encode/update |
+| inferred | Created deterministically by engine lifecycle work, such as dream_tick |
+| legacy | Record was created before typed meta-memory existed |
+| unavailable | New record has no explicit rationale at ingest time |
+
+Context edges form the meta-memory graph:
+
+Meta-memory is not a sixth memory store. It is a cross-cutting plane that can be inspected directly and included in recall.graph with include_meta: true.
+
 RawJournalRecord
 
 The fundamental unit of the raw journal plane. Raw journal records preserve verbatim conversation content without curation, enabling forensic recall and dream-tick summarization.
@@ -824,6 +852,7 @@ Request
 | store | StoreType | No | Engine auto-selects | Target store (episodic, semantic, procedural, emotional, working) |
 | emotion | EmotionVector | No | Neutral | Emotional context for this memory |
 | context | EncodeContext | No | None | Source, session, spatial, and temporal context |
+| meta | MetaMemory | No | unavailable | Structured intent, rationale, evidence, assumptions, alternatives, decision, and context-graph edges |
 | associations | ManualAssociation[] | No | None | Explicit associations to existing records |
 
 Response
@@ -849,7 +878,7 @@ When infer_associations is true, the engine creates temporal and sequential asso
 
 encode.update
 
-Update an existing record's content, emotion, or metadata. Uses optimistic concurrency control via the record's version field.
+Update an existing record's content, emotion, metadata, or structured meta-memory. Uses optimistic concurrency control via the record's version field.
 
 Endpoint: PATCH /v1/encode/:record_id
 
@@ -860,6 +889,7 @@ Request
 | content | MemoryContent | No | Replace content entirely |
 | emotion | EmotionVector | No | Replace emotion vector |
 | metadata | JSON | No | Replace metadata object |
+| meta | MetaMemory | No | Replace structured meta-memory |
 
 All fields are optional -- only provided fields are updated. The record's updated_at timestamp and version are automatically incremented.
 
@@ -888,6 +918,7 @@ Request
 | visibility | RawVisibility | No | normal | normal, private_scratch, or sealed |
 | secrecy_level | SecrecyLevel | No | public | public, sensitive, or secret |
 | metadata | JSON | No | {} | Arbitrary metadata |
+| meta | MetaMemory | No | unavailable | Structured explanation for why this raw entry is preserved |
 
 Response
 
@@ -917,7 +948,7 @@ Source: https://co-r-e.github.io/cerememory-docs/docs/protocol/recall
 
 recall.query
 
-The primary retrieval operation. Accepts a multimodal cue and returns ranked memories with relevance scores.
+The primary retrieval operation. Accepts a multimodal cue and returns ranked memories with relevance scores. Text recall searches textual and structured content, summaries, and provided/inferred meta-memory fields such as intent, rationale, evidence excerpts, alternatives, decisions, and tags.
 
 Endpoint: POST /v1/recall/query
 
@@ -991,6 +1022,7 @@ Request
 | center_id | Uuid | No | None | Anchor node for traversal |
 | depth | u32 | No | 2 | Maximum traversal hops |
 | edge_types | string[] | No | All types | Filter by association type names |
+| include_meta | bool | No | false | Include per-node MetaMemory and meta_edges from the context graph |
 | limit_nodes | u32 | No | 10 | Maximum nodes to return |
 
 Response
@@ -1249,365 +1281,6 @@ Next Steps
 
 ---
 
-## Python SDK
-
-Source: https://co-r-e.github.io/cerememory-docs/docs/sdk/python
-
-Installation
-
-For the native in-process binding, see Native Bindings.
-
-Sync Client
-
-Retries are conservative by default in 0.2.2: max_retries defaults to 0, and mutating requests are retried only when retry_mutating_requests=True.
-
-High-Level Methods
-
-The high-level helpers are text-first conveniences. For multimodal blocks, manual associations, full encode context, or custom MemoryContent, use the protocol-level methods such as encode_store().
-
-store(text, ...)
-
-Store a text memory and receive its UUID.
-
-Supported keyword arguments:
-
-| Argument | Type | Default | Description |
-|----------|------|---------|-------------|
-| store | str | StoreType | StoreType.EPISODIC | Target store |
-| emotion | EmotionVector | None | None | Optional emotion vector |
-| metadata | dict | None | None | Stored with the record |
-
-recall(query, ...)
-
-Recall memories matching a text cue.
-
-| Argument | Type | Default | Description |
-|----------|------|---------|-------------|
-| limit | int | 10 | Maximum number of results |
-| stores | list[str | StoreType] | None | None | Restrict the search |
-| mode | str | RecallMode | RecallMode.HUMAN | human or perfect |
-| min_fidelity | float | None | None | Minimum fidelity threshold |
-| reconsolidate | bool | True | Strengthen recalled memories |
-| activation_depth | int | 2 | Spreading activation depth |
-
-forget(*record_ids, ...)
-
-store_raw(text, ...)
-
-Store a verbatim raw journal entry.
-
-| Argument | Type | Default | Description |
-|----------|------|---------|-------------|
-| session_id | str | -- | Required. Session identifier |
-| topic_id | str | None | None | Topic identifier for dream grouping |
-| source | str | RawSource | "conversation" | conversation, tool_io, scratchpad, summary, or imported |
-| speaker | str | RawSpeaker | "user" | user, assistant, system, or tool |
-| visibility | str | RawVisibility | "normal" | normal, private_scratch, or sealed |
-| secrecy_level | str | SecrecyLevel | "public" | public, sensitive, or secret |
-
-recall_raw(...)
-
-Query the raw journal for verbatim entries.
-
-| Argument | Type | Default | Description |
-|----------|------|---------|-------------|
-| query | str | None | None | Full-text search query |
-| session_id | str | None | None | Filter by session |
-| limit | int | 10 | Maximum results |
-| include_private_scratch | bool | False | Include private_scratch entries |
-| include_sealed | bool | False | Include sealed entries |
-| secrecy_levels | list[str | SecrecyLevel] | None | None | Restrict to specific secrecy levels |
-
-dream_tick(...)
-
-Summarize raw journal entries into curated episodic and semantic memories.
-
-| Argument | Type | Default | Description |
-|----------|------|---------|-------------|
-| session_id | str | None | None | Process only entries from this session |
-| dry_run | bool | False | Preview without creating records |
-| max_groups | int | 10 | Maximum topic groups to process |
-| include_private_scratch | bool | False | Include private_scratch entries |
-| include_sealed | bool | False | Include sealed entries |
-| promote_semantic | bool | True | Promote factual content to the semantic store |
-| secrecy_levels | list[str | SecrecyLevel] | None | None | Restrict to specific secrecy levels |
-
-stats(), get_record(), health(), readiness()
-
-stats() returns background_decay_enabled, background_dream_enabled, raw journal counts, dream processing status, and optional evolution_metrics in addition to the usual record counters.
-
-Full CMP Methods
-
-The sync client also exposes protocol-level methods:
-
-| Method | Purpose |
-|--------|---------|
-| encode_store() | POST /v1/encode |
-| encode_batch() | POST /v1/encode/batch |
-| encode_store_raw() | POST /v1/encode/raw |
-| encode_batch_store_raw() | POST /v1/encode/raw/batch |
-| encode_update(record_id, request) | PATCH /v1/encode/:record_id |
-| recall_query() | POST /v1/recall/query |
-| recall_associate(record_id, request) | POST /v1/recall/associate/:record_id |
-| recall_timeline() | POST /v1/recall/timeline |
-| recall_graph() | POST /v1/recall/graph |
-| recall_raw_query() | POST /v1/recall/raw |
-| lifecycle_consolidate() | POST /v1/lifecycle/consolidate |
-| lifecycle_decay_tick() | POST /v1/lifecycle/decay-tick |
-| lifecycle_set_mode() | PUT /v1/lifecycle/mode |
-| lifecycle_forget() | DELETE /v1/lifecycle/forget |
-| lifecycle_dream_tick() | POST /v1/lifecycle/dream-tick |
-| lifecycle_export() | POST /v1/lifecycle/export |
-| lifecycle_import() | POST /v1/lifecycle/import |
-| introspect_stats() | GET /v1/introspect/stats |
-| introspect_record(record_id) | GET /v1/introspect/record/:record_id |
-| introspect_decay_forecast() | POST /v1/introspect/decay-forecast |
-| introspect_evolution() | GET /v1/introspect/evolution |
-
-Example:
-
-Async Client
-
-The async client mirrors the sync API:
-
-Use AsyncClient for asyncio-based services, agents, or web backends.
-
-Integrations
-
-The Python package also includes integration modules for:
-
-- cerememory.integrations.langchain
-- cerememory.integrations.llamaindex
-
-Use these when you want Cerememory-backed memory or vector-store behavior inside LangChain or LlamaIndex applications.
-
-Error Handling
-
-Exported Types
-
-The package exports protocol and model types such as:
-
-Next Steps
-
----
-
-## TypeScript SDK
-
-Source: https://co-r-e.github.io/cerememory-docs/docs/sdk/typescript
-
-Installation
-
-The SDK uses native fetch, so Node.js 18+ or a browser/runtime with fetch is required.
-
-Client Setup
-
-Retries are conservative by default in 0.2.2: maxRetries defaults to 0, and mutating requests are retried only when retryMutatingRequests is explicitly enabled.
-
-High-Level Methods
-
-The high-level helpers are text-first conveniences. For multimodal content, manual associations, or full CMP request bodies, use methods such as encodeStore() or recallQuery().
-
-store(text, options)
-
-Store a text memory and receive its UUID.
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| store | StoreType | episodic | Target store |
-| emotion | Partial | None | Emotion values merged into a full vector |
-| context | EncodeContext | None | Session, spatial, temporal, or source context |
-| metadata | Record | None | Stored with the record |
-
-recall(query, options)
-
-Recall memories matching a text cue.
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| limit | number | 10 | Maximum number of results |
-| stores | StoreType[] | All stores | Restrict the search |
-| min_fidelity | number | None | Minimum fidelity threshold |
-| recall_mode | RecallMode | human | human or perfect |
-| include_decayed | boolean | false | Include records below the normal prune threshold |
-| reconsolidate | boolean | true | Strengthen recalled memories |
-| activation_depth | number | 2 | Spreading activation depth |
-
-forget(recordId, options)
-
-Delete a memory record.
-
-storeRaw(text, options)
-
-Store a verbatim raw journal entry.
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| sessionId | string | -- | Required. Session identifier |
-| topicId | string | None | Topic identifier for dream grouping |
-| source | RawSource | "conversation" | conversation, tool_io, scratchpad, summary, or imported |
-| speaker | RawSpeaker | "user" | user, assistant, system, or tool |
-| visibility | RawVisibility | "normal" | normal, private_scratch, or sealed |
-| secrecyLevel | SecrecyLevel | "public" | public, sensitive, or secret |
-
-recallRaw(options)
-
-Query the raw journal for verbatim entries.
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| query | string | None | Full-text search query |
-| sessionId | string | None | Filter by session |
-| limit | number | 10 | Maximum results |
-| includePrivateScratch | boolean | false | Include private_scratch entries |
-| includeSealed | boolean | false | Include sealed entries |
-| secrecyLevels | SecrecyLevel[] | None | Restrict to specific secrecy levels |
-
-dreamTick(options)
-
-Summarize raw journal entries into curated episodic and semantic memories.
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| session_id | string | None | Process only entries from this session |
-| dry_run | boolean | false | Preview without creating records |
-| max_groups | number | 10 | Maximum topic groups to process |
-| include_private_scratch | boolean | false | Include private_scratch entries |
-| include_sealed | boolean | false | Include sealed entries |
-| promote_semantic | boolean | true | Promote factual content to the semantic store |
-| secrecy_levels | SecrecyLevel[] | None | Restrict to specific secrecy levels |
-
-stats() and health()
-
-stats() returns the full StatsResponse, including background_decay_enabled, background_dream_enabled, raw journal counts, dream processing status, and optional evolution_metrics.
-
-Full CMP Methods
-
-The client also exposes protocol-level methods for the full REST surface:
-
-| Method | Purpose |
-|--------|---------|
-| encodeStore() | POST /v1/encode |
-| encodeBatch() | POST /v1/encode/batch |
-| encodeStoreRaw() | POST /v1/encode/raw |
-| encodeBatchStoreRaw() | POST /v1/encode/raw/batch |
-| encodeUpdate(recordId, request) | PATCH /v1/encode/:record_id |
-| recallQuery() | POST /v1/recall/query |
-| recallAssociate(recordId, request) | POST /v1/recall/associate/:record_id |
-| recallTimeline() | POST /v1/recall/timeline |
-| recallGraph() | POST /v1/recall/graph |
-| recallRawQuery() | POST /v1/recall/raw |
-| lifecycleConsolidate() | POST /v1/lifecycle/consolidate |
-| lifecycleDecayTick() | POST /v1/lifecycle/decay-tick |
-| lifecycleSetMode() | PUT /v1/lifecycle/mode |
-| lifecycleForget() | DELETE /v1/lifecycle/forget |
-| lifecycleDreamTick() | POST /v1/lifecycle/dream-tick |
-| lifecycleExport() | POST /v1/lifecycle/export |
-| lifecycleImport() | POST /v1/lifecycle/import |
-| introspectStats() | GET /v1/introspect/stats |
-| introspectRecord(recordId) | GET /v1/introspect/record/:record_id |
-| introspectDecayForecast() | POST /v1/introspect/decay-forecast |
-| introspectEvolution() | GET /v1/introspect/evolution |
-
-Example:
-
-Vercel AI SDK Integration
-
-The package exports CerememoryProvider for Vercel AI SDK tool definitions:
-
-Error Handling
-
-Errors surface request IDs when the server returns them, which helps correlate SDK failures with server logs.
-
-Type Exports
-
-The SDK exports protocol and model types such as:
-
-Next Steps
-
----
-
-## Native Bindings
-
-Source: https://co-r-e.github.io/cerememory-docs/docs/sdk/native-bindings
-
-Overview
-
-Cerememory also ships native bindings that embed the Rust engine directly in your Python or Node.js process. These bindings avoid HTTP overhead and are useful for embedded or single-process workloads.
-
-The native bindings now cover the core in-process workflow plus raw-journal helpers: store_raw, recall_raw, and dream_tick. HTTP/gRPC still expose the broader remote/server surface, but native bindings are no longer limited to basic CRUD.
-
-Python Native (cerememory-native)
-
-Build from Source
-
-The Python module name is cerememory_native.
-
-Usage
-
-Exposed Methods
-
-| Method | Notes |
-|--------|-------|
-| store(text, store=None, metadata=None) | Returns UUID string |
-| store_full(text, store=None, metadata=None) | Python-only convenience method returning full EncodeStoreResponse fields |
-| recall(query, limit=10, stores=None, min_fidelity=None, recall_mode=None, reconsolidate=True, activation_depth=2) | Returns RecallQueryResponse |
-| get_record(id) | Returns a full MemoryRecord view |
-| forget(ids, confirm=False) | Accepts a list of UUID strings |
-| stats() | Returns stats plus optional evolution metrics |
-| store_raw(text, session_id, ...) | Preserves verbatim raw journal entries |
-| recall_raw(query=None, session_id=None, ...) | Queries preserved raw journal entries |
-| dream_tick(session_id=None, ...) | Summarizes raw journal groups into curated memory |
-
-Node.js Native (@cerememory/native)
-
-Build from Source
-
-Usage
-
-The Node.js binding methods are synchronous from the caller's perspective. Do not await them.
-
-Exposed Methods
-
-| Method | Notes |
-|--------|-------|
-| store(text, store?, metadata?) | Returns UUID string |
-| recall(query, limit?, reconsolidate?, activation_depth?) | Returns JSON-shaped recall data |
-| get_record(id) | Returns JSON-shaped record data |
-| forget(ids, confirm?) | Deletes by UUID list |
-| stats() | Returns JSON-shaped stats data |
-| storeRaw(text, sessionId, topicId?, source?, speaker?, visibility?, secrecyLevel?) | Preserves verbatim raw journal entries |
-| recallRaw(query?, sessionId?, limit?, includePrivateScratch?, includeSealed?) | Queries preserved raw journal entries |
-| dreamTick(sessionId?, dryRun?, maxGroups?, includePrivateScratch?, includeSealed?, promoteSemantic?) | Summarizes raw journal groups into curated memory |
-
-Native vs HTTP SDK
-
-| Capability | HTTP SDKs | Native bindings |
-|------------|-----------|-----------------|
-| Shared server process | Yes | No |
-| Auth / CORS / rate limiting | Yes | No |
-| Health / readiness / metrics | Yes | No |
-| Full REST API surface | Yes | No |
-| In-process calls | No | Yes |
-| Best for embedded single-process workloads | Sometimes | Yes |
-
-When to Use Native Bindings
-
-Use native bindings when:
-
-- You want the engine embedded directly in one process
-- You do not need shared multi-client access over HTTP/gRPC
-- You want to avoid transport overhead in tests or local tools
-
-Use the HTTP server and SDKs when:
-
-- Multiple clients share one memory store
-- You need observability, auth, or remote access
-- You want the full public API surface
-
-Next Steps
-
----
-
 ## Configuration
 
 Source: https://co-r-e.github.io/cerememory-docs/docs/deployment/configuration
@@ -1678,7 +1351,7 @@ Features That Work Without An LLM Key
 - Inspect, stats, timeline, associate
 - Forget, decay tick, mode switching
 - Export and import archives
-- MCP / CLI / SDK basic CRUD flows
+- MCP / CLI / HTTP / gRPC basic CRUD flows
 
 Features That Require An LLM Key
 
@@ -1740,9 +1413,19 @@ Next Steps
 
 Source: https://co-r-e.github.io/cerememory-docs/docs/deployment/docker
 
-Quick Start
+Cerememory does not publish container images. There is no ghcr.io/co-r-e/cerememory registry image to pull. If you want to run Cerememory in a container, build the image yourself from the main repository and push it to whichever registry your deployment uses.
 
-This starts Cerememory with default settings: HTTP on port 8420, data persisted in a Docker volume, and background decay enabled.
+Build the Image
+
+Cerememory ships a docker-compose.yml at the root of the repository that builds a local image from the repo's Dockerfile.
+
+If you prefer a hand-written Dockerfile, this is the canonical shape:
+
+Tag and push it to your own registry:
+
+Docker Run
+
+This starts Cerememory with default settings: HTTP on port 8420, data persisted in a named Docker volume, and background decay enabled.
 
 Docker Run with Full Configuration
 
@@ -1751,6 +1434,8 @@ Docker Compose
 Store sensitive values like API keys in a .env file or a secrets manager. The Docker Compose file above references ${CEREMEMORY_API_KEY} and ${ANTHROPIC_API_KEY} from the environment.
 
 Expose gRPC from Docker only when you also configure TLS. Cerememory rejects gRPC startup on non-loopback binds when auth is enabled and TLS is missing.
+
+Only one Cerememory process may open a given data_dir at a time. Do not run multiple containers against the same mounted volume — they will deadlock on redb file locks. For multi-client agent access, run one container and connect every MCP client to it via cerememory mcp --server-url.
 
 Health Checks
 
@@ -1764,10 +1449,6 @@ Cerememory exposes two health endpoints that do not require authentication:
 The /readiness endpoint performs an actual engine operation (reading stats) and returns 503 if the engine is not ready.
 
 For Docker's HEALTHCHECK, use the built-in CLI command:
-
-Building the Image
-
-To build from source:
 
 Volumes and Data Persistence
 
@@ -1796,6 +1477,8 @@ Next Steps
 ## Kubernetes
 
 Source: https://co-r-e.github.io/cerememory-docs/docs/deployment/kubernetes
+
+Cerememory does not publish a container image. Build and push your own image to a private registry first — see Docker for the build recipe — then reference that registry path from the manifests below.
 
 Deployment Manifest
 
@@ -2034,6 +1717,7 @@ Store a new text memory record.
 |  | string | -- | Required. Text content to store |
 | --store | string | episodic | Target store |
 | --embedding | string | None | Comma-separated embedding vector |
+| --meta-json | JSON string | None | Structured MetaMemory with intent, rationale, evidence, and decision context |
 
 The working store is intentionally in-memory only. Records written there do not survive process restarts.
 
@@ -2052,6 +1736,7 @@ Store a verbatim raw journal entry.
 | --speaker | string | user | user, assistant, system, or tool |
 | --visibility | string | normal | normal, private_scratch, or sealed |
 | --secrecy-level | string | public | public, sensitive, or secret |
+| --meta-json | JSON string | None | Structured MetaMemory describing why the raw entry is preserved |
 
 ---
 
@@ -2090,7 +1775,7 @@ Inspect a specific record as pretty-printed JSON.
 |------|------|-------------|
 |  | UUID | Required. Record UUID |
 
-The output includes fidelity state, emotion vector, associations, metadata, and version.
+The output includes fidelity state, emotion vector, associations, metadata, meta-memory, and version.
 
 ---
 
@@ -2186,21 +1871,27 @@ Returns exit code 0 when healthy and non-zero otherwise.
 
 mcp
 
-Start the stdio MCP server for Claude Code and other MCP-compatible clients.
+Start a stdio MCP proxy that forwards tool calls to an existing long-lived cerememory serve process. --server-url is required — cerememory mcp is a proxy only; there is no embedded-store MCP mode.
 
-Shared parallel setup:
+| Flag | Env Var | Required | Description |
+|------|---------|----------|-------------|
+| --server-url | — | Yes | URL of the shared cerememory serve process (e.g., http://127.0.0.1:8420) |
+| --server-api-key | CEREMEMORY_SERVER_API_KEY | When upstream auth is enabled | Bearer token for the upstream Cerememory HTTP server |
+| --server-timeout-secs | — | No | Optional per-request upstream timeout in seconds; omit to disable per-request timeout |
 
-cerememory mcp without --server-url opens the embedded redb and Tantivy stores directly. Only one Cerememory process can use the same data_dir at a time. For shared multi-client access, run one long-lived cerememory serve process and point every MCP client at it with mcp --server-url http://127.0.0.1:8420.
+Prefer CEREMEMORY_SERVER_API_KEY over --server-api-key so the token never appears in ps output or shell history.
+
+Only one process may open a given data_dir at a time. Run exactly one cerememory serve per data directory, and point every MCP client at it with cerememory mcp --server-url http://127.0.0.1:8420. Attempting to launch multiple embedded servers on the same directory will fail on redb file locks.
 
 The MCP server exposes these tools:
 
 | Tool | Description |
 |------|-------------|
-| store | Store a new memory record |
-| update | Update an existing record's content or emotion |
+| store | Store a new memory record; accepts optional meta_json |
+| update | Update an existing record's content, emotion, or meta_json |
 | batch_store | Store multiple memories at once with inferred associations |
-| store_raw | Store a verbatim raw journal entry |
-| batch_store_raw | Store multiple raw journal entries |
+| store_raw | Store a verbatim raw journal entry; accepts optional meta_json |
+| batch_store_raw | Store multiple raw journal entries; each entry may include meta_json |
 | recall | Query memories, or list recent ones when query is omitted |
 | recall_raw | Forensic query over the raw journal |
 | timeline | Retrieve memories in time buckets |
@@ -2414,10 +2105,7 @@ Source: https://co-r-e.github.io/cerememory-docs/docs/contributing/development
 Prerequisites
 
 - Rust 1.88+ -- Install via rustup
-- Protobuf compiler -- Required for gRPC code generation
-- Node.js 18+ -- Required for TypeScript native bindings (optional)
-- Python 3.10+ -- Required for Python native bindings (optional)
-- maturin -- Required for building Python native bindings (optional)
+- Protobuf compiler (protoc) -- Required for gRPC code generation
 
 Clone and Build
 
@@ -2468,7 +2156,6 @@ Key directories for development:
 | crates/cerememory-config/ | Configuration loading and validation |
 | crates/cerememory-store-/ | Individual store implementations |
 | adapters/adapter-/ | LLM provider adapters |
-| bindings/ | PyO3 and napi-rs native bindings |
 | tests/integration/ | End-to-end integration tests |
 
 Adding a New Store Operation

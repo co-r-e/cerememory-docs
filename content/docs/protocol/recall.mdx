@@ -5,7 +5,7 @@ description: "Query and retrieve memories using multimodal cues, association tra
 
 ## recall.query
 
-The primary retrieval operation. Accepts a multimodal cue and returns ranked memories with relevance scores.
+The primary retrieval operation. Accepts a multimodal cue and returns ranked memories with relevance scores. Text recall searches textual and structured content, summaries, and `provided`/`inferred` meta-memory fields such as intent, rationale, evidence excerpts, alternatives, decisions, and tags.
 
 **Endpoint:** `POST /v1/recall/query`
 
@@ -189,6 +189,7 @@ Retrieve a subgraph of memory nodes and their association edges, suitable for vi
   "center_id": "01916e3a-5678-7000-8000-000000000001",
   "depth": 2,
   "edge_types": ["semantic", "causal"],
+  "include_meta": true,
   "limit_nodes": 50
 }
 ```
@@ -198,6 +199,7 @@ Retrieve a subgraph of memory nodes and their association edges, suitable for vi
 | `center_id` | Uuid | No | None | Anchor node for traversal |
 | `depth` | u32 | No | 2 | Maximum traversal hops |
 | `edge_types` | string[] | No | All types | Filter by association type names |
+| `include_meta` | bool | No | false | Include per-node `MetaMemory` and `meta_edges` from the context graph |
 | `limit_nodes` | u32 | No | 10 | Maximum nodes to return |
 
 ### Response
@@ -209,6 +211,15 @@ Retrieve a subgraph of memory nodes and their association edges, suitable for vi
   ],
   "edges": [
     { "source": "01916e3a-...", "target": "01916e3b-...", "edge_type": "semantic", "weight": 0.85 }
+  ],
+  "meta_edges": [
+    {
+      "source_id": "01916e3a-...",
+      "target_id": "01916e3b-...",
+      "relation": "derived_from",
+      "rationale": "This summary was derived from the referenced raw journal record.",
+      "confidence": 1.0
+    }
   ],
   "total_nodes": 12
 }
