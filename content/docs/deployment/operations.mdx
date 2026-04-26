@@ -1,0 +1,195 @@
+---
+title: "Operations"
+description: "Run the Cerememory binary as a long-lived service: process supervision, health probes, metrics, and backups."
+---
+
+Cerememory is distributed as source. There are no published container images, package archives, or deployment templates — every operator builds the `cerememory` binary themselves and runs it as a long-lived process. This page covers what operating that binary in practice looks like.
+
+<Callout type="info">
+The supported operating model is **one `cerememory serve` process per data directory**. Every MCP client, CLI invocation, and HTTP caller talks to that single process. Running multiple processes on the same `data_dir` will fail on `redb` file locks.
+</Callout>
+
+## Single-Server Topology
+
+```text
+┌─────────────────┐     ┌─────────────────┐
+│  Claude Code    │     │  Codex CLI      │
+│  (cerememory    │     │  (cerememory    │
+│   mcp --server  │     │   mcp --server  │
+│   -url ...)     │     │   -url ...)     │
+└────────┬────────┘     └────────┬────────┘
+         │                       │
+         │ stdio (MCP)           │ stdio (MCP)
+         │                       │
+         └───────────┬───────────┘
+                     │
+                     │ HTTP/CMP
+                     ▼
+        ┌─────────────────────────┐
+        │  cerememory serve       │
+        │  127.0.0.1:8420         │
+        │  owns redb + Tantivy    │
+        └─────────────────────────┘
+```
+
+Every MCP client launches its own thin `cerememory mcp --server-url …` proxy. The proxy speaks MCP to the client and HTTP/CMP to the shared server.
+
+## Build the Binary
+
+```bash
+git clone https://github.com/co-r-e/cerememory.git
+cd cerememory
+cargo build -p cerememory-cli --release
+```
+
+The binary lands at `target/release/cerememory`. Place it on `PATH` or reference it by absolute path from your service manager and MCP client configs.
+
+## Run as a Service
+
+### macOS (launchd)
+
+`~/Library/LaunchAgents/com.cerememory.plist`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.cerememory</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/cerememory</string>
+    <string>serve</string>
+    <string>--config</string>
+    <string>/usr/local/etc/cerememory/cerememory.toml</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/usr/local/var/log/cerememory.log</string>
+  <key>StandardErrorPath</key>
+  <string>/usr/local/var/log/cerememory.err</string>
+</dict>
+</plist>
+```
+
+Load with `launchctl load ~/Library/LaunchAgents/com.cerememory.plist`.
+
+### Linux (systemd)
+
+`/etc/systemd/system/cerememory.service`:
+
+```ini
+[Unit]
+Description=Cerememory living memory database
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/cerememory serve --config /etc/cerememory/cerememory.toml
+Restart=on-failure
+RestartSec=5
+User=cerememory
+Group=cerememory
+StateDirectory=cerememory
+ReadWritePaths=/var/lib/cerememory
+ProtectSystem=strict
+ProtectHome=true
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable with `systemctl enable --now cerememory`.
+
+<Callout type="warning">
+The service unit must use `Type=simple` (not `forking`). Cerememory runs in the foreground and relies on the supervisor for lifecycle management.
+</Callout>
+
+## Health Probes
+
+| Endpoint | Auth | Purpose | Behavior |
+|----------|------|---------|----------|
+| `GET /health` | No | Liveness | Returns 200 while the process is alive |
+| `GET /readiness` | No | Readiness | Returns 200 when the engine can serve `introspect.stats`; 503 otherwise |
+| `cerememory healthcheck --port 8420` | No | Exit-code probe | Wraps `/health`; exits 0 when healthy |
+
+Both `/health` and `/readiness` bypass authentication and rate limiting so they remain reachable when auth is enabled.
+
+## Metrics
+
+Prometheus metrics live at `GET /metrics`. They are **disabled by default** — enable with `http.metrics_enabled = true`. When auth is enabled, `/metrics` requires the same Bearer token as the rest of the API.
+
+Headline series:
+
+- `cerememory_http_requests_total` — total HTTP requests by method and status
+- `cerememory_http_request_duration_seconds` — request latency histogram
+- `cerememory_records_total` — record counts per store
+- `cerememory_decay_ticks_total` — background decay tick counter
+
+## At-Rest Encryption
+
+Set `security.store_encryption_passphrase` (or `CEREMEMORY_SECURITY__STORE_ENCRYPTION_PASSPHRASE`) to encrypt newly written redb store records. Existing plaintext records remain readable so the engine keeps serving traffic during migration.
+
+To rewrite legacy plaintext payloads with the configured passphrase, run a one-shot migration against a quiesced data directory:
+
+```bash
+cerememory migrate-store-encryption --confirm
+```
+
+The command reports per-store totals (raw_journal, episodic, semantic, procedural, emotional, vector_index) and exits non-zero on failure. Always take a CMA archive backup beforehand.
+
+When store encryption is enabled, persistent search indexes default to in-memory only. Set `security.persist_search_indexes = true` only if it is acceptable for derived text to appear on disk.
+
+## Audit Log
+
+A tamper-evident JSONL audit log is enabled by default at `<data_dir>/audit.jsonl`. Each entry chains to its predecessor via a hash, so any reorder, rewrite, or deletion breaks the chain. Verify integrity periodically:
+
+```bash
+cerememory audit-verify
+```
+
+Pass `--path /path/to/audit.jsonl` if the audit log was relocated via `security.audit_log_path`. Disable the log entirely with `security.audit_log_enabled = false` (not recommended).
+
+<Callout type="info">
+The audit log is separate from operational logging (`[log]`) and from Prometheus metrics. It records security-relevant events (encode, forget, mode changes, export/import) for forensic review and is intended to be retained alongside backups.
+</Callout>
+
+## Backups and Portability
+
+CMA archives are the portability format. Export periodically and store the archive somewhere durable:
+
+```bash
+cerememory export \
+  --output /var/backups/cerememory/$(date +%F).cma \
+  --include-raw-journal \
+  --encrypt \
+  --encryption-key-stdin
+```
+
+Use `--encryption-key-stdin` so the passphrase never appears in `ps` output or shell history. Restore with `cerememory import` and the corresponding `--decryption-key-stdin`.
+
+<Callout type="info">
+The working store is intentionally in-memory. It is not exported and is not restored. Only persistent stores (episodic, semantic, procedural, emotional, raw journal) round-trip through CMA archives.
+</Callout>
+
+## Scaling Notes
+
+Cerememory uses an embedded database (redb), which has direct implications for scaling:
+
+- **No horizontal scaling.** Each `data_dir` is owned by exactly one process. Two replicas pointing at the same directory will deadlock on file locks.
+- **Vertical scaling works well.** The decay engine uses rayon for parallel computation across all CPU cores; the HTTP layer is async via Tokio.
+- **No read replicas.** For redundancy, take regular CMA archive exports and replicate the encrypted archives to durable storage.
+
+For exposing Cerememory to a network beyond loopback, set `http.bind_address = "0.0.0.0"`, enable auth, and front the server with a TLS-terminating reverse proxy (nginx, caddy, traefik). gRPC supports native TLS via `grpc.tls_cert_path` / `grpc.tls_key_path`.
+
+## Next Steps
+
+<LinkCard href="/docs/deployment/configuration" title="Configuration" description="Full TOML and environment-variable reference" />
+<LinkCard href="/docs/reference/cli" title="CLI Reference" description="Every CLI command and flag" />

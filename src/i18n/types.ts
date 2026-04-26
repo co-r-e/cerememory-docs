@@ -50,6 +50,8 @@ export interface Dictionary {
       cerememoryEngine: string
       hippocampalCoordinator: string
       memoryStores: string
+      rawJournalBox: string
+      supportingEnginesNote: string
       engines: string
       decayEngine: string
       associationEngine: string

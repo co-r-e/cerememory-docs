@@ -22,10 +22,10 @@ export const ja: Dictionary = {
   },
   abstract: {
     label: 'アブストラクト',
-    text: '現在の LLM は会話がリセットされるたびにコンテキストを失い、ユーザーは同じ説明を何度も繰り返さなければなりません。<strong>Cerememory</strong> は、神経科学研究に基づく5つの専門記憶ストアで構成された、LLM 非依存の記憶データベースです。記憶は単に保存されるだけでなく、時間とともに減衰し、関連する記憶が発火すると再活性化し、感情の強度によって保持率が変化します。これはデータベースではありません。<em>生きた記憶システム</em>です。ユーザー主権のローカルファースト設計により、記憶データの完全な所有権がユーザーに保証されます。',
+    text: '現在の LLM は会話がリセットされるたびにコンテキストを失い、ユーザーは同じ説明を何度も繰り返さなければなりません。<strong>Cerememory</strong> は、神経科学研究に基づく5つの専門記憶ストアで構成された、LLM 非依存の記憶データベースです。記憶は単に保存されるだけでなく、時間とともに減衰し、関連する記憶が発火すると再活性化し、感情の強度によって保持率が変化します。さらに各レコードには、その記憶が <em>なぜ</em> 存在するのかを記録する構造化された <strong>メタメモリ</strong> プレーン（意図、根拠、エビデンス、代替案、型付きコンテキストグラフ）が付随します。これはデータベースではありません。<em>生きた記憶システム</em>です。ユーザー主権のローカルファースト設計により、記憶データの完全な所有権がユーザーに保証されます。',
     keywordsLabel: 'キーワード',
     keywords:
-      'Memory Database \u00b7 LLM \u00b7 Neuroscience \u00b7 Spreading Activation \u00b7 Decay Model \u00b7 Emotional Modulation \u00b7 Rust \u00b7 CMP Protocol',
+      'Memory Database \u00b7 LLM \u00b7 Neuroscience \u00b7 Spreading Activation \u00b7 Decay Model \u00b7 Meta-Memory \u00b7 Raw Journal \u00b7 Rust \u00b7 CMP Protocol',
   },
   problem: {
     number: '\u00a7 1',
@@ -83,19 +83,21 @@ export const ja: Dictionary = {
     tableCaption:
       '<strong>Table 1.</strong> 5つの記憶ストアと神経科学的な対応部位',
     diagram: {
-      llmAdapters: 'LLM Adapters',
-      transportLayer: 'Transport Layer',
-      cerememoryEngine: 'Cerememory Engine',
-      hippocampalCoordinator: 'Hippocampal Coordinator',
-      memoryStores: 'Memory Stores',
-      engines: 'Engines',
+      llmAdapters: 'LLM レイヤー · クライアント & アダプター',
+      transportLayer: 'トランスポートバインディング',
+      cerememoryEngine: 'Cerememory Engine（オーケストレーター）',
+      hippocampalCoordinator: '海馬コーディネーター · ストア横断インデックス',
+      memoryStores: 'ストレージプレーン · 5 つのキュレートストア + 生ジャーナル',
+      rawJournalBox: '生ジャーナル · 原文 + Tantivy',
+      supportingEnginesNote: 'サポートエンジンはエンジンと並列で動作し、すべてのストアに作用します。',
+      engines: 'サポートエンジン',
       decayEngine: 'Decay Engine',
       associationEngine: 'Association Engine',
       evolutionEngine: 'Evolution Engine',
       tantivyFullText: 'Tantivy Full-Text',
       hnswVector: 'HNSW Vector',
       associationGraph: 'Association Graph',
-      figCaption: '<strong>Fig. 1.</strong> Cerememory のシステムアーキテクチャ全体図',
+      figCaption: '<strong>Fig. 1.</strong> Cerememory のシステムアーキテクチャ · メタメモリはすべてのレコードに紐づく横断プレーン',
     },
   },
   dynamics: {
@@ -215,7 +217,7 @@ export const ja: Dictionary = {
       ],
     },
     footnote:
-      'Recall には2つのモードがあります。<strong>Human</strong>（忠実度に応じたノイズを伴う現実的な想起）と <strong>Perfect</strong>（元データの完全な検索）です。拡散活性化の深度は設定可能で、SDK はクエリメタデータ、リクエスト ID、リトライヒントをデバッグ用に提供します。',
+      'Recall には2つのモードがあります。<strong>Human</strong>（忠実度に応じたノイズを伴う現実的な想起）と <strong>Perfect</strong>（元データの完全な検索）です。拡散活性化の深度は設定可能で、各トランスポートはクエリメタデータ、x-request-id による相関、リトライヒントを返却し本番デバッグを容易にします。',
   },
   quickStart: {
     number: '\u00a7 5',
@@ -254,7 +256,7 @@ export const ja: Dictionary = {
       {
         icon: 'H',
         title: 'セキュアデフォルト',
-        desc: 'Localhost ファースト HTTP、Bearer 認証、信頼プロキシ対応のレート制限、公開デプロイでの gRPC TLS 強制。',
+        desc: 'Localhost ファースト HTTP、Bearer 認証、信頼プロキシ対応のレート制限、任意の at-rest ストア暗号化（ChaCha20-Poly1305）、改ざん検知付き JSONL 監査ログ、公開デプロイでの gRPC TLS 強制。',
       },
       {
         icon: 'O',
@@ -275,6 +277,16 @@ export const ja: Dictionary = {
         icon: 'W',
         title: 'ワークフローの安定性',
         desc: '推論された連想の永続化、安全な CMA エクスポート・インポートフロー、ステートフル CLI 操作前のコーディネーター再構築。',
+      },
+      {
+        icon: '?',
+        title: 'メタメモリプレーン',
+        desc: '各レコードは意図・根拠・エビデンス・代替案・決定・型付きコンテキストグラフを保持。recall.query が「なぜ」プレーンを索引するため、エージェントは内容ではなく理由で検索できます。',
+      },
+      {
+        icon: 'R',
+        title: '生ジャーナル & ドリームティック',
+        desc: '会話、ツール I/O、スクラッチパッドを別プレーンに原文保存。dream_tick が生エントリをトピックごとに集約し、エピソード／意味記憶へ要約します。',
       },
     ],
   },

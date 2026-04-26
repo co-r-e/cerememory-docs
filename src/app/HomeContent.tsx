@@ -554,14 +554,20 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
                 <div className="arch-box arch-box--store">{dict.architecture.stores.procedural.name}</div>
                 <div className="arch-box arch-box--store">{dict.architecture.stores.emotional.name}</div>
                 <div className="arch-box arch-box--store">{dict.architecture.stores.working.name}</div>
+                <div className="arch-box arch-box--store" style={{ borderStyle: 'dashed' }}>
+                  {dict.architecture.diagram.rawJournalBox}
+                </div>
               </div>
-              <div className="arch-arrow">&darr;</div>
+              <div className="arch-arrow">&harr;</div>
               <div className="arch-label">{dict.architecture.diagram.engines}</div>
               <div className="arch-layer">
                 <div className="arch-box">{dict.architecture.diagram.decayEngine}</div>
                 <div className="arch-box">{dict.architecture.diagram.associationEngine}</div>
                 <div className="arch-box">{dict.architecture.diagram.evolutionEngine}</div>
               </div>
+              <p className="arch-footnote" style={{ marginTop: '0.75rem', fontSize: '0.85em', opacity: 0.7, textAlign: 'center' }}>
+                {dict.architecture.diagram.supportingEnginesNote}
+              </p>
             </div>
             <div className="figure__caption" dangerouslySetInnerHTML={{ __html: dict.architecture.diagram.figCaption }} />
           </div>

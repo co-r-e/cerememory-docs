@@ -59,8 +59,8 @@ export default function JaHome() {
     applicationCategory: 'DeveloperApplication',
     applicationSubCategory: 'Database',
     operatingSystem: 'Linux, macOS, Windows',
-    softwareVersion: '0.2.2',
-    programmingLanguage: ['Rust', 'Python', 'TypeScript'],
+    softwareVersion: '0.2.5',
+    programmingLanguage: ['Rust'],
     inLanguage: 'ja',
     offers: {
       '@type': 'Offer',

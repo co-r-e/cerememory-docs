@@ -1,5 +1,5 @@
 {
   "title": "Architecture",
   "icon": "layers",
-  "pages": ["overview", "five-stores", "living-dynamics", "data-model"]
+  "pages": ["overview", "five-stores", "living-dynamics", "meta-memory", "data-model"]
 }

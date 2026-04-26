@@ -22,10 +22,10 @@ export const en: Dictionary = {
   },
   abstract: {
     label: 'Abstract',
-    text: "Today\u2019s LLMs lose context with every conversation reset, forcing users to repeat themselves endlessly. <strong>Cerememory</strong> is an LLM-agnostic memory database built on five specialized memory stores grounded in neuroscience research. Memories are not merely stored \u2013 they decay over time, reactivate when related memories fire, and have their retention rates modulated by emotional intensity. This is not a database. It is a <em>living memory system</em>. With a user-sovereign, local-first design, full ownership of memory data is guaranteed to the user.",
+    text: "Today\u2019s LLMs lose context with every conversation reset, forcing users to repeat themselves endlessly. <strong>Cerememory</strong> is an LLM-agnostic memory database built on five specialized memory stores grounded in neuroscience research. Memories are not merely stored \u2013 they decay over time, reactivate when related memories fire, and have their retention rates modulated by emotional intensity. Every record carries a structured <strong>meta-memory</strong> plane that records <em>why</em> it exists \u2013 intent, rationale, evidence, alternatives, and a typed context graph. This is not a database. It is a <em>living memory system</em>. With a user-sovereign, local-first design, full ownership of memory data is guaranteed to the user.",
     keywordsLabel: 'Keywords',
     keywords:
-      'Memory Database \u00b7 LLM \u00b7 Neuroscience \u00b7 Spreading Activation \u00b7 Decay Model \u00b7 Emotional Modulation \u00b7 Rust \u00b7 CMP Protocol',
+      'Memory Database \u00b7 LLM \u00b7 Neuroscience \u00b7 Spreading Activation \u00b7 Decay Model \u00b7 Meta-Memory \u00b7 Raw Journal \u00b7 Rust \u00b7 CMP Protocol',
   },
   problem: {
     number: '\u00a7 1',
@@ -82,19 +82,21 @@ export const en: Dictionary = {
     tableCaption:
       '<strong>Table 1.</strong> Five memory stores and their neuroscientific analogs',
     diagram: {
-      llmAdapters: 'LLM Adapters',
-      transportLayer: 'Transport Layer',
-      cerememoryEngine: 'Cerememory Engine',
-      hippocampalCoordinator: 'Hippocampal Coordinator',
-      memoryStores: 'Memory Stores',
-      engines: 'Engines',
+      llmAdapters: 'LLM Layer · Clients & Adapters',
+      transportLayer: 'Transport Bindings',
+      cerememoryEngine: 'Cerememory Engine (orchestrator)',
+      hippocampalCoordinator: 'Hippocampal Coordinator · cross-store indexes',
+      memoryStores: 'Storage Plane · 5 curated stores + raw journal',
+      rawJournalBox: 'Raw Journal · verbatim + Tantivy',
+      supportingEnginesNote: 'Supporting engines run alongside the engine and operate on every store.',
+      engines: 'Supporting Engines',
       decayEngine: 'Decay Engine',
       associationEngine: 'Association Engine',
       evolutionEngine: 'Evolution Engine',
       tantivyFullText: 'Tantivy Full-Text',
       hnswVector: 'HNSW Vector',
       associationGraph: 'Association Graph',
-      figCaption: '<strong>Fig. 1.</strong> Full system architecture of Cerememory',
+      figCaption: '<strong>Fig. 1.</strong> Cerememory system architecture · meta-memory is a cross-cutting plane attached to every record',
     },
   },
   dynamics: {
@@ -214,7 +216,7 @@ export const en: Dictionary = {
       ],
     },
     footnote:
-      'Recall has two modes: <strong>Human</strong> (realistic recall with fidelity-weighted noise) and <strong>Perfect</strong> (complete retrieval of original data). Spreading activation depth is configurable, and SDKs surface query metadata, request IDs, and retry hints for debugging.',
+      'Recall has two modes: <strong>Human</strong> (realistic recall with fidelity-weighted noise) and <strong>Perfect</strong> (complete retrieval of original data). Spreading activation depth is configurable. Every transport returns query metadata, x-request-id correlation, and retry hints to make production debugging straightforward.',
   },
   quickStart: {
     number: '\u00a7 5',
@@ -253,7 +255,7 @@ export const en: Dictionary = {
       {
         icon: 'H',
         title: 'Secure Defaults',
-        desc: 'Localhost-first HTTP, Bearer auth, trusted-proxy-aware rate limiting, and enforced gRPC TLS on exposed deployments.',
+        desc: 'Localhost-first HTTP, Bearer auth, trusted-proxy-aware rate limiting, optional at-rest store encryption (ChaCha20-Poly1305), tamper-evident JSONL audit log, and enforced gRPC TLS on exposed deployments.',
       },
       {
         icon: 'O',
@@ -274,6 +276,16 @@ export const en: Dictionary = {
         icon: 'W',
         title: 'Workflow Stability',
         desc: 'Persisted inferred associations, safe CMA export/import flows, and rebuilt coordinators before stateful CLI operations.',
+      },
+      {
+        icon: '?',
+        title: 'Meta-Memory Plane',
+        desc: 'Every record carries structured intent, rationale, evidence, alternatives, decisions, and a typed context graph. recall.query indexes the why plane so agents can search reasoning, not just content.',
+      },
+      {
+        icon: 'R',
+        title: 'Raw Journal & Dream Tick',
+        desc: 'Verbatim conversation, tool I/O, and scratchpad capture in a separate forensic plane. dream_tick groups raw entries by topic and summarizes them into curated episodic and semantic memory.',
       },
     ],
   },

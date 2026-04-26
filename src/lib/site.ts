@@ -7,7 +7,7 @@ export const siteConfig = {
   description:
     "Cerememory is an open-source, neuroscience-inspired memory database that gives AI systems persistent, evolving memory across sessions. LLM-agnostic (Claude, GPT, Gemini), user-sovereign, brain-inspired, and built in Rust. Speaks CMP over HTTP, gRPC, and MCP.",
   docsDescription:
-    "Cerememory documentation: getting started, architecture, the CMP protocol, SDKs, deployment, and reference material.",
+    "Cerememory documentation: getting started, architecture, the CMP protocol, the meta-memory plane, deployment, and reference material.",
   japaneseTitle: "Cerememory - AI時代の生きた記憶データベース",
   japaneseDescription:
     "Cerememory は、神経科学に基づくオープンソースの記憶データベースです。AIシステムに永続的で進化する記憶を提供します。LLM非依存。ユーザー主権。脳にインスパイアされた設計。",

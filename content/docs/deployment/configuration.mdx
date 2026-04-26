@@ -36,6 +36,19 @@ tls_key_path = "/etc/certs/key.pem"   # required together with tls_cert_path
 enabled = true
 api_keys = ["sk-cerememory-prod-abc123", "sk-cerememory-prod-def456"]
 
+[security]
+# Optional at-rest encryption for newly written redb store records.
+# Prefer CEREMEMORY_SECURITY__STORE_ENCRYPTION_PASSPHRASE over TOML so the
+# passphrase is not committed to version control.
+# store_encryption_passphrase = "change-me"
+# When store encryption is enabled, persistent full-text indexes default to
+# in-memory only. Set true if searchable derived text on disk is acceptable.
+# persist_search_indexes = false
+# Tamper-evident audit log is enabled by default at <data_dir>/audit.jsonl.
+# Verify the hash chain with: cerememory audit-verify
+# audit_log_enabled = true
+# audit_log_path = "/var/lib/cerememory/audit.jsonl"
+
 [llm]
 provider = "claude"   # "openai", "claude" (or "anthropic"), "gemini" (or "google"), or "none"
 api_key = "sk-ant-..."
@@ -80,6 +93,10 @@ All configuration options can be overridden via environment variables with the `
 | `CEREMEMORY_GRPC__TLS_KEY_PATH` | `grpc.tls_key_path` | None | TLS key path |
 | `CEREMEMORY_AUTH__ENABLED` | `auth.enabled` | `false` | Enable Bearer token auth |
 | `CEREMEMORY_AUTH_API_KEYS` | `auth.api_keys` | `[]` | Comma-separated Cerememory server API keys |
+| `CEREMEMORY_SECURITY__STORE_ENCRYPTION_PASSPHRASE` | `security.store_encryption_passphrase` | None | Passphrase used to encrypt newly written redb records |
+| `CEREMEMORY_SECURITY__PERSIST_SEARCH_INDEXES` | `security.persist_search_indexes` | `false` when store encryption is set, otherwise `true` | Persist full-text indexes to disk |
+| `CEREMEMORY_SECURITY__AUDIT_LOG_ENABLED` | `security.audit_log_enabled` | `true` | Append-only tamper-evident audit log |
+| `CEREMEMORY_SECURITY__AUDIT_LOG_PATH` | `security.audit_log_path` | `<data_dir>/audit.jsonl` | Audit log path |
 | `CEREMEMORY_LLM__PROVIDER` | `llm.provider` | `none` | LLM provider name |
 | `CEREMEMORY_LLM__API_KEY` | `llm.api_key` | None | External LLM provider API key |
 | `CEREMEMORY_LLM__MODEL` | `llm.model` | None | Model name override |
@@ -143,6 +160,18 @@ cerememory serve --port 9000 --grpc-port 8421 --data-dir /var/cerememory --confi
 | `--data-dir` | `data_dir` |
 | `--config` | Path to TOML config file |
 
+## At-Rest Encryption and Audit Log
+
+The `[security]` section controls how Cerememory protects data on disk:
+
+- **Store encryption.** Setting `security.store_encryption_passphrase` (or the matching `CEREMEMORY_SECURITY__STORE_ENCRYPTION_PASSPHRASE` env var) encrypts newly written redb records. Existing plaintext records remain readable so the engine can run during migration. Run `cerememory migrate-store-encryption --confirm` to rewrite legacy plaintext payloads with encryption.
+- **Persistent indexes.** When store encryption is on, full-text indexes default to in-memory only. Set `security.persist_search_indexes = true` only if it is acceptable for derived text to appear on disk.
+- **Audit log.** A tamper-evident JSONL hash chain is enabled by default at `<data_dir>/audit.jsonl`. Disable with `security.audit_log_enabled = false`, or relocate via `security.audit_log_path`. Verify integrity with `cerememory audit-verify` (it picks up the configured path automatically, or accepts an explicit `--path`).
+
+<Callout type="warning">
+Always supply the store encryption passphrase via the env var rather than the TOML file. Cerememory wraps it in `SecretString` at runtime to prevent accidental logging, but committing it to source control would defeat the protection.
+</Callout>
+
 ## Validation
 
 The configuration is validated at startup. The following rules are enforced:
@@ -156,6 +185,8 @@ The configuration is validated at startup. The following rules are enforced:
 - gRPC requires TLS when auth is enabled or when `http.bind_address` is not loopback
 - `http.trusted_proxy_cidrs` entries must be valid CIDR ranges
 - Rate limit `requests_per_second` and `burst` must both be greater than zero
+- `security.store_encryption_passphrase`, when present, must not be blank
+- `security.audit_log_path`, when present, must not be blank
 
 <Callout type="warning">
 API keys and LLM keys are stored as `SecretString` at runtime to prevent accidental logging. The `Debug` implementation for `AuthConfig` and `LlmConfig` redacts sensitive values.
@@ -180,5 +211,5 @@ When Cerememory starts, it creates the following structure inside `data_dir`:
 
 ## Next Steps
 
-<LinkCard href="/docs/deployment/docker" title="Docker" description="Run Cerememory in Docker containers" />
-<LinkCard href="/docs/deployment/kubernetes" title="Kubernetes" description="Deploy to Kubernetes with proper probes and scaling" />
+<LinkCard href="/docs/deployment/operations" title="Operations" description="Run cerememory serve as a long-lived service with launchd, systemd, probes, and backups" />
+<LinkCard href="/docs/reference/cli" title="CLI Reference" description="Every CLI command and flag" />

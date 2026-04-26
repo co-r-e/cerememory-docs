@@ -346,6 +346,46 @@ cerememory import ./memories-backup.cma \
 
 ---
 
+## migrate-store-encryption
+
+Rewrite existing plaintext persistent redb payloads using the configured store encryption passphrase. Existing plaintext records remain readable until they are migrated, so the engine can keep running during migration.
+
+```bash
+cerememory migrate-store-encryption --confirm
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--confirm` | bool | `false` | Required confirmation flag for non-interactive use |
+
+The command requires `security.store_encryption_passphrase` (or the `CEREMEMORY_SECURITY__STORE_ENCRYPTION_PASSPHRASE` env var) to be set. It reports per-store record counts: total, migrated, already_encrypted across raw_journal, episodic, semantic, procedural, emotional, and the vector index.
+
+<Callout type="warning">
+Migration mutates persistent redb files. Take a CMA archive backup first with `cerememory export --include-raw-journal --encrypt --encryption-key-stdin`, then run the migration against a stopped data directory or a server that has been quiesced.
+</Callout>
+
+---
+
+## audit-verify
+
+Verify the tamper-evident audit log hash chain. Useful for incident response and routine integrity checks.
+
+```bash
+cerememory audit-verify [--path <PATH>]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--path` | path | `security.audit_log_path` or `<data_dir>/audit.jsonl` | Audit log file to verify |
+
+The audit log is enabled by default. The command reports the path it verified, the total entry count, and the result (`ok` or the index of the first broken link in the chain).
+
+<Callout type="info">
+The audit log is append-only JSONL with each record carrying a hash that chains to its predecessor. Any record edit, reorder, or deletion breaks the chain and surfaces during verification.
+</Callout>
+
+---
+
 ## healthcheck
 
 Lightweight HTTP health probe for container health checks.

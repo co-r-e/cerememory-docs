@@ -49,8 +49,10 @@ Each store has distinct characteristics for decay rates, consolidation behavior,
 What Can You Do With Cerememory?
 
 - Store memories with automatic store classification, embedding generation, and association inference
+- Attach structured meta-memory to every record — intent, rationale, evidence, alternatives, decisions, and a typed context graph that explains why a memory exists
 - Preserve verbatim conversations in the raw journal for forensic recall
 - Recall memories with human-like fidelity (noise, decay) or perfect retrieval mode
+- Search the "why" plane with recall.query — meta-memory text is indexed alongside content
 - Run dream processing to summarize raw journal entries into curated episodic and semantic memories
 - Traverse association graphs across all memory stores via spreading activation
 - Run background decay ticks that naturally age and prune stale memories
@@ -609,6 +611,94 @@ In server mode, the engine runs a background decay task on a configurable interv
 4. Prunes records that fall below the threshold
 
 The background task is started with engine.start_background_decay() and stopped gracefully during shutdown.
+
+Next Steps
+
+---
+
+## Meta-Memory Plane
+
+Source: https://co-r-e.github.io/cerememory-docs/docs/architecture/meta-memory
+
+Meta-memory is a cross-cutting plane attached to every curated MemoryRecord and every RawJournalRecord. It is not a sixth memory store; it is structured metadata that records why a memory exists, why the agent or user thought something was true or useful, and how that rationale links to other memories.
+
+recall.query indexes the provided and inferred meta-memory text, so you can search for "why this decision" the same way you search for "what was decided." recall.graph can include the full plane with include_meta: true.
+
+Why a "why" plane?
+
+Curated memory tells you what. Raw journal tells you what was said. Neither captures the reasoning that made an event memorable — the constraints, alternatives weighed, evidence relied on, or the decision reached. Without that, downstream agents can recall a fact without knowing whether it is still load-bearing.
+
+Meta-memory closes that gap. Every record can carry:
+
+- Intent — why the memory was captured or generated
+- Rationale — why the agent or user believed the memory was true or useful
+- Trigger — what event prompted capture
+- Goals — what the agent was trying to accomplish
+- Evidence — pointers to source records, raw journal entries, excerpts, or external references
+- Assumptions — explicit assumptions made at capture time
+- Alternatives — other options considered and why they were not chosen
+- Decision — the chosen action or conclusion
+- Confidence — a 0.0 to 1.0 self-rating
+- Tags — free-form labels for retrieval
+
+Capture Status
+
+Not every record can claim a fully reasoned rationale. Capture status separates explicit rationale from engine-derived or missing rationale:
+
+| Status | Meaning |
+|--------|---------|
+| provided | Supplied by a client or user during encode/update |
+| inferred | Created deterministically by engine lifecycle work, such as dream_tick |
+| legacy | Record was created before typed meta-memory existed |
+| unavailable | New record has no explicit rationale at ingest time |
+
+When no explicit meta-memory is supplied, Cerememory records the absence as a structured unavailable capture state instead of pretending to know the reason. This keeps the "why" plane honest: missing reasoning is visible to downstream agents.
+
+The Context Graph
+
+Meta-memory carries a typed graph. Each MetaEdge connects two records (or a meta plane to a record) with a relation that explains how they relate:
+
+| Relation | Reads as |
+|----------|----------|
+| MotivatedBy | "this memory exists because of …" |
+| CausedBy | "this memory was caused by …" |
+| DerivedFrom | "this memory was derived from …" (raw → curated, or summary → source) |
+| Supports | "this memory supports the claim in …" |
+| Contradicts | "this memory contradicts …" |
+| ChoseOver | "this decision was chosen over …" |
+| Explains | "this memory explains …" |
+| ContextOf | "this memory provides context for …" |
+
+dream_tick populates DerivedFrom automatically when it summarizes raw journal entries into curated episodic or semantic records, giving every dream-derived memory a backlink to the verbatim source.
+
+Provided in Encode
+
+Send meta-memory directly with encode.store, encode.batch, encode.update, encode.store_raw, and encode.batch_raw:
+
+Searching the Why Plane
+
+recall.query indexes provided and inferred meta-memory text. A query like "why did we drop the full integration suite" matches against rationale, alternatives, and decision text — even when the record's primary content does not mention those words.
+
+recall.graph exposes the typed edges with include_meta: true, returning the meta-memory payload and meta_edges array alongside association edges. This lets you visualize a decision and the reasoning chain that produced it as a single graph.
+
+CLI
+
+The CLI accepts an --meta-json flag on store and store-raw:
+
+The same --meta-json is available on store-raw, where it captures why a verbatim journal entry is being preserved (forensic intent, redaction notes, follow-up reminders).
+
+Cross-Transport Coverage
+
+Meta-memory is wired through every flow that creates, updates, exports, imports, summarizes, recalls, or rebuilds memory:
+
+- Engine store and update
+- HTTP /v1/encode, /v1/encode/batch, /v1/encode/raw, /v1/encode/raw/batch, PATCH /v1/encode/:id
+- gRPC encode and recall messages (typed MetaMemory)
+- MCP store, update, batch_store, store_raw, batch_store_raw (meta_json parameter)
+- CMA archive export and import (preserved across round-trips)
+- recall.query (indexed for "why" queries)
+- recall.graph (returns meta_edges)
+- dream_tick (emits inferred meta-memory with DerivedFrom backlinks)
 
 Next Steps
 
@@ -1317,6 +1407,10 @@ All configuration options can be overridden via environment variables with the C
 | CEREMEMORY_GRPC__TLS_KEY_PATH | grpc.tls_key_path | None | TLS key path |
 | CEREMEMORY_AUTH__ENABLED | auth.enabled | false | Enable Bearer token auth |
 | CEREMEMORY_AUTH_API_KEYS | auth.api_keys | [] | Comma-separated Cerememory server API keys |
+| CEREMEMORY_SECURITY__STORE_ENCRYPTION_PASSPHRASE | security.store_encryption_passphrase | None | Passphrase used to encrypt newly written redb records |
+| CEREMEMORY_SECURITY__PERSIST_SEARCH_INDEXES | security.persist_search_indexes | false when store encryption is set, otherwise true | Persist full-text indexes to disk |
+| CEREMEMORY_SECURITY__AUDIT_LOG_ENABLED | security.audit_log_enabled | true | Append-only tamper-evident audit log |
+| CEREMEMORY_SECURITY__AUDIT_LOG_PATH | security.audit_log_path | /audit.jsonl | Audit log path |
 | CEREMEMORY_LLM__PROVIDER | llm.provider | none | LLM provider name |
 | CEREMEMORY_LLM__API_KEY | llm.api_key | None | External LLM provider API key |
 | CEREMEMORY_LLM__MODEL | llm.model | None | Model name override |
@@ -1339,7 +1433,7 @@ Cerememory uses two different kinds of keys:
 | auth.api_keys / CEREMEMORY_AUTH_API_KEYS | Protect access to the Cerememory HTTP/gRPC server itself | Any remote client calling /v1/ when auth is enabled |
 | llm.api_key / CEREMEMORY_LLM__API_KEY | Let Cerememory call an external LLM provider | Automatic embedding, summarization, relation extraction, image/audio understanding |
 
-If you are only using Cerememory as a local memory database, you do not** need an LLM key.
+If you are only using Cerememory as a local memory database, you do not need an LLM key.
 
 Features That Work Without An LLM Key
 
@@ -1374,6 +1468,16 @@ CLI flags take the highest precedence for the specific options they cover:
 | --data-dir | data_dir |
 | --config | Path to TOML config file |
 
+At-Rest Encryption and Audit Log
+
+The [security] section controls how Cerememory protects data on disk:
+
+- Store encryption. Setting security.store_encryption_passphrase (or the matching CEREMEMORY_SECURITY__STORE_ENCRYPTION_PASSPHRASE env var) encrypts newly written redb records. Existing plaintext records remain readable so the engine can run during migration. Run cerememory migrate-store-encryption --confirm to rewrite legacy plaintext payloads with encryption.
+- Persistent indexes. When store encryption is on, full-text indexes default to in-memory only. Set security.persist_search_indexes = true only if it is acceptable for derived text to appear on disk.
+- Audit log.** A tamper-evident JSONL hash chain is enabled by default at /audit.jsonl. Disable with security.audit_log_enabled = false, or relocate via security.audit_log_path. Verify integrity with cerememory audit-verify (it picks up the configured path automatically, or accepts an explicit --path).
+
+Always supply the store encryption passphrase via the env var rather than the TOML file. Cerememory wraps it in SecretString at runtime to prevent accidental logging, but committing it to source control would defeat the protection.
+
 Validation
 
 The configuration is validated at startup. The following rules are enforced:
@@ -1387,6 +1491,8 @@ The configuration is validated at startup. The following rules are enforced:
 - gRPC requires TLS when auth is enabled or when http.bind_address is not loopback
 - http.trusted_proxy_cidrs entries must be valid CIDR ranges
 - Rate limit requests_per_second and burst must both be greater than zero
+- security.store_encryption_passphrase, when present, must not be blank
+- security.audit_log_path, when present, must not be blank
 
 API keys and LLM keys are stored as SecretString at runtime to prevent accidental logging. The Debug implementation for AuthConfig and LlmConfig redacts sensitive values.
 
@@ -1409,124 +1515,94 @@ Next Steps
 
 ---
 
-## Docker
+## Operations
 
-Source: https://co-r-e.github.io/cerememory-docs/docs/deployment/docker
+Source: https://co-r-e.github.io/cerememory-docs/docs/deployment/operations
 
-Cerememory does not publish container images. There is no ghcr.io/co-r-e/cerememory registry image to pull. If you want to run Cerememory in a container, build the image yourself from the main repository and push it to whichever registry your deployment uses.
+Cerememory is distributed as source. There are no published container images, package archives, or deployment templates — every operator builds the cerememory binary themselves and runs it as a long-lived process. This page covers what operating that binary in practice looks like.
 
-Build the Image
+The supported operating model is one cerememory serve process per data directory. Every MCP client, CLI invocation, and HTTP caller talks to that single process. Running multiple processes on the same data_dir will fail on redb file locks.
 
-Cerememory ships a docker-compose.yml at the root of the repository that builds a local image from the repo's Dockerfile.
+Single-Server Topology
 
-If you prefer a hand-written Dockerfile, this is the canonical shape:
+Every MCP client launches its own thin cerememory mcp --server-url … proxy. The proxy speaks MCP to the client and HTTP/CMP to the shared server.
 
-Tag and push it to your own registry:
+Build the Binary
 
-Docker Run
+The binary lands at target/release/cerememory. Place it on PATH or reference it by absolute path from your service manager and MCP client configs.
 
-This starts Cerememory with default settings: HTTP on port 8420, data persisted in a named Docker volume, and background decay enabled.
+Run as a Service
 
-Docker Run with Full Configuration
+macOS (launchd)
 
-Docker Compose
+~/Library/LaunchAgents/com.cerememory.plist:
 
-Store sensitive values like API keys in a .env file or a secrets manager. The Docker Compose file above references ${CEREMEMORY_API_KEY} and ${ANTHROPIC_API_KEY} from the environment.
+Load with launchctl load ~/Library/LaunchAgents/com.cerememory.plist.
 
-Expose gRPC from Docker only when you also configure TLS. Cerememory rejects gRPC startup on non-loopback binds when auth is enabled and TLS is missing.
+Linux (systemd)
 
-Only one Cerememory process may open a given data_dir at a time. Do not run multiple containers against the same mounted volume — they will deadlock on redb file locks. For multi-client agent access, run one container and connect every MCP client to it via cerememory mcp --server-url.
+/etc/systemd/system/cerememory.service:
 
-Health Checks
+Enable with systemctl enable --now cerememory.
 
-Cerememory exposes two health endpoints that do not require authentication:
+The service unit must use Type=simple (not forking). Cerememory runs in the foreground and relies on the supervisor for lifecycle management.
 
-| Endpoint | Purpose | Success Response |
-|----------|---------|-----------------|
-| GET /health | Liveness probe | {"status": "ok"} (200) |
-| GET /readiness | Readiness probe | {"status": "ready"} (200) |
+Health Probes
 
-The /readiness endpoint performs an actual engine operation (reading stats) and returns 503 if the engine is not ready.
+| Endpoint | Auth | Purpose | Behavior |
+|----------|------|---------|----------|
+| GET /health | No | Liveness | Returns 200 while the process is alive |
+| GET /readiness | No | Readiness | Returns 200 when the engine can serve introspect.stats; 503 otherwise |
+| cerememory healthcheck --port 8420 | No | Exit-code probe | Wraps /health; exits 0 when healthy |
 
-For Docker's HEALTHCHECK, use the built-in CLI command:
-
-Volumes and Data Persistence
-
-| Volume Mount | Purpose | Required |
-|-------------|---------|----------|
-| /data | Persistent storage (redb files, indexes) | Yes |
-| /etc/cerememory/cerememory.toml | Config file (read-only) | No |
-
-Always mount a persistent volume at /data. Without it, all memories are lost when the container restarts. The working memory store is always in-memory and is intentionally not persisted.
+Both /health and /readiness bypass authentication and rate limiting so they remain reachable when auth is enabled.
 
 Metrics
 
-Prometheus metrics are available at GET /metrics only when http.metrics_enabled = true. When auth is enabled, /metrics follows the same auth policy as the rest of the API.
+Prometheus metrics live at GET /metrics. They are disabled by default — enable with http.metrics_enabled = true. When auth is enabled, /metrics requires the same Bearer token as the rest of the API.
 
-Metrics include:
+Headline series:
 
-- cerememory_http_requests_total -- Total HTTP requests by method and status
-- cerememory_http_request_duration_seconds -- Request latency histogram
-- cerememory_records_total -- Total records by store
-- cerememory_decay_ticks_total -- Total background decay ticks
+- cerememory_http_requests_total — total HTTP requests by method and status
+- cerememory_http_request_duration_seconds — request latency histogram
+- cerememory_records_total — record counts per store
+- cerememory_decay_ticks_total — background decay tick counter
 
-Next Steps
+At-Rest Encryption
 
----
+Set security.store_encryption_passphrase (or CEREMEMORY_SECURITY__STORE_ENCRYPTION_PASSPHRASE) to encrypt newly written redb store records. Existing plaintext records remain readable so the engine keeps serving traffic during migration.
 
-## Kubernetes
+To rewrite legacy plaintext payloads with the configured passphrase, run a one-shot migration against a quiesced data directory:
 
-Source: https://co-r-e.github.io/cerememory-docs/docs/deployment/kubernetes
+The command reports per-store totals (raw_journal, episodic, semantic, procedural, emotional, vector_index) and exits non-zero on failure. Always take a CMA archive backup beforehand.
 
-Cerememory does not publish a container image. Build and push your own image to a private registry first — see Docker for the build recipe — then reference that registry path from the manifests below.
+When store encryption is enabled, persistent search indexes default to in-memory only. Set security.persist_search_indexes = true only if it is acceptable for derived text to appear on disk.
 
-Deployment Manifest
+Audit Log
 
-PersistentVolumeClaim
+A tamper-evident JSONL audit log is enabled by default at /audit.jsonl. Each entry chains to its predecessor via a hash, so any reorder, rewrite, or deletion breaks the chain. Verify integrity periodically:
 
-Cerememory uses redb, an embedded database that requires ReadWriteOnce access. Do not use ReadWriteMany as concurrent access to the same redb file from multiple pods will cause data corruption.
+Pass --path /path/to/audit.jsonl if the audit log was relocated via security.audit_log_path. Disable the log entirely with security.audit_log_enabled = false (not recommended).
 
-Service
+The audit log is separate from operational logging ([log]) and from Prometheus metrics. It records security-relevant events (encode, forget, mode changes, export/import) for forensic review and is intended to be retained alongside backups.
 
-ConfigMap
+Backups and Portability
 
-Secrets
+CMA archives are the portability format. Export periodically and store the archive somewhere durable:
 
-In production, use a secrets manager (Vault, AWS Secrets Manager, etc.) instead of Kubernetes Secrets. The example above is for demonstration purposes.
+Use --encryption-key-stdin so the passphrase never appears in ps output or shell history. Restore with cerememory import and the corresponding --decryption-key-stdin.
 
-The example deployment above enables only HTTP. If you want to expose gRPC from Kubernetes, you must also configure grpc.tls_cert_path and grpc.tls_key_path; plaintext gRPC on a non-loopback bind is rejected.
+The working store is intentionally in-memory. It is not exported and is not restored. Only persistent stores (episodic, semantic, procedural, emotional, raw journal) round-trip through CMA archives.
 
-Probes
+Scaling Notes
 
-Cerememory provides three probe endpoints:
+Cerememory uses an embedded database (redb), which has direct implications for scaling:
 
-| Probe | Endpoint | Behavior |
-|-------|----------|----------|
-| Liveness | GET /health | Returns 200 if the process is alive |
-| Readiness | GET /readiness | Returns 200 if the engine can serve requests; 503 otherwise |
-| Startup | GET /health | Same as liveness; use a higher failureThreshold |
+- No horizontal scaling. Each data_dir is owned by exactly one process. Two replicas pointing at the same directory will deadlock on file locks.
+- Vertical scaling works well. The decay engine uses rayon for parallel computation across all CPU cores; the HTTP layer is async via Tokio.
+- No read replicas. For redundancy, take regular CMA archive exports and replicate the encrypted archives to durable storage.
 
-Both /health and /readiness bypass authentication and rate limiting, so they work even when auth is enabled.
-
-Scaling Considerations
-
-Cerememory uses an embedded database (redb), which means:
-
-- Horizontal scaling is not supported -- Each replica needs its own data volume. Memories are not shared between replicas.
-- Vertical scaling works well -- The decay engine uses rayon for parallel computation and benefits from additional CPU cores.
-- Read replicas are not available -- Use a single replica with appropriate resource limits.
-
-For high-availability scenarios, consider:
-
-1. Running a single replica with a restart policy
-2. Using PersistentVolumeClaims with a durable storage class
-3. Regular CMA archive exports for backup
-
-Prometheus ServiceMonitor
-
-If you use the Prometheus Operator:
-
-Enable http.metrics_enabled = true before scraping /metrics. If auth is enabled, your Prometheus setup must present the same Bearer token you use for Cerememory API access.
+For exposing Cerememory to a network beyond loopback, set http.bind_address = "0.0.0.0", enable auth, and front the server with a TLS-terminating reverse proxy (nginx, caddy, traefik). gRPC supports native TLS via grpc.tls_cert_path / grpc.tls_key_path.
 
 Next Steps
 
@@ -1857,6 +1933,34 @@ Import records from a CMA archive file.
 
 ---
 
+migrate-store-encryption
+
+Rewrite existing plaintext persistent redb payloads using the configured store encryption passphrase. Existing plaintext records remain readable until they are migrated, so the engine can keep running during migration.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| --confirm | bool | false | Required confirmation flag for non-interactive use |
+
+The command requires security.store_encryption_passphrase (or the CEREMEMORY_SECURITY__STORE_ENCRYPTION_PASSPHRASE env var) to be set. It reports per-store record counts: total, migrated, already_encrypted across raw_journal, episodic, semantic, procedural, emotional, and the vector index.
+
+Migration mutates persistent redb files. Take a CMA archive backup first with cerememory export --include-raw-journal --encrypt --encryption-key-stdin, then run the migration against a stopped data directory or a server that has been quiesced.
+
+---
+
+audit-verify
+
+Verify the tamper-evident audit log hash chain. Useful for incident response and routine integrity checks.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| --path | path | security.audit_log_path or /audit.jsonl | Audit log file to verify |
+
+The audit log is enabled by default. The command reports the path it verified, the total entry count, and the result (ok or the index of the first broken link in the chain).
+
+The audit log is append-only JSONL with each record carrying a hash that chains to its predecessor. Any record edit, reorder, or deletion breaks the chain and surfaces during verification.
+
+---
+
 healthcheck
 
 Lightweight HTTP health probe for container health checks.
@@ -2111,7 +2215,7 @@ Clone and Build
 
 The first build downloads and compiles all dependencies. Subsequent incremental builds are fast.
 
-The workspace contains 18 crates. Use cargo build -p cerememory-core to build a specific crate during focused development.
+The workspace contains 19 crates plus three LLM adapter crates. Use cargo build -p cerememory-core to build a specific crate during focused development.
 
 Running Tests
 

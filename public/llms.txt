@@ -29,6 +29,7 @@
 - [Architecture Overview](https://co-r-e.github.io/cerememory-docs/docs/architecture/overview): Understand Cerememory's layered architecture and crate structure.
 - [Five Memory Stores](https://co-r-e.github.io/cerememory-docs/docs/architecture/five-stores): Detailed explanation of Cerememory's five brain-inspired memory stores.
 - [Living Dynamics](https://co-r-e.github.io/cerememory-docs/docs/architecture/living-dynamics): How memories decay, accumulate noise, respond to emotion, and evolve over time.
+- [Meta-Memory Plane](https://co-r-e.github.io/cerememory-docs/docs/architecture/meta-memory): The structured 'why' plane attached to every record — intent, rationale, evidence, decisions, and a typed context graph.
 - [Data Model](https://co-r-e.github.io/cerememory-docs/docs/architecture/data-model): Core data structures: MemoryRecord, FidelityState, EmotionVector, and more.
 
 ## Protocol
@@ -42,8 +43,7 @@
 ## Deployment
 
 - [Configuration](https://co-r-e.github.io/cerememory-docs/docs/deployment/configuration): Configure Cerememory via TOML file, environment variables, and CLI flags.
-- [Docker](https://co-r-e.github.io/cerememory-docs/docs/deployment/docker): Build a Cerememory container image from source and run it with Docker or Docker Compose.
-- [Kubernetes](https://co-r-e.github.io/cerememory-docs/docs/deployment/kubernetes): Deploy Cerememory to Kubernetes with probes, persistent storage, and scaling.
+- [Operations](https://co-r-e.github.io/cerememory-docs/docs/deployment/operations): Run the Cerememory binary as a long-lived service: process supervision, health probes, metrics, and backups.
 
 ## Reference
 
