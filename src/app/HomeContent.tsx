@@ -655,6 +655,44 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
             <div className="figure__caption" dangerouslySetInnerHTML={{ __html: dict.dynamics.emotional.figCaption }} />
           </div>
 
+          <h3 className="subsection-title">{dict.dynamics.dream.title}</h3>
+          <div className="section__body">
+            <p>{dict.dynamics.dream.lead}</p>
+          </div>
+
+          <div className="figure" style={{ marginTop: '1rem' }}>
+            <div className="figure__content arch-diagram" style={{ padding: '1.5rem' }}>
+              <div className="arch-label">{dict.dynamics.dream.pipelineLabel}</div>
+              <div className="arch-layer">
+                <div className="arch-box arch-box--store" style={{ borderStyle: 'dashed' }}>
+                  {dict.dynamics.dream.pipelineRaw}
+                </div>
+              </div>
+              <div className="arch-arrow">&darr;</div>
+              <div className="arch-layer">
+                <div className="arch-box">{dict.dynamics.dream.pipelineGrouping}</div>
+              </div>
+              <div className="arch-arrow">&darr;</div>
+              <div className="arch-layer">
+                <div className="arch-box arch-box--primary">{dict.dynamics.dream.pipelineSummary}</div>
+              </div>
+              <div className="arch-arrow">&darr;</div>
+              <div className="arch-layer">
+                <div className="arch-box arch-box--store">{dict.dynamics.dream.pipelineCurated}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="features" style={{ marginTop: '2rem' }}>
+            {dict.dynamics.dream.properties.map((prop, idx) => (
+              <div key={prop.title} className="feature">
+                <div className="feature__icon">{['α', 'β', 'γ', 'δ'][idx] ?? '·'}</div>
+                <div className="feature__title">{prop.title}</div>
+                <div className="feature__desc">{prop.desc}</div>
+              </div>
+            ))}
+          </div>
+
           <div className="features" style={{ marginTop: '2.5rem' }}>
             <div className="feature">
               <div className="feature__icon">i</div>

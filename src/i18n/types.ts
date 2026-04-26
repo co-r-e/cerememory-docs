@@ -87,6 +87,16 @@ export interface Dictionary {
       emotions: string[]
       figCaption: string
     }
+    dream: {
+      title: string
+      lead: string
+      pipelineLabel: string
+      pipelineRaw: string
+      pipelineGrouping: string
+      pipelineSummary: string
+      pipelineCurated: string
+      properties: Array<{ title: string; desc: string }>
+    }
     features: {
       reactivation: { title: string; desc: string }
       reconsolidation: { title: string; desc: string }

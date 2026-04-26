@@ -119,6 +119,33 @@ export const en: Dictionary = {
         'interference rate \u2003 Noise increases as fidelity degrades',
       eqLabel: 'Eq. 2 \u2013 Noise Accumulation',
     },
+    dream: {
+      title: '3.4 \u2003 Dream Processing \u2013 Sleep-Like Compression',
+      lead: 'During sleep, the brain replays the day and consolidates ephemeral experience into lasting knowledge. Cerememory mirrors that pipeline. The raw journal preserves verbatim conversation, tool I/O, and scratchpad content. The dream_tick lifecycle groups those raw entries by topic (time gaps and lexical shift), summarizes each group into episodic memory, and conditionally promotes factual content to the semantic store \u2014 always with backlinks to the verbatim source.',
+      pipelineLabel: 'Dream pipeline',
+      pipelineRaw: 'Raw journal\u2003\u00b7\u2003verbatim',
+      pipelineGrouping: 'Topic grouping\u2003\u00b7\u2003time + lexical shift',
+      pipelineSummary: 'dream_tick\u2003\u00b7\u2003secrecy-aware summary',
+      pipelineCurated: 'Episodic + semantic\u2003\u00b7\u2003with backlinks',
+      properties: [
+        {
+          title: 'Secrecy-aware',
+          desc: 'public \u00b7 sensitive \u00b7 secret levels are honored. Secret entries are excluded from dream output; sensitive ones receive partial redaction.',
+        },
+        {
+          title: 'Backlinks preserved',
+          desc: 'Every dream-derived record stores `derived_memory_ids` back to the raw entries it summarizes, so forensic recall is one hop away.',
+        },
+        {
+          title: 'Conditional promotion',
+          desc: 'Stable factual content can be promoted from episodic to semantic in the same tick, controlled by `promote_semantic`.',
+        },
+        {
+          title: 'Background or on-demand',
+          desc: 'Configurable interval (`dream.background_interval_secs`) for autonomous runs, plus manual `lifecycle.dream_tick` for explicit control.',
+        },
+      ],
+    },
     emotional: {
       title: '3.3 \u2003 Emotional Modulation',
       desc: 'An 8-dimensional emotion vector is attached to every memory, influencing decay rates, retrieval priority, and association strength. Emotionally intense memories are retained longer.',

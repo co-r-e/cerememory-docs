@@ -120,6 +120,33 @@ export const ja: Dictionary = {
         '干渉率 \u2003 忠実度の低下に伴いノイズが増加',
       eqLabel: 'Eq. 2 \u2013 ノイズ蓄積',
     },
+    dream: {
+      title: '3.4 \u2003 ドリーム処理 \u2013 夢のような記憶圧縮',
+      lead: '睡眠中、脳は一日の出来事を再生し、刹那的な体験を永続的な知識へと統合します。Cerememory は同じパイプラインを再現します。生ジャーナルは会話、ツール I/O、スクラッチパッドを原文のまま保持し、dream_tick ライフサイクルがそれらをトピック単位（時間ギャップと語彙シフト）にグルーピング、各グループを要約してエピソード記憶へ書き出し、さらに事実性の高い内容は意味記憶へ条件付きで昇格させます \u2014 常に原文へのバックリンク付きで。',
+      pipelineLabel: 'ドリームパイプライン',
+      pipelineRaw: '生ジャーナル \u00b7 原文',
+      pipelineGrouping: 'トピック分割 \u00b7 時間 + 語彙シフト',
+      pipelineSummary: 'dream_tick \u00b7 機密度に応じた要約',
+      pipelineCurated: 'Episodic + Semantic \u00b7 バックリンク付き',
+      properties: [
+        {
+          title: '機密度を尊重',
+          desc: 'public / sensitive / secret の3段階を考慮。secret は要約から除外、sensitive は部分マスキングで取り込み。',
+        },
+        {
+          title: 'バックリンク保持',
+          desc: '生成されたレコードは要約元の生ジャーナルへ `derived_memory_ids` を持ち、フォレンジック想起へ即座にたどれる。',
+        },
+        {
+          title: '条件付き昇格',
+          desc: '同じティック内で事実性の高い内容をエピソード\u2192意味記憶へ昇格可能。`promote_semantic` で制御。',
+        },
+        {
+          title: 'バックグラウンド／オンデマンド',
+          desc: '`dream.background_interval_secs` で自律実行、`lifecycle.dream_tick` で明示実行。',
+        },
+      ],
+    },
     emotional: {
       title: '3.3 \u2003 感情モジュレーション',
       desc: '8次元の感情ベクトルがすべての記憶に付与され、減衰率、検索優先度、連想強度に影響を与えます。感情的に強い記憶はより長く保持されます。',
