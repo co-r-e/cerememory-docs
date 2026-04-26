@@ -129,20 +129,24 @@ export const en: Dictionary = {
       pipelineCurated: 'Episodic + semantic\u2003\u00b7\u2003with backlinks',
       properties: [
         {
-          title: 'Secrecy-aware',
-          desc: 'public \u00b7 sensitive \u00b7 secret levels are honored. Secret entries are excluded from dream output; sensitive ones receive partial redaction.',
+          title: 'Secrecy & visibility aware',
+          desc: 'Only `Normal` visibility records feed the summary. `secret` secrecy is fully excluded, and `sealed` / `private_scratch` visibility entries are counted in the stats but never summarized.',
         },
         {
-          title: 'Backlinks preserved',
-          desc: 'Every dream-derived record stores `derived_memory_ids` back to the raw entries it summarizes, so forensic recall is one hop away.',
+          title: 'Topic grouping',
+          desc: 'Records sharing an explicit `topic_id` are grouped first. Otherwise the engine splits per session by time gap (>45 min hard split, or >10 min with <8% token overlap) and infers a topic hint from the top tokens.',
         },
         {
-          title: 'Conditional promotion',
-          desc: 'Stable factual content can be promoted from episodic to semantic in the same tick, controlled by `promote_semantic`.',
+          title: 'Conditional semantic promotion',
+          desc: 'A summary is promoted to the semantic store when `promote_semantic=true` AND the group has at least two `Normal` records AND a topic signal (explicit topic_id or inferred hint).',
+        },
+        {
+          title: 'Backlinks both ways',
+          desc: 'Every raw record gets `derived_memory_ids` pointing to the dream summary (and semantic record if promoted). The summary keeps an Episodic\u2192Semantic association so forensic recall is one hop away.',
         },
         {
           title: 'Background or on-demand',
-          desc: 'Configurable interval (`dream.background_interval_secs`) for autonomous runs, plus manual `lifecycle.dream_tick` for explicit control.',
+          desc: 'Runs autonomously on `dream.background_interval_secs` (default 86400 s = 24 h) and on demand via the `lifecycle.dream_tick` CMP operation, the MCP tool, or the `cerememory dream-tick` CLI.',
         },
       ],
     },

@@ -130,20 +130,24 @@ export const ja: Dictionary = {
       pipelineCurated: 'Episodic + Semantic \u00b7 バックリンク付き',
       properties: [
         {
-          title: '機密度を尊重',
-          desc: 'public / sensitive / secret の3段階を考慮。secret は要約から除外、sensitive は部分マスキングで取り込み。',
+          title: '機密度・可視性を尊重',
+          desc: '要約入力に取り込まれるのは `Normal` 可視性のレコードのみ。`secret` 機密度は完全除外、`sealed` / `private_scratch` 可視性は統計上カウントされるが本文は要約に渡されない。',
         },
         {
-          title: 'バックリンク保持',
-          desc: '生成されたレコードは要約元の生ジャーナルへ `derived_memory_ids` を持ち、フォレンジック想起へ即座にたどれる。',
+          title: 'トピック分割',
+          desc: '明示的な `topic_id` を持つレコードを優先してグループ化。無い場合はセッション単位で時間ギャップ (45分ハード分割、または10分超 + トークン重複率 8% 未満) で分割し、上位語彙から topic_hint を推定する。',
         },
         {
-          title: '条件付き昇格',
-          desc: '同じティック内で事実性の高い内容をエピソード\u2192意味記憶へ昇格可能。`promote_semantic` で制御。',
+          title: '条件付き意味昇格',
+          desc: '`promote_semantic=true` かつ、グループ内に 2 件以上の `Normal` レコードと明示／推定トピックシグナルがある場合に限り、要約が意味記憶へ昇格する。',
+        },
+        {
+          title: '双方向バックリンク',
+          desc: '生ジャーナル各レコードへ `derived_memory_ids` が刻まれ、要約レコードはエピソード\u2192意味記憶への関連も保持。フォレンジック想起は 1 ホップで原文に到達する。',
         },
         {
           title: 'バックグラウンド／オンデマンド',
-          desc: '`dream.background_interval_secs` で自律実行、`lifecycle.dream_tick` で明示実行。',
+          desc: '`dream.background_interval_secs` (デフォルト 86400 秒 = 24 時間) で自律実行、`lifecycle.dream_tick` CMP・MCP ツール・`cerememory dream-tick` CLI で明示実行。',
         },
       ],
     },

@@ -686,7 +686,7 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
           <div className="features" style={{ marginTop: '2rem' }}>
             {dict.dynamics.dream.properties.map((prop, idx) => (
               <div key={prop.title} className="feature">
-                <div className="feature__icon">{['α', 'β', 'γ', 'δ'][idx] ?? '·'}</div>
+                <div className="feature__icon">{['α', 'β', 'γ', 'δ', 'ε'][idx] ?? '·'}</div>
                 <div className="feature__title">{prop.title}</div>
                 <div className="feature__desc">{prop.desc}</div>
               </div>
