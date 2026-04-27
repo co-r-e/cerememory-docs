@@ -104,7 +104,7 @@ export const en: Dictionary = {
     title: 'Living Memory Dynamics',
     lead: 'In a traditional database, data is static. In Cerememory, memories breathe, decay, and reactivate.',
     decay: {
-      title: '3.1 \u2003 Decay \u2013 The Forgetting Curve',
+      title: 'Decay \u2013 The Forgetting Curve',
       desc: 'Memory fidelity decreases over time following a modified power-law curve. This is not "forget everything" \u2013 it is gradual, realistic degradation. Emotional intensity modulates decay rates, and repeated access increases stability.',
       initialFidelity: 'initial fidelity',
       stabilityParam: 'stability parameter',
@@ -113,14 +113,14 @@ export const en: Dictionary = {
       eqLabel: 'Eq. 1 \u2013 Power-Law Decay',
     },
     noise: {
-      title: '3.2 \u2003 Noise \u2013 Interference Accumulation',
+      title: 'Noise \u2013 Interference Accumulation',
       desc: "Similar memories blur each other\u2019s details over time. This reproduces the interference phenomenon observed in human memory research.",
       interferenceRate:
         'interference rate \u2003 Noise increases as fidelity degrades',
       eqLabel: 'Eq. 2 \u2013 Noise Accumulation',
     },
     dream: {
-      title: '3.4 \u2003 Dream Processing \u2013 Sleep-Like Compression',
+      title: 'Dream Processing \u2013 Sleep-Like Compression',
       lead: 'During sleep, the brain replays the day and consolidates ephemeral experience into lasting knowledge. Cerememory mirrors that pipeline. The raw journal preserves verbatim conversation, tool I/O, and scratchpad content. The dream_tick lifecycle groups those raw entries by topic (time gaps and lexical shift), summarizes each group into episodic memory, and conditionally promotes factual content to the semantic store \u2014 always with backlinks to the verbatim source.',
       pipelineLabel: 'Dream pipeline',
       pipelineRaw: 'Raw journal\u2003\u00b7\u2003verbatim',
@@ -151,7 +151,7 @@ export const en: Dictionary = {
       ],
     },
     emotional: {
-      title: '3.3 \u2003 Emotional Modulation',
+      title: 'Emotional Modulation',
       desc: 'An 8-dimensional emotion vector is attached to every memory, influencing decay rates, retrieval priority, and association strength. Emotionally intense memories are retained longer.',
       emotions: [
         'joy',
