@@ -163,6 +163,8 @@ args = [<span class="str">"mcp"</span>, <span class="str">"--server-url"</span>,
   )
 }
 
+const varStyle = { color: 'var(--crimson)', fontStyle: 'italic' as const }
+
 /* ========== HERO CANVAS BACKGROUND - composite sine waves ========== */
 
 const WAVE_COLORS = ['#8B1A2B', '#8B1A2B', '#A8293D', '#1C1917', '#292524']
@@ -208,7 +210,7 @@ function createWaveLine(baseY: number): WaveLine {
     baseY,
     color: WAVE_COLORS[Math.floor(Math.random() * WAVE_COLORS.length)],
     opacity: 0.04 + Math.random() * 0.09,
-    thickness: 0.5 + Math.random() * 1.0,
+    thickness: 0.4 + Math.random() * 0.45,
     waves,
   }
 }
@@ -657,28 +659,13 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
 
           <div className="formula">
             <div className="formula__expr">
-              <span className="var">F</span>(t) = <span className="var">F</span>
-              <sub>0</sub> &middot; (1 + t / <span className="var">S</span>)
-              <sup>&minus;d</sup> &middot; <span className="var">E</span>
-              <sub>mod</sub>
+              <span className="var">F</span>(t) = <span className="var">F</span><sub>0</sub>{' '}&middot;{' '}(1 + t / <span className="var">S</span>)<sup>&minus;d</sup>{' '}&middot;{' '}<span className="var">E</span><sub>mod</sub>
             </div>
             <div className="formula__desc">
-              <span className="var" style={{ color: 'var(--crimson)', fontStyle: 'italic' }}>
-                F
-              </span>
-              <sub>0</sub> : {dict.dynamics.decay.initialFidelity} &ensp;
-              <span className="var" style={{ color: 'var(--crimson)', fontStyle: 'italic' }}>
-                S
-              </span>{' '}
-              : {dict.dynamics.decay.stabilityParam} &ensp;
-              <span className="var" style={{ color: 'var(--crimson)', fontStyle: 'italic' }}>
-                d
-              </span>{' '}
-              : {dict.dynamics.decay.decayExponent} &ensp;
-              <span className="var" style={{ color: 'var(--crimson)', fontStyle: 'italic' }}>
-                E
-              </span>
-              <sub>mod</sub> : {dict.dynamics.decay.emotionalModFactor}
+              <span className="var" style={varStyle}>F</span><sub>0</sub>{` : ${dict.dynamics.decay.initialFidelity} `}
+              <span className="var" style={varStyle}>S</span>{` : ${dict.dynamics.decay.stabilityParam} `}
+              <span className="var" style={varStyle}>d</span>{` : ${dict.dynamics.decay.decayExponent} `}
+              <span className="var" style={varStyle}>E</span><sub>mod</sub>{` : ${dict.dynamics.decay.emotionalModFactor}`}
             </div>
             <div className="formula__label">{dict.dynamics.decay.eqLabel}</div>
           </div>
@@ -690,15 +677,10 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
 
           <div className="formula">
             <div className="formula__expr">
-              <span className="var">N</span>(t) = <span className="var">N</span>
-              <sub>0</sub> + <span className="var">&lambda;</span> &middot; &radic;t &middot; (1
-              &minus; <span className="var">F</span>(t))
+              <span className="var">N</span>(t) = <span className="var">N</span><sub>0</sub>{' + '}<span className="var">&lambda;</span>{' '}&middot;{' '}&radic;t{' '}&middot;{' '}(1 &minus; <span className="var">F</span>(t))
             </div>
             <div className="formula__desc">
-              <span className="var" style={{ color: 'var(--crimson)', fontStyle: 'italic' }}>
-                &lambda;
-              </span>{' '}
-              : {dict.dynamics.noise.interferenceRate}
+              <span className="var" style={varStyle}>&lambda;</span>{` : ${dict.dynamics.noise.interferenceRate}`}
             </div>
             <div className="formula__label">{dict.dynamics.noise.eqLabel}</div>
           </div>
