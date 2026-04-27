@@ -167,6 +167,7 @@ args = [<span class="str">"mcp"</span>, <span class="str">"--server-url"</span>,
 
 const WAVE_COLORS = ['#8B1A2B', '#8B1A2B', '#A8293D', '#1C1917', '#292524']
 const WAVE_LINE_COUNT = 25
+const VWAVE_LINE_COUNT = 18
 const STEP_PX = 4
 
 interface WaveComponent {
@@ -178,6 +179,14 @@ interface WaveComponent {
 
 interface WaveLine {
   baseY: number
+  color: string
+  opacity: number
+  thickness: number
+  waves: WaveComponent[]
+}
+
+interface VerticalWaveLine {
+  baseX: number
   color: string
   opacity: number
   thickness: number
@@ -204,6 +213,26 @@ function createWaveLine(baseY: number): WaveLine {
   }
 }
 
+function createVerticalWaveLine(baseX: number): VerticalWaveLine {
+  const count = 2 + Math.floor(Math.random() * 2)
+  const waves: WaveComponent[] = []
+  for (let i = 0; i < count; i++) {
+    waves.push({
+      amplitude: 4 + Math.random() * 20,
+      frequency: 0.002 + Math.random() * 0.013,
+      phaseSpeed: (0.005 + Math.random() * 0.025) * (Math.random() < 0.5 ? 1 : -1),
+      phase: Math.random() * Math.PI * 2,
+    })
+  }
+  return {
+    baseX,
+    color: WAVE_COLORS[Math.floor(Math.random() * WAVE_COLORS.length)],
+    opacity: 0.05 + Math.random() * 0.12,
+    thickness: 0.5 + Math.random() * 0.9,
+    waves,
+  }
+}
+
 function waveY(line: WaveLine, x: number): number {
   let y = line.baseY
   for (let i = 0; i < line.waves.length; i++) {
@@ -211,6 +240,15 @@ function waveY(line: WaveLine, x: number): number {
     y += w.amplitude * Math.sin(w.frequency * x + w.phase)
   }
   return y
+}
+
+function waveX(line: VerticalWaveLine, y: number): number {
+  let x = line.baseX
+  for (let i = 0; i < line.waves.length; i++) {
+    const w = line.waves[i]
+    x += w.amplitude * Math.sin(w.frequency * y + w.phase)
+  }
+  return x
 }
 
 function HeroCanvas() {
@@ -238,12 +276,19 @@ function HeroCanvas() {
     let canvasH = rect.height
 
     let lines: WaveLine[] = []
+    let vlines: VerticalWaveLine[] = []
     function initLines() {
       lines = []
       const spacing = canvasH / (WAVE_LINE_COUNT + 1)
       for (let i = 0; i < WAVE_LINE_COUNT; i++) {
         const baseY = spacing * (i + 1) + (Math.random() - 0.5) * spacing * 0.4
         lines.push(createWaveLine(baseY))
+      }
+      vlines = []
+      const vspacing = canvasW / (VWAVE_LINE_COUNT + 1)
+      for (let i = 0; i < VWAVE_LINE_COUNT; i++) {
+        const baseX = vspacing * (i + 1) + (Math.random() - 0.5) * vspacing * 0.4
+        vlines.push(createVerticalWaveLine(baseX))
       }
     }
     initLines()
@@ -265,12 +310,32 @@ function HeroCanvas() {
         ctx!.lineTo(canvasW, waveY(line, canvasW))
         ctx!.stroke()
       }
+
+      for (let i = 0; i < vlines.length; i++) {
+        const line = vlines[i]
+        ctx!.globalAlpha = line.opacity
+        ctx!.strokeStyle = line.color
+        ctx!.lineWidth = line.thickness
+        ctx!.beginPath()
+        ctx!.moveTo(waveX(line, 0), 0)
+        for (let y = STEP_PX; y <= canvasH; y += STEP_PX) {
+          ctx!.lineTo(waveX(line, y), y)
+        }
+        ctx!.lineTo(waveX(line, canvasH), canvasH)
+        ctx!.stroke()
+      }
       ctx!.globalAlpha = 1
     }
 
     function advancePhases() {
       for (let i = 0; i < lines.length; i++) {
         const ws = lines[i].waves
+        for (let j = 0; j < ws.length; j++) {
+          ws[j].phase += ws[j].phaseSpeed
+        }
+      }
+      for (let i = 0; i < vlines.length; i++) {
+        const ws = vlines[i].waves
         for (let j = 0; j < ws.length; j++) {
           ws[j].phase += ws[j].phaseSpeed
         }
@@ -303,6 +368,10 @@ function HeroCanvas() {
         const spacing = canvasH / (WAVE_LINE_COUNT + 1)
         for (let i = 0; i < lines.length; i++) {
           lines[i].baseY = spacing * (i + 1) + (Math.random() - 0.5) * spacing * 0.4
+        }
+        const vspacing = canvasW / (VWAVE_LINE_COUNT + 1)
+        for (let i = 0; i < vlines.length; i++) {
+          vlines[i].baseX = vspacing * (i + 1) + (Math.random() - 0.5) * vspacing * 0.4
         }
       }, 150)
     }
