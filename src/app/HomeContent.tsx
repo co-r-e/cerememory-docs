@@ -207,7 +207,7 @@ function createWaveLine(baseY: number): WaveLine {
   return {
     baseY,
     color: WAVE_COLORS[Math.floor(Math.random() * WAVE_COLORS.length)],
-    opacity: 0.06 + Math.random() * 0.14,
+    opacity: 0.04 + Math.random() * 0.09,
     thickness: 0.5 + Math.random() * 1.0,
     waves,
   }
