@@ -5,8 +5,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import type { SidebarNode } from "@/lib/docs/types";
-import { basePath } from "@/lib/basePath";
 import { SidebarSection } from "./SidebarSection";
+import { CerememoryLogo } from "./CerememoryLogo";
 
 const TRANSITION_MS = 250;
 
@@ -139,8 +139,7 @@ export function SidebarMobile({ tree, currentPath }: Props): ReactNode {
               style={{ transitionDuration: `${TRANSITION_MS}ms` }}
             >
               <div className="flex items-center justify-between px-4 py-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`${basePath}/logo.svg`} alt="Cerememory" className="h-5 w-auto" />
+                <CerememoryLogo className="h-5 w-auto" />
                 <button
                   type="button"
                   onClick={close}

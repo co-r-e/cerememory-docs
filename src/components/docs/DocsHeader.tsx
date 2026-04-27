@@ -3,7 +3,7 @@
 import { useState, useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { basePath } from "@/lib/basePath";
+import { CerememoryLogo } from "./CerememoryLogo";
 
 interface Props {
   onSearchOpen: () => void;
@@ -39,8 +39,7 @@ export function DocsHeader({ onSearchOpen }: Props): ReactNode {
     <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-[var(--line)] bg-[var(--background)]/80 px-4 backdrop-blur-lg lg:px-6">
       {/* Left: Logo */}
       <Link href="/docs" className="flex items-center" aria-label="Cerememory Docs home">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={`${basePath}/logo.svg`} alt="Cerememory" className="h-7 w-auto" />
+        <CerememoryLogo className="h-7 w-auto" />
       </Link>
 
       {/* Right: Search, Theme toggle, GitHub, Back to site */}
