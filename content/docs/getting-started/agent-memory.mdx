@@ -119,8 +119,8 @@ The MCP server exposes these LLM-friendly tools:
 
 | Tool | Description |
 |------|-------------|
-| `store` | Save a curated memory |
-| `update` | Edit a curated memory by UUID |
+| `store` | Save a curated memory; accepts caller-supplied `meta_json` |
+| `update` | Edit a curated memory by UUID; accepts `meta_json` |
 | `batch_store` | Save multiple curated memories at once |
 | `store_raw` | Preserve a verbatim raw journal entry |
 | `batch_store_raw` | Preserve multiple raw journal entries at once |
@@ -133,17 +133,17 @@ The MCP server exposes these LLM-friendly tools:
 | `dream_tick` | Summarize raw journal entries into curated memory |
 | `consolidate` | Migrate mature episodic memory to the semantic store |
 | `stats` | Inspect system statistics and record counts |
-| `export` | Export curated memories to an explicit `output_path` |
+| `export` | Export curated memories **and the raw journal** to an explicit `output_path` (refuses to overwrite existing files) |
 
 ## What MCP Does And Does Not Expose
 
 MCP is a curated transport for agent workflows, not a 1:1 mirror of every CMP operation.
 
-- Best for: Claude Code, Codex CLI, Cursor, and other MCP clients for agent memory, raw journal capture, dream processing, and lightweight archive export
+- Best for: Claude Code, Codex CLI, Cursor, and other MCP clients for agent memory, raw journal capture, dream processing, and full archive export
 - Use HTTP/gRPC/CLI for: health probes, readiness checks, import workflows, full protocol coverage, and remote multi-client access
 
 <Callout type="warning">
-The MCP `export` tool requires an explicit `output_path`, writes the archive file directly from the server process, and skips the raw journal by design. Archive import is available over HTTP, gRPC, and CLI, but is intentionally not exposed as an MCP tool.
+The MCP `export` tool requires an explicit `output_path`, writes the archive file directly from the server process, and **always includes the raw journal** so backups round-trip cleanly. The output path is hardened against overwrite, symlink, missing-parent, and parent-traversal writes. Archive import is available over HTTP, gRPC, and CLI, but is intentionally not exposed as an MCP tool.
 </Callout>
 
 ## Typical Agent Workflow

@@ -128,10 +128,13 @@ Prometheus metrics live at `GET /metrics`. They are **disabled by default** — 
 
 Headline series:
 
-- `cerememory_http_requests_total` — total HTTP requests by method and status
-- `cerememory_http_request_duration_seconds` — request latency histogram
-- `cerememory_records_total` — record counts per store
-- `cerememory_decay_ticks_total` — background decay tick counter
+- `cerememory_http_requests_total{method,path,status}` — total HTTP requests
+- `cerememory_http_request_duration_seconds{method,path,status}` — request latency histogram
+- `cerememory_encode_total{store}` — encode operations per target store
+- `cerememory_encode_duration_seconds{store}` — encode latency histogram per store
+- `cerememory_recall_total` — recall operations
+- `cerememory_recall_duration_seconds` — recall latency histogram
+- `cerememory_decay_panics_total` — recovered panics inside the background decay loop (alert when non-zero)
 
 ## At-Rest Encryption
 

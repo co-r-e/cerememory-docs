@@ -7,9 +7,10 @@ Cerememory is distributed as source. You build the `cerememory` binary yourself 
 
 ## Requirements
 
-- **Rust 1.88+** for building the CLI from source (install via [rustup](https://rustup.rs/))
+- **Rust 1.95+** for building the CLI from source (install via [rustup](https://rustup.rs/)). The workspace pins this MSRV in `rust-toolchain.toml`.
 - **Protobuf compiler** (`protoc`) for gRPC code generation
 - No external database required — Cerememory uses embedded `redb` for persistent storage
+- No external LLM provider required — the default `[llm].provider = "none"` mode runs entirely without an LLM API key
 
 ## Build from Source
 
@@ -29,17 +30,21 @@ Subsequent incremental builds are fast. Use `cargo build -p cerememory-core` to 
 
 ## Feature Flags
 
-The CLI enables all LLM adapters by default. Trim binary size by disabling unused providers:
+The CLI ships **without** any LLM adapter compiled in by default — `cerememory-cli` `default = []`. Cerememory's standard mode runs entirely without an external provider, so most operators never enable these. Opt in only when you need automatic embedding, summarization, or relation extraction:
 
 ```bash
-cargo build -p cerememory-cli --release --no-default-features --features llm-claude
+cargo build -p cerememory-cli --release --features llm-claude
 ```
 
 | Feature | Description | Default |
 |---------|-------------|---------|
-| `llm-openai` | OpenAI / GPT adapter | Enabled |
-| `llm-claude` | Anthropic / Claude adapter | Enabled |
-| `llm-gemini` | Google / Gemini adapter | Enabled |
+| `llm-openai` | OpenAI / GPT adapter (experimental) | Disabled |
+| `llm-claude` | Anthropic / Claude adapter (experimental) | Disabled |
+| `llm-gemini` | Google / Gemini adapter (experimental) | Disabled |
+
+<Callout type="info">
+A CLI built without any `llm-*` feature still accepts `[llm].provider = "openai" / "claude" / "gemini"` in config but reports the provider as unsupported at startup. Either rebuild with the matching feature flag or leave `provider = "none"`.
+</Callout>
 
 ## Verify Installation
 

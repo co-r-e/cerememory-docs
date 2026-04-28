@@ -443,10 +443,10 @@ The MCP server exposes these tools:
 | `dream_tick` | Summarize raw journal into curated memory |
 | `consolidate` | Trigger episodic-to-semantic consolidation |
 | `stats` | View system statistics |
-| `export` | Export curated memories to a CMA archive at an explicit output path |
+| `export` | Export curated memories **and the raw journal** to a CMA archive at an explicit output path |
 
 <Callout type="info">
-The MCP surface is intentionally LLM-friendly and does not expose every HTTP/gRPC method one-to-one. `export` requires an explicit `output_path`, does not include the raw journal, and archive import is intentionally unavailable over MCP. For full protocol access, use the REST API or gRPC transport.
+The MCP surface is intentionally LLM-friendly and does not expose every HTTP/gRPC method one-to-one. `export` requires an explicit `output_path`, **always includes the raw journal**, and archive import is intentionally unavailable over MCP. The output path is hardened against overwrite, symlink, missing-parent, and parent-traversal writes. For full protocol access, use the REST API or gRPC transport.
 </Callout>
 
 ## Next Steps

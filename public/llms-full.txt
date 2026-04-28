@@ -76,9 +76,10 @@ Cerememory is distributed as source. You build the cerememory binary yourself fr
 
 Requirements
 
-- Rust 1.88+ for building the CLI from source (install via rustup)
+- Rust 1.95+ for building the CLI from source (install via rustup). The workspace pins this MSRV in rust-toolchain.toml.
 - Protobuf compiler (protoc) for gRPC code generation
 - No external database required — Cerememory uses embedded redb for persistent storage
+- No external LLM provider required — the default [llm].provider = "none" mode runs entirely without an LLM API key
 
 Build from Source
 
@@ -88,13 +89,15 @@ Subsequent incremental builds are fast. Use cargo build -p cerememory-core to bu
 
 Feature Flags
 
-The CLI enables all LLM adapters by default. Trim binary size by disabling unused providers:
+The CLI ships without any LLM adapter compiled in by default — cerememory-cli default = []. Cerememory's standard mode runs entirely without an external provider, so most operators never enable these. Opt in only when you need automatic embedding, summarization, or relation extraction:
 
 | Feature | Description | Default |
 |---------|-------------|---------|
-| llm-openai | OpenAI / GPT adapter | Enabled |
-| llm-claude | Anthropic / Claude adapter | Enabled |
-| llm-gemini | Google / Gemini adapter | Enabled |
+| llm-openai | OpenAI / GPT adapter (experimental) | Disabled |
+| llm-claude | Anthropic / Claude adapter (experimental) | Disabled |
+| llm-gemini | Google / Gemini adapter (experimental) | Disabled |
+
+A CLI built without any llm-* feature still accepts [llm].provider = "openai" / "claude" / "gemini" in config but reports the provider as unsupported at startup. Either rebuild with the matching feature flag or leave provider = "none".
 
 Verify Installation
 
@@ -228,8 +231,8 @@ The MCP server exposes these LLM-friendly tools:
 
 | Tool | Description |
 |------|-------------|
-| store | Save a curated memory |
-| update | Edit a curated memory by UUID |
+| store | Save a curated memory; accepts caller-supplied meta_json |
+| update | Edit a curated memory by UUID; accepts meta_json |
 | batch_store | Save multiple curated memories at once |
 | store_raw | Preserve a verbatim raw journal entry |
 | batch_store_raw | Preserve multiple raw journal entries at once |
@@ -242,16 +245,16 @@ The MCP server exposes these LLM-friendly tools:
 | dream_tick | Summarize raw journal entries into curated memory |
 | consolidate | Migrate mature episodic memory to the semantic store |
 | stats | Inspect system statistics and record counts |
-| export | Export curated memories to an explicit output_path |
+| export | Export curated memories and the raw journal to an explicit output_path (refuses to overwrite existing files) |
 
 What MCP Does And Does Not Expose
 
 MCP is a curated transport for agent workflows, not a 1:1 mirror of every CMP operation.
 
-- Best for: Claude Code, Codex CLI, Cursor, and other MCP clients for agent memory, raw journal capture, dream processing, and lightweight archive export
+- Best for: Claude Code, Codex CLI, Cursor, and other MCP clients for agent memory, raw journal capture, dream processing, and full archive export
 - Use HTTP/gRPC/CLI for: health probes, readiness checks, import workflows, full protocol coverage, and remote multi-client access
 
-The MCP export tool requires an explicit output_path, writes the archive file directly from the server process, and skips the raw journal by design. Archive import is available over HTTP, gRPC, and CLI, but is intentionally not exposed as an MCP tool.
+The MCP export tool requires an explicit output_path, writes the archive file directly from the server process, and always includes the raw journal so backups round-trip cleanly. The output path is hardened against overwrite, symlink, missing-parent, and parent-traversal writes. Archive import is available over HTTP, gRPC, and CLI, but is intentionally not exposed as an MCP tool.
 
 Typical Agent Workflow
 
@@ -325,7 +328,7 @@ Engine Layer
 The CerememoryEngine is the central coordinator. It implements encode, recall, lifecycle, and introspect operations and orchestrates cross-store interactions. It manages:
 
 - The hippocampal coordinator for cross-store recall and spreading activation
-- The Tantivy text index and HNSW vector index
+- The Tantivy text index and the redb-backed exact cosine vector index
 - The background decay engine
 - An optional LLM provider for embeddings, summarization, image/audio handling, and relation extraction
 
@@ -1321,6 +1324,8 @@ Response
 | dream_semantic_nodes | u32 | Semantic nodes promoted from dream processing |
 | last_dream_tick_at | DateTime or null | Timestamp of the last dream tick |
 | background_dream_enabled | bool | Whether background dream processing is running |
+| vector_index_records | u32 | Number of records indexed in the redb-backed vector store |
+| vector_search_backend | string | Active vector search backend identifier (currently brute_force — deterministic redb cosine scan) |
 | evolution_metrics | EvolutionMetrics or null | Adaptive tuning metrics when available |
 | background_decay_enabled | bool | Whether background decay is running |
 
@@ -1474,7 +1479,7 @@ The [security] section controls how Cerememory protects data on disk:
 
 - Store encryption. Setting security.store_encryption_passphrase (or the matching CEREMEMORY_SECURITY__STORE_ENCRYPTION_PASSPHRASE env var) encrypts newly written redb records. Existing plaintext records remain readable so the engine can run during migration. Run cerememory migrate-store-encryption --confirm to rewrite legacy plaintext payloads with encryption.
 - Persistent indexes. When store encryption is on, full-text indexes default to in-memory only. Set security.persist_search_indexes = true only if it is acceptable for derived text to appear on disk.
-- Audit log.** A tamper-evident JSONL hash chain is enabled by default at /audit.jsonl. Disable with security.audit_log_enabled = false, or relocate via security.audit_log_path. Verify integrity with cerememory audit-verify (it picks up the configured path automatically, or accepts an explicit --path).
+- Audit log. A tamper-evident JSONL hash chain is enabled by default at /audit.jsonl. Disable with security.audit_log_enabled = false, or relocate via security.audit_log_path. Verify integrity with cerememory audit-verify (it picks up the configured path automatically, or accepts an explicit --path).
 
 Always supply the store encryption passphrase via the env var rather than the TOML file. Cerememory wraps it in SecretString at runtime to prevent accidental logging, but committing it to source control would defeat the protection.
 
@@ -1482,17 +1487,26 @@ Validation
 
 The configuration is validated at startup. The following rules are enforced:
 
+- data_dir must not be empty
 - HTTP port must be non-zero
-- HTTP bind address must be a valid IP (e.g., 127.0.0.1, 0.0.0.0)
+- HTTP bind address must not be empty and must parse as a valid IP (127.0.0.1, 0.0.0.0, ...) or localhost
 - gRPC port (if set) must be non-zero and different from HTTP port
 - If auth is enabled, at least one non-blank Cerememory API key must be configured
 - API key lists must not contain blank or whitespace-only entries
 - TLS cert and key must be provided together (both or neither)
-- gRPC requires TLS when auth is enabled or when http.bind_address is not loopback
 - http.trusted_proxy_cidrs entries must be valid CIDR ranges
 - Rate limit requests_per_second and burst must both be greater than zero
+- decay.background_interval_secs and dream.background_interval_secs must both be greater than zero
+- When [llm].provider is not "none": api_key is required and must not be blank; model and base_url, if present, must not be blank
 - security.store_encryption_passphrase, when present, must not be blank
 - security.audit_log_path, when present, must not be blank
+
+These additional checks are enforced at startup, before any HTTP/gRPC listener binds:
+
+- gRPC requires TLS when auth is enabled or http.bind_address is non-loopback
+- HTTP API binds on non-loopback addresses are rejected unless auth is enabled (no public unauthenticated API)
+- MCP proxy upstreams over plaintext non-loopback HTTP are rejected when an --server-api-key (or CEREMEMORY_SERVER_API_KEY) is configured
+- A CLI built without the matching llm- feature rejects a non-none [llm].provider at startup
 
 API keys and LLM keys are stored as SecretString at runtime to prevent accidental logging. The Debug implementation for AuthConfig and LlmConfig redacts sensitive values.
 
@@ -1563,10 +1577,13 @@ Prometheus metrics live at GET /metrics. They are disabled by default — enable
 
 Headline series:
 
-- cerememory_http_requests_total — total HTTP requests by method and status
-- cerememory_http_request_duration_seconds — request latency histogram
-- cerememory_records_total — record counts per store
-- cerememory_decay_ticks_total — background decay tick counter
+- cerememory_http_requests_total{method,path,status} — total HTTP requests
+- cerememory_http_request_duration_seconds{method,path,status} — request latency histogram
+- cerememory_encode_total{store} — encode operations per target store
+- cerememory_encode_duration_seconds{store} — encode latency histogram per store
+- cerememory_recall_total — recall operations
+- cerememory_recall_duration_seconds — recall latency histogram
+- cerememory_decay_panics_total — recovered panics inside the background decay loop (alert when non-zero)
 
 At-Rest Encryption
 
@@ -2005,9 +2022,9 @@ The MCP server exposes these tools:
 | dream_tick | Summarize raw journal into curated memory |
 | consolidate | Trigger episodic-to-semantic consolidation |
 | stats | View system statistics |
-| export | Export curated memories to a CMA archive at an explicit output path |
+| export | Export curated memories and the raw journal to a CMA archive at an explicit output path |
 
-The MCP surface is intentionally LLM-friendly and does not expose every HTTP/gRPC method one-to-one. export requires an explicit output_path`, does not include the raw journal, and archive import is intentionally unavailable over MCP. For full protocol access, use the REST API or gRPC transport.
+The MCP surface is intentionally LLM-friendly and does not expose every HTTP/gRPC method one-to-one. export requires an explicit output_path`, always includes the raw journal, and archive import is intentionally unavailable over MCP. The output path is hardened against overwrite, symlink, missing-parent, and parent-traversal writes. For full protocol access, use the REST API or gRPC transport.
 
 Next Steps
 
@@ -2019,12 +2036,20 @@ Source: https://co-r-e.github.io/cerememory-docs/docs/reference/llm-adapters
 
 Overview
 
-Cerememory integrates with LLM providers through two trait-based interfaces:
+Cerememory's standard mode runs entirely without an external LLM. The CLI default features (default = []) ship with no provider compiled in, and [llm].provider = "none" is the supported production configuration. External adapters are an optional, experimental extension for callers that want automatic embeddings, summarization, or relation extraction in-engine.
+
+When you do enable an adapter, two trait-based interfaces drive the integration:
 
 - LLMProvider -- Handles embedding generation, summarization, and relation extraction
 - LLMAdapter -- Serializes memory context into LLM-consumable format
 
-LLM integration is optional. Without a configured provider, Cerememory falls back to manual embeddings, truncation-based summarization, and skips relation extraction.
+Without a configured provider, Cerememory uses caller-supplied embeddings, returns truncation summaries, and skips relation extraction. Most agentic workflows produce richer summaries in the calling agent itself, then encode them into Cerememory through store / update (with meta_json for the why), so adapters are rarely the right answer.
+
+Building With an Adapter
+
+The CLI default features include no LLM adapter. Opt in at build time:
+
+A binary built without the matching feature flag will report the configured provider as unsupported at startup and refuse to serve until you either rebuild or set [llm].provider = "none".
 
 Server Auth Key vs LLM Provider Key
 
@@ -2208,7 +2233,7 @@ Source: https://co-r-e.github.io/cerememory-docs/docs/contributing/development
 
 Prerequisites
 
-- Rust 1.88+ -- Install via rustup
+- Rust 1.95+ -- Install via rustup. The workspace pins this MSRV via rust-toolchain.toml and CI enforces it.
 - Protobuf compiler (protoc) -- Required for gRPC code generation
 
 Clone and Build

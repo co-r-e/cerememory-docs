@@ -94,7 +94,7 @@ export const en: Dictionary = {
       associationEngine: 'Association Engine',
       evolutionEngine: 'Evolution Engine',
       tantivyFullText: 'Tantivy Full-Text',
-      hnswVector: 'HNSW Vector',
+      hnswVector: 'Vector Index (redb cosine)',
       associationGraph: 'Association Graph',
       figCaption: '<strong>Fig. 1.</strong> Cerememory system architecture · meta-memory is a cross-cutting plane attached to every record',
     },
@@ -296,7 +296,7 @@ export const en: Dictionary = {
       {
         icon: 'V',
         title: 'Vector Search',
-        desc: 'Semantic similarity search via HNSW algorithm. Combined with Tantivy full-text search for hybrid retrieval.',
+        desc: 'Deterministic redb-backed exact cosine scan, paired with Tantivy full-text search for hybrid retrieval. Backend and record counts surface in introspect.stats.',
       },
       {
         icon: 'A',
@@ -334,8 +334,8 @@ export const en: Dictionary = {
         desc: 'Rust-native Lucene equivalent. High-performance full-text search index.',
       },
       {
-        title: 'hnsw_rs',
-        desc: 'Lightweight embedded HNSW. High-dimensional approximate nearest neighbor search.',
+        title: 'redb cosine vector index',
+        desc: 'Deterministic exact cosine similarity over a redb-backed embedding store. No approximation, no rebuilt graph, identical results across replicas.',
       },
       {
         title: 'MessagePack',

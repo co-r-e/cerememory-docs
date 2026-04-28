@@ -39,6 +39,8 @@ Retrieve system-wide statistics including record counts, average fidelity, backg
   "dream_semantic_nodes": 25,
   "last_dream_tick_at": "2026-03-19T06:00:00Z",
   "background_dream_enabled": true,
+  "vector_index_records": 320,
+  "vector_search_backend": "brute_force",
   "evolution_metrics": {
     "parameter_adjustments": [],
     "detected_patterns": [],
@@ -64,6 +66,8 @@ Retrieve system-wide statistics including record counts, average fidelity, backg
 | `dream_semantic_nodes` | u32 | Semantic nodes promoted from dream processing |
 | `last_dream_tick_at` | DateTime or null | Timestamp of the last dream tick |
 | `background_dream_enabled` | bool | Whether background dream processing is running |
+| `vector_index_records` | u32 | Number of records indexed in the redb-backed vector store |
+| `vector_search_backend` | string | Active vector search backend identifier (currently `brute_force` — deterministic redb cosine scan) |
 | `evolution_metrics` | EvolutionMetrics or null | Adaptive tuning metrics when available |
 | `background_decay_enabled` | bool | Whether background decay is running |
 

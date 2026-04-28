@@ -5,12 +5,28 @@ description: "Configure and use Claude, GPT, and Gemini adapters for embedding, 
 
 ## Overview
 
-Cerememory integrates with LLM providers through two trait-based interfaces:
+Cerememory's standard mode runs **entirely without an external LLM**. The CLI default features (`default = []`) ship with no provider compiled in, and `[llm].provider = "none"` is the supported production configuration. External adapters are an **optional, experimental** extension for callers that want automatic embeddings, summarization, or relation extraction in-engine.
+
+When you do enable an adapter, two trait-based interfaces drive the integration:
 
 - **LLMProvider** -- Handles embedding generation, summarization, and relation extraction
 - **LLMAdapter** -- Serializes memory context into LLM-consumable format
 
-LLM integration is **optional**. Without a configured provider, Cerememory falls back to manual embeddings, truncation-based summarization, and skips relation extraction.
+Without a configured provider, Cerememory uses caller-supplied embeddings, returns truncation summaries, and skips relation extraction. Most agentic workflows produce richer summaries in the calling agent itself, then encode them into Cerememory through `store` / `update` (with `meta_json` for the why), so adapters are rarely the right answer.
+
+## Building With an Adapter
+
+The CLI default features include no LLM adapter. Opt in at build time:
+
+```bash
+# Single provider
+cargo build -p cerememory-cli --release --features llm-claude
+
+# Multiple providers
+cargo build -p cerememory-cli --release --features "llm-claude,llm-openai,llm-gemini"
+```
+
+A binary built without the matching feature flag will report the configured provider as unsupported at startup and refuse to serve until you either rebuild or set `[llm].provider = "none"`.
 
 ## Server Auth Key vs LLM Provider Key
 

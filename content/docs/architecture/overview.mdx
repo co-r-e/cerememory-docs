@@ -108,7 +108,7 @@ Three transport bindings expose CMP externally:
 The `CerememoryEngine` is the central coordinator. It implements encode, recall, lifecycle, and introspect operations and orchestrates cross-store interactions. It manages:
 
 - The hippocampal coordinator for cross-store recall and spreading activation
-- The Tantivy text index and HNSW vector index
+- The Tantivy text index and the redb-backed exact cosine vector index
 - The background decay engine
 - An optional LLM provider for embeddings, summarization, image/audio handling, and relation extraction
 

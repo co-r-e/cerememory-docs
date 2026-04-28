@@ -50,10 +50,14 @@ api_keys = ["sk-cerememory-prod-abc123", "sk-cerememory-prod-def456"]
 # audit_log_path = "/var/lib/cerememory/audit.jsonl"
 
 [llm]
-provider = "claude"   # "openai", "claude" (or "anthropic"), "gemini" (or "google"), or "none"
-api_key = "sk-ant-..."
-model = "claude-sonnet-4-20250514"       # optional model override
-base_url = null       # optional base URL override
+# Standard mode runs without an LLM. External providers are an experimental
+# opt-in and require the matching cargo feature (`llm-openai`, `llm-claude`,
+# or `llm-gemini`) at CLI build time. Without that feature, a non-"none"
+# provider is rejected at startup.
+provider = "none"     # "openai", "claude" (or "anthropic"), "gemini" (or "google"), or "none"
+# api_key = "sk-..."
+# model = "claude-sonnet-4-20250514"     # optional model override
+# base_url = null                         # optional base URL override
 
 [decay]
 background_interval_secs = 3600  # background decay tick interval
@@ -176,17 +180,26 @@ Always supply the store encryption passphrase via the env var rather than the TO
 
 The configuration is validated at startup. The following rules are enforced:
 
+- `data_dir` must not be empty
 - HTTP port must be non-zero
-- HTTP bind address must be a valid IP (e.g., `127.0.0.1`, `0.0.0.0`)
+- HTTP bind address must not be empty and must parse as a valid IP (`127.0.0.1`, `0.0.0.0`, ...) or `localhost`
 - gRPC port (if set) must be non-zero and different from HTTP port
 - If auth is enabled, at least one non-blank Cerememory API key must be configured
 - API key lists must not contain blank or whitespace-only entries
 - TLS cert and key must be provided together (both or neither)
-- gRPC requires TLS when auth is enabled or when `http.bind_address` is not loopback
 - `http.trusted_proxy_cidrs` entries must be valid CIDR ranges
 - Rate limit `requests_per_second` and `burst` must both be greater than zero
+- `decay.background_interval_secs` and `dream.background_interval_secs` must both be greater than zero
+- When `[llm].provider` is not `"none"`: `api_key` is required and must not be blank; `model` and `base_url`, if present, must not be blank
 - `security.store_encryption_passphrase`, when present, must not be blank
 - `security.audit_log_path`, when present, must not be blank
+
+These additional checks are enforced at startup, before any HTTP/gRPC listener binds:
+
+- gRPC requires TLS when auth is enabled or `http.bind_address` is non-loopback
+- HTTP API binds on non-loopback addresses are rejected unless auth is enabled (no public unauthenticated API)
+- MCP proxy upstreams over plaintext non-loopback HTTP are rejected when an `--server-api-key` (or `CEREMEMORY_SERVER_API_KEY`) is configured
+- A CLI built without the matching `llm-*` feature rejects a non-`none` `[llm].provider` at startup
 
 <Callout type="warning">
 API keys and LLM keys are stored as `SecretString` at runtime to prevent accidental logging. The `Debug` implementation for `AuthConfig` and `LlmConfig` redacts sensitive values.

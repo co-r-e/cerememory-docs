@@ -51,7 +51,7 @@ export async function generateLlmsTxt(): Promise<string> {
     "- **Living memory dynamics**: memories decay over time on a power-law curve, accumulate interference noise, are modulated by an 8-dimensional emotion vector, and can reactivate through spreading activation.",
     "- **Two recall modes**: `Human` (realistic recall with fidelity-weighted noise) and `Perfect` (complete retrieval of original data).",
     "- **User-sovereign**: local-first, fully exportable to a single-file JSON Lines CMA archive (with optional ChaCha20-Poly1305 + Argon2id encryption), MIT-licensed.",
-    "- **Implementation**: Core engine in Rust (redb, Tantivy, hnsw_rs, MessagePack, Axum + Tonic + rmcp). Distributed as source only — you clone the repository and build the `cerememory` binary with `cargo build -p cerememory-cli --release`. There are no published GitHub Releases, crates.io, Docker, PyPI, or npm artifacts.",
+    "- **Implementation**: Core engine in Rust (redb, Tantivy, MessagePack, Axum + Tonic + rmcp). Vector search uses a deterministic redb-backed exact cosine scan. Distributed as source only — you clone the repository and build the `cerememory` binary with `cargo build -p cerememory-cli --release`. There are no published GitHub Releases, crates.io, Docker, PyPI, or npm artifacts.",
     "- **MCP operation mode**: run one long-lived `cerememory serve` process per data directory and point every MCP client at it with `cerememory mcp --server-url http://127.0.0.1:8420`. `--server-url` is required — there is no embedded-store MCP mode.",
     "",
     `- Website: ${siteUrl}/`,

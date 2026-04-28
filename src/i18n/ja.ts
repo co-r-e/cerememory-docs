@@ -95,7 +95,7 @@ export const ja: Dictionary = {
       associationEngine: 'Association Engine',
       evolutionEngine: 'Evolution Engine',
       tantivyFullText: 'Tantivy Full-Text',
-      hnswVector: 'HNSW Vector',
+      hnswVector: 'Vector Index (redb 完全コサイン)',
       associationGraph: 'Association Graph',
       figCaption: '<strong>Fig. 1.</strong> Cerememory のシステムアーキテクチャ · メタメモリはすべてのレコードに紐づく横断プレーン',
     },
@@ -297,7 +297,7 @@ export const ja: Dictionary = {
       {
         icon: 'V',
         title: 'ベクトル検索',
-        desc: 'HNSW アルゴリズムによるセマンティック類似度検索。Tantivy 全文検索との組み合わせでハイブリッド検索を実現。',
+        desc: 'redb をストレージとした決定論的な完全コサインスキャン。Tantivy 全文検索と組み合わせてハイブリッド検索を実現。バックエンドとレコード数は introspect.stats に露出されます。',
       },
       {
         icon: 'A',
@@ -335,8 +335,8 @@ export const ja: Dictionary = {
         desc: 'Rust ネイティブの Lucene 相当。高性能な全文検索インデックス。',
       },
       {
-        title: 'hnsw_rs',
-        desc: '軽量な組み込み HNSW。高次元の近似最近傍探索。',
+        title: 'redb コサイン Vector Index',
+        desc: 'redb 上の埋め込みストアに対する決定論的な完全コサイン類似度検索。近似なし、グラフの再構築なし、レプリカ間で同一結果。',
       },
       {
         title: 'MessagePack',
