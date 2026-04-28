@@ -49,21 +49,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         type: "website",
         siteName: siteConfig.name,
         locale: "en_US",
-        images: [
-          {
-            url: withBasePath(siteConfig.socialImagePath),
-            width: 1200,
-            height: 630,
-            alt: "Cerememory Documentation",
-            type: "image/png",
-          },
-        ],
+        // Image inherited from src/app/opengraph-image.tsx.
       },
       twitter: {
         card: "summary_large_image",
         title: "Cerememory Documentation",
         description: siteConfig.docsDescription,
-        images: [absoluteUrl(siteConfig.socialImagePath)],
+        // Image inherited from src/app/twitter-image.tsx.
       },
     };
   }
@@ -97,21 +89,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       modifiedTime: lastModified?.toISOString(),
       section: slug.length > 1 ? slug[0].replace(/-/g, " ") : "Documentation",
       tags: slug,
-      images: [
-        {
-          url: withBasePath(siteConfig.socialImagePath),
-          width: 1200,
-          height: 630,
-          alt: title,
-          type: "image/png",
-        },
-      ],
+      // Image inherited from src/app/opengraph-image.tsx.
     },
     twitter: {
       card: "summary_large_image",
       title: fullTitle,
       description,
-      images: [absoluteUrl(siteConfig.socialImagePath)],
+      // Image inherited from src/app/twitter-image.tsx.
     },
   };
 }
@@ -272,7 +256,7 @@ export default async function DocsPage({ params }: Props): Promise<ReactNode> {
     url: pageUrl,
     inLanguage: "en",
     dateModified: lastModified?.toISOString(),
-    image: absoluteUrl(siteConfig.socialImagePath),
+    image: absoluteUrl("/opengraph-image.png"),
     about: slug.map((segment) => segment.replace(/-/g, " ")),
     isAccessibleForFree: true,
     isPartOf: {

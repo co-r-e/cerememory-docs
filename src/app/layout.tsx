@@ -106,21 +106,13 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     alternateLocale: ['ja_JP'],
-    images: [
-      {
-        url: withBasePath(siteConfig.socialImagePath),
-        width: 1200,
-        height: 630,
-        alt: siteConfig.title,
-        type: 'image/png',
-      },
-    ],
+    // Image is supplied by src/app/opengraph-image.tsx (and per-route variants).
   },
   twitter: {
     card: 'summary_large_image',
     title: siteConfig.title,
     description: siteConfig.description,
-    images: [absoluteUrl(siteConfig.socialImagePath)],
+    // Image is supplied by src/app/twitter-image.tsx (and per-route variants).
   },
   robots: {
     index: true,

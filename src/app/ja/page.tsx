@@ -28,21 +28,13 @@ export const metadata: Metadata = {
     siteName: siteConfig.name,
     locale: 'ja_JP',
     alternateLocale: ['en_US'],
-    images: [
-      {
-        url: withBasePath(siteConfig.socialImagePath),
-        width: 1200,
-        height: 630,
-        alt: title,
-        type: 'image/png',
-      },
-    ],
+    // Image is supplied by src/app/ja/opengraph-image.tsx.
   },
   twitter: {
     card: 'summary_large_image',
     title,
     description,
-    images: [absoluteUrl(siteConfig.socialImagePath)],
+    // Image is supplied by src/app/ja/twitter-image.tsx.
   },
 }
 

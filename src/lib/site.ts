@@ -11,7 +11,7 @@ export const siteConfig = {
   japaneseTitle: "Cerememory - AI時代の生きた記憶データベース",
   japaneseDescription:
     "Cerememory は、神経科学に基づくオープンソースの記憶データベースです。AIシステムに永続的で進化する記憶を提供します。LLM非依存。ユーザー主権。脳にインスパイアされた設計。",
-  socialImagePath: "/og-image.png",
+  socialImagePath: "/opengraph-image.png",
   logoPath: "/icon-512.png",
   repoUrl: "https://github.com/co-r-e/cerememory",
   themeColorLight: "#FFFFFF",
