@@ -18,7 +18,7 @@ export const en: Dictionary = {
     titleEm: 'Living',
     titlePost: ' Memory Database\nfor the Age of AI',
     subtitle:
-      'Brain-inspired memory architecture with secure transports, persistent recall, and user-sovereign data ownership.',
+      'Brain-inspired memory architecture. Connect AI agents to lifelike memory shaped by the concepts of time and dreams, building natural long-term recall.',
   },
   abstract: {
     label: 'Abstract',
