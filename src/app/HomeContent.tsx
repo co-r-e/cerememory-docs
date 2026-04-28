@@ -545,7 +545,11 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
       <section className="section" id="problem">
         <RevealSection className="column column--wide">
           <span className="section__number">{dict.problem.number}</span>
-          <h2 className="section__title">{dict.problem.title}</h2>
+          <h2 className="section__title">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`${basePath}/icon.svg`} alt="" aria-hidden="true" className="section__title-icon" />
+            <span>{dict.problem.title}</span>
+          </h2>
           <div className="section__body">
             <p>{dict.problem.para1}</p>
             <p>
@@ -564,7 +568,11 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
       <section className="section section--alt" id="architecture">
         <RevealSection className="column column--wide">
           <span className="section__number">{dict.architecture.number}</span>
-          <h2 className="section__title">{dict.architecture.title}</h2>
+          <h2 className="section__title">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`${basePath}/icon.svg`} alt="" aria-hidden="true" className="section__title-icon" />
+            <span>{dict.architecture.title}</span>
+          </h2>
           <p className="section__lead">{dict.architecture.lead}</p>
 
           <div className="figure">
@@ -669,7 +677,11 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
       <section className="section" id="dynamics">
         <RevealSection className="column column--wide">
           <span className="section__number">{dict.dynamics.number}</span>
-          <h2 className="section__title">{dict.dynamics.title}</h2>
+          <h2 className="section__title">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`${basePath}/icon.svg`} alt="" aria-hidden="true" className="section__title-icon" />
+            <span>{dict.dynamics.title}</span>
+          </h2>
           <p className="section__lead">{dict.dynamics.lead}</p>
 
           <h3 className="subsection-title">{dict.dynamics.decay.title}</h3>
@@ -790,7 +802,11 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
       <section className="section section--alt" id="protocol">
         <RevealSection className="column column--wide">
           <span className="section__number">{dict.protocol.number}</span>
-          <h2 className="section__title">{dict.protocol.title}</h2>
+          <h2 className="section__title">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`${basePath}/icon.svg`} alt="" aria-hidden="true" className="section__title-icon" />
+            <span>{dict.protocol.title}</span>
+          </h2>
           <p className="section__lead">{dict.protocol.lead}</p>
 
           {/* CMP vs MCP hierarchy */}
@@ -881,7 +897,11 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
       <section className="section" id="quickstart">
         <RevealSection className="column column--wide">
           <span className="section__number">{dict.quickStart.number}</span>
-          <h2 className="section__title">{dict.quickStart.title}</h2>
+          <h2 className="section__title">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`${basePath}/icon.svg`} alt="" aria-hidden="true" className="section__title-icon" />
+            <span>{dict.quickStart.title}</span>
+          </h2>
           <p className="section__lead">{dict.quickStart.lead}</p>
 
           <div className="code-block" style={{ marginBottom: '2rem' }}>
@@ -915,7 +935,11 @@ target/release/<span class="fn">cerememory</span> mcp --server-url http://127.0.
       <section className="section section--alt" id="ecosystem">
         <RevealSection className="column column--wide">
           <span className="section__number">{dict.ecosystem.number}</span>
-          <h2 className="section__title">{dict.ecosystem.title}</h2>
+          <h2 className="section__title">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`${basePath}/icon.svg`} alt="" aria-hidden="true" className="section__title-icon" />
+            <span>{dict.ecosystem.title}</span>
+          </h2>
 
           <h3 className="subsection-title">{dict.ecosystem.integrationsTitle}</h3>
           <div className="sdk-row">
@@ -969,7 +993,11 @@ target/release/<span class="fn">cerememory</span> mcp --server-url http://127.0.
       <section className="section" id="technical">
         <RevealSection className="column column--wide">
           <span className="section__number">{dict.technical.number}</span>
-          <h2 className="section__title">{dict.technical.title}</h2>
+          <h2 className="section__title">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`${basePath}/icon.svg`} alt="" aria-hidden="true" className="section__title-icon" />
+            <span>{dict.technical.title}</span>
+          </h2>
           <div className="section__body">
             <p dangerouslySetInnerHTML={{ __html: dict.technical.body }} />
           </div>
@@ -991,7 +1019,11 @@ target/release/<span class="fn">cerememory</span> mcp --server-url http://127.0.
       <section className="section section--alt" id="philosophy">
         <RevealSection className="column column--wide">
           <span className="section__number">{dict.philosophy.number}</span>
-          <h2 className="section__title">{dict.philosophy.title}</h2>
+          <h2 className="section__title">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`${basePath}/icon.svg`} alt="" aria-hidden="true" className="section__title-icon" />
+            <span>{dict.philosophy.title}</span>
+          </h2>
 
           <div className="philosophy-quote">
             <p>{dict.philosophy.quote}</p>

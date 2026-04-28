@@ -434,6 +434,16 @@ body:not(:has(.docs-root)) a:hover {
   margin-bottom: 1.75rem;
   color: var(--text);
   letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  flex-wrap: wrap;
+}
+.section__title-icon {
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+  display: inline-block;
 }
 .section__lead {
   font-size: 1.1rem;
@@ -583,8 +593,8 @@ body:not(:has(.docs-root)) a:hover {
   margin: 2rem 0;
   padding: 1.75rem 2rem;
   background: var(--bg-warm);
-  border-left: 3px solid var(--crimson);
-  border-radius: 0 3px 3px 0;
+  border: 1px solid var(--border);
+  border-radius: 3px;
   text-align: center;
 }
 .formula__expr {
@@ -987,9 +997,9 @@ body:not(:has(.docs-root)) a:hover {
 .philosophy-quote {
   margin: 2.5rem 0;
   padding: 2rem 2.5rem;
-  border-left: 3px solid var(--crimson);
   background: var(--crimson-faint);
-  border-radius: 0 3px 3px 0;
+  border: 1px solid var(--crimson-border);
+  border-radius: 3px;
 }
 .philosophy-quote p {
   font-size: 1.1rem;
