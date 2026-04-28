@@ -1468,11 +1468,14 @@ body:not(:has(.docs-root)) a:hover {
   .masthead__logo-link {
     position: static;
     left: auto;
+    top: auto;
     transform: none;
-    display: inline-flex;
-    align-items: center;
+    height: 28px;
+    justify-items: start;
   }
+  .masthead__mark,
   .masthead__logo { height: 28px; margin: 0; }
+  .masthead__mark { width: 28px; }
   .masthead__toggle { display: inline-flex; }
 
   .masthead__drawer {
