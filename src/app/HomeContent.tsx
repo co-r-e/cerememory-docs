@@ -410,6 +410,7 @@ function HeroCanvas() {
 
 export default function HomeContent({ dict, locale }: { dict: Dictionary; locale: Locale }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
     if (!menuOpen) return
@@ -425,12 +426,25 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
     }
   }, [menuOpen])
 
+  useEffect(() => {
+    const onScroll = () => {
+      // Swap to wordmark once the user has scrolled past ~70% of the viewport
+      // (i.e. left the hero area). Threshold is recomputed each call so it
+      // adapts to viewport resizing without an explicit listener.
+      const threshold = window.innerHeight * 0.7
+      setScrolled(window.scrollY > threshold)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   const closeMenu = () => setMenuOpen(false)
 
   return (
     <>
       {/* MASTHEAD */}
-      <header className={`masthead ${menuOpen ? 'masthead--open' : ''}`}>
+      <header className={`masthead ${menuOpen ? 'masthead--open' : ''} ${scrolled ? 'masthead--scrolled' : ''}`}>
         <div className="column column--wide masthead__inner">
           <nav className="masthead__desktop-nav masthead__desktop-nav--left">
             <ul className="masthead__nav masthead__nav--left">
@@ -439,7 +453,9 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
               <li><a href="#protocol">{dict.nav.protocol}</a></li>
             </ul>
           </nav>
-          <a href="#" className="masthead__logo-link" onClick={closeMenu}>
+          <a href="#" className="masthead__logo-link" onClick={closeMenu} aria-label="Cerememory">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`${basePath}/icon.svg`} alt="" className="masthead__mark" aria-hidden="true" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={`${basePath}/logo.svg`} alt="Cerememory" className="masthead__logo" />
           </a>
@@ -501,6 +517,10 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
       <section className="hero">
         <HeroCanvas />
         <div className="column hero__content">
+          <div className="hero__brand">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`${basePath}/logo.svg`} alt="Cerememory" className="hero__logo" />
+          </div>
           <h1 className="hero__title">
             {dict.hero.titlePre}<em>{dict.hero.titleEm}</em>{dict.hero.titlePost}
           </h1>
