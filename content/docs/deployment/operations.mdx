@@ -152,7 +152,7 @@ When store encryption is enabled, persistent search indexes default to in-memory
 
 ## Audit Log
 
-A tamper-evident JSONL audit log is enabled by default at `<data_dir>/audit.jsonl`. Each entry chains to its predecessor via a hash, so any reorder, rewrite, or deletion breaks the chain. Verify integrity periodically:
+A tamper-evident JSONL audit log is enabled by default at `<data_dir>/audit.jsonl`. Each entry chains to its predecessor via a SHA-256 hash, so any reorder, rewrite, or deletion breaks the chain. Verify integrity periodically:
 
 ```bash
 cerememory audit-verify
@@ -160,8 +160,28 @@ cerememory audit-verify
 
 Pass `--path /path/to/audit.jsonl` if the audit log was relocated via `security.audit_log_path`. Disable the log entirely with `security.audit_log_enabled = false` (not recommended).
 
+### Entry schema
+
+Every line is one JSON object:
+
+```json
+{
+  "version": 1,
+  "sequence": 42,
+  "timestamp": "2026-04-28T03:14:15Z",
+  "operation": "encode.store",
+  "record_ids": ["01916e3a-..."],
+  "store_types": ["episodic"],
+  "summary": { /* operation-specific JSON, never raw memory content */ },
+  "prev_hash": "<sha256 hex of the previous entry>",
+  "entry_hash": "<sha256 hex over (version, sequence, timestamp, operation, record_ids, store_types, summary, prev_hash)>"
+}
+```
+
+The first entry uses an all-zero genesis `prev_hash`. `cerememory audit-verify` recomputes each `entry_hash` and rejects any blank line, sequence gap, or chain break.
+
 <Callout type="info">
-The audit log is separate from operational logging (`[log]`) and from Prometheus metrics. It records security-relevant events (encode, forget, mode changes, export/import) for forensic review and is intended to be retained alongside backups.
+The audit log is separate from operational logging (`[log]`) and from Prometheus metrics. It records *operation metadata* (which records, which store, what kind of operation) — never the memory content itself — and is intended to be retained alongside backups for forensic review.
 </Callout>
 
 ## Backups and Portability

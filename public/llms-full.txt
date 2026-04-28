@@ -145,7 +145,7 @@ See MCP & Agent Setup for per-client configuration snippets.
 
 Store a Memory
 
-Once a client is connected, call the store tool:
+Once a client is connected, call the store tool. The MCP store tool takes a caller-supplied meta_json (not metadata) so the agent can record why the memory matters without invoking an external LLM:
 
 Recall Memories
 
@@ -1079,9 +1079,11 @@ Request
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | association_types | AssociationType[] | No | All types | Filter by association type |
-| depth | u32 | No | 2 | Maximum traversal depth |
+| depth | u32 | No | 2 | Maximum traversal depth (hard-capped at 8) |
 | min_weight | f64 | No | 0.1 | Minimum edge weight to follow |
-| limit | u32 | No | 10 | Maximum results |
+| limit | u32 | No | 10 | Maximum results (hard-capped at 256) |
+
+The engine rejects depth > 8 and limit > 256 with a VALIDATION_ERROR to bound traversal cost. These caps are constants (MAX_RECALL_ASSOCIATE_DEPTH, MAX_RECALL_ASSOCIATE_LIMIT) in cerememory-engine and apply to every transport.
 
 Response
 
@@ -1096,7 +1098,7 @@ Request
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | range | TemporalRange | Yes | -- | Start and end timestamps |
-| granularity | TimeGranularity | No | hour | minute, hour, day, week, month |
+| granularity | TimeGranularity | No | hour | One of minute, hour, day, week, month |
 | min_fidelity | f64 | No | None | Fidelity floor |
 | emotion_filter | EmotionVector | No | None | Filter by emotional similarity |
 
@@ -1267,8 +1269,25 @@ In gRPC, this metadata is sent with the first streamed chunk of archive bytes. I
 Transport Notes
 
 - CLI: cerememory export --output ./backup.cma ...
-- MCP: export requires an explicit output_path
+- MCP: export requires an explicit output_path and always includes the raw journal
 - gRPC: The archive is streamed in chunks; metadata arrives in the first chunk
+
+Archive Format
+
+CMA archives are JSON Lines:
+
+- Line 1 — ArchiveHeader (version, timestamp, record_count, optional curated_record_count, optional raw_record_count)
+- Lines 2..N — One record per line. Curated-only archives serialize MemoryRecord directly; bundle archives serialize an ArchiveEntry envelope tagged with "kind": "memory_record" or "kind": "raw_journal_record" and a data payload.
+- Last line — ArchiveFooter carrying a SHA-256 hex digest of the record lines.
+
+Two format versions are recognized:
+
+| Version | Carries | When emitted |
+|---------|---------|--------------|
+| 1.0 | Curated MemoryRecord lines only | include_raw_journal = false |
+| 2.0 | ArchiveEntry envelopes mixing curated and raw journal records | include_raw_journal = true (or any MCP export call) |
+
+When encrypt = true, the entire archive is wrapped with ChaCha20-Poly1305 AEAD using an Argon2id-derived key (64 MiB memory, 3 iterations). The encrypted bundle layout is salt(16) || nonce(12) || ciphertext+tag.
 
 lifecycle.import
 
@@ -1597,11 +1616,17 @@ When store encryption is enabled, persistent search indexes default to in-memory
 
 Audit Log
 
-A tamper-evident JSONL audit log is enabled by default at /audit.jsonl. Each entry chains to its predecessor via a hash, so any reorder, rewrite, or deletion breaks the chain. Verify integrity periodically:
+A tamper-evident JSONL audit log is enabled by default at /audit.jsonl. Each entry chains to its predecessor via a SHA-256 hash, so any reorder, rewrite, or deletion breaks the chain. Verify integrity periodically:
 
 Pass --path /path/to/audit.jsonl if the audit log was relocated via security.audit_log_path. Disable the log entirely with security.audit_log_enabled = false (not recommended).
 
-The audit log is separate from operational logging ([log]) and from Prometheus metrics. It records security-relevant events (encode, forget, mode changes, export/import) for forensic review and is intended to be retained alongside backups.
+Entry schema
+
+Every line is one JSON object:
+
+The first entry uses an all-zero genesis prev_hash. cerememory audit-verify recomputes each entry_hash and rejects any blank line, sequence gap, or chain break.
+
+The audit log is separate from operational logging ([log]) and from Prometheus metrics. It records operation metadata (which records, which store, what kind of operation) — never the memory content itself — and is intended to be retained alongside backups for forensic review.
 
 Backups and Portability
 
@@ -2130,7 +2155,20 @@ The NoOp provider is used internally when provider = "none". It satisfies the LL
 
 Error Handling and Retries
 
-All LLM adapter HTTP requests use exponential backoff with the backoff crate. Transient errors (network timeouts, 429 rate limits, 5xx server errors) are retried automatically. Permanent errors (401 unauthorized, 400 bad request) fail immediately.
+All LLM adapter HTTP requests share an in-tree exponential-backoff helper from cerememory-adapter-common. The backoff crate dependency was removed in 0.2.6 — Cerememory now carries the retry loop itself.
+
+Default RetryPolicy:
+
+| Field | Default | Meaning |
+|-------|---------|---------|
+| initial_interval | 500 ms | First sleep before attempt 2 |
+| multiplier | 2.0 | Each subsequent interval doubles |
+| max_interval | 30 s | Cap on a single sleep window |
+| max_retries | 3 | Retries after the initial attempt — so up to 4 total tries |
+
+Errors are classified as either RetryError::Transient(_) (retried up to the cap) or RetryError::Permanent(_) (returned immediately). The OpenAI adapter classifies HTTP 429 / 5xx and network failures as transient; the Claude and Gemini adapters apply the same status-based rule. Auth (401), validation (400), and unknown-route errors fail fast as permanent.
+
+The shared HTTP client is built with a 30 s request timeout (DEFAULT_TIMEOUT_SECS).
 
 Next Steps
 

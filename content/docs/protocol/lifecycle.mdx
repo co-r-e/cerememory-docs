@@ -220,8 +220,25 @@ In gRPC, this metadata is sent with the first streamed chunk of archive bytes. I
 ### Transport Notes
 
 - **CLI:** `cerememory export --output ./backup.cma ...`
-- **MCP:** `export` requires an explicit `output_path`
+- **MCP:** `export` requires an explicit `output_path` and **always includes the raw journal**
 - **gRPC:** The archive is streamed in chunks; metadata arrives in the first chunk
+
+### Archive Format
+
+CMA archives are JSON Lines:
+
+- **Line 1** — `ArchiveHeader` (`version`, `timestamp`, `record_count`, optional `curated_record_count`, optional `raw_record_count`)
+- **Lines 2..N** — One record per line. Curated-only archives serialize `MemoryRecord` directly; bundle archives serialize an `ArchiveEntry` envelope tagged with `"kind": "memory_record"` or `"kind": "raw_journal_record"` and a `data` payload.
+- **Last line** — `ArchiveFooter` carrying a SHA-256 hex digest of the record lines.
+
+Two format versions are recognized:
+
+| Version | Carries | When emitted |
+|---------|---------|--------------|
+| `1.0` | Curated `MemoryRecord` lines only | `include_raw_journal = false` |
+| `2.0` | `ArchiveEntry` envelopes mixing curated and raw journal records | `include_raw_journal = true` (or any MCP `export` call) |
+
+When `encrypt = true`, the entire archive is wrapped with ChaCha20-Poly1305 AEAD using an Argon2id-derived key (64 MiB memory, 3 iterations). The encrypted bundle layout is `salt(16) || nonce(12) || ciphertext+tag`.
 
 ## lifecycle.import
 

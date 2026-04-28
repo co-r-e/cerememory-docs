@@ -115,9 +115,13 @@ Traverse the association graph starting from a specific record. Returns memories
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `association_types` | AssociationType[] | No | All types | Filter by association type |
-| `depth` | u32 | No | 2 | Maximum traversal depth |
+| `depth` | u32 | No | 2 | Maximum traversal depth (hard-capped at **8**) |
 | `min_weight` | f64 | No | 0.1 | Minimum edge weight to follow |
-| `limit` | u32 | No | 10 | Maximum results |
+| `limit` | u32 | No | 10 | Maximum results (hard-capped at **256**) |
+
+<Callout type="info">
+The engine rejects `depth > 8` and `limit > 256` with a `VALIDATION_ERROR` to bound traversal cost. These caps are constants (`MAX_RECALL_ASSOCIATE_DEPTH`, `MAX_RECALL_ASSOCIATE_LIMIT`) in `cerememory-engine` and apply to every transport.
+</Callout>
 
 ### Response
 
@@ -157,7 +161,7 @@ Retrieve memories organized into time buckets within a date range.
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `range` | TemporalRange | Yes | -- | Start and end timestamps |
-| `granularity` | TimeGranularity | No | hour | minute, hour, day, week, month |
+| `granularity` | TimeGranularity | No | `hour` | One of `minute`, `hour`, `day`, `week`, `month` |
 | `min_fidelity` | f64 | No | None | Fidelity floor |
 | `emotion_filter` | EmotionVector | No | None | Filter by emotional similarity |
 

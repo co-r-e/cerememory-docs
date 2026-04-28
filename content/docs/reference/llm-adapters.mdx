@@ -210,7 +210,20 @@ The NoOp provider is used internally when `provider = "none"`. It satisfies the 
 
 ## Error Handling and Retries
 
-All LLM adapter HTTP requests use exponential backoff with the `backoff` crate. Transient errors (network timeouts, 429 rate limits, 5xx server errors) are retried automatically. Permanent errors (401 unauthorized, 400 bad request) fail immediately.
+All LLM adapter HTTP requests share an in-tree exponential-backoff helper from `cerememory-adapter-common`. The `backoff` crate dependency was removed in 0.2.6 — Cerememory now carries the retry loop itself.
+
+Default `RetryPolicy`:
+
+| Field | Default | Meaning |
+|-------|---------|---------|
+| `initial_interval` | 500 ms | First sleep before attempt 2 |
+| `multiplier` | 2.0 | Each subsequent interval doubles |
+| `max_interval` | 30 s | Cap on a single sleep window |
+| `max_retries` | 3 | Retries *after* the initial attempt — so up to 4 total tries |
+
+Errors are classified as either `RetryError::Transient(_)` (retried up to the cap) or `RetryError::Permanent(_)` (returned immediately). The OpenAI adapter classifies HTTP 429 / 5xx and network failures as transient; the Claude and Gemini adapters apply the same status-based rule. Auth (401), validation (400), and unknown-route errors fail fast as permanent.
+
+The shared HTTP client is built with a 30 s request timeout (`DEFAULT_TIMEOUT_SECS`).
 
 ## Next Steps
 

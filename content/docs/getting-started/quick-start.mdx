@@ -56,13 +56,13 @@ See [MCP & Agent Setup](/docs/getting-started/agent-memory) for per-client confi
 
 <div>
 
-Once a client is connected, call the `store` tool:
+Once a client is connected, call the `store` tool. The MCP `store` tool takes a caller-supplied `meta_json` (not `metadata`) so the agent can record *why* the memory matters without invoking an external LLM:
 
 ```text
 store(
   content="The user prefers dark mode and uses vim keybindings.",
   store="semantic",
-  metadata={"source": "onboarding"}
+  meta_json='{"intent":"capture stable user preference","confidence":0.9,"tags":["preferences","ui"]}'
 )
 ```
 
