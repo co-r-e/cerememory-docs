@@ -389,9 +389,10 @@ body:not(:has(.docs-root)) a:hover {
   margin-bottom: 1rem;
 }
 .abstract__text {
-  font-size: 1.02rem;
+  font-size: 1.05rem;
   line-height: 1.85;
   color: var(--text-secondary);
+  max-width: 820px;
 }
 .abstract__keywords {
   margin-top: 1.5rem;
@@ -427,23 +428,27 @@ body:not(:has(.docs-root)) a:hover {
   display: block;
 }
 .section__title {
-  font-size: 2rem;
+  font-size: 2.15rem;
   font-weight: 600;
-  line-height: 1.25;
+  line-height: 1.22;
   margin-bottom: 1.75rem;
   color: var(--text);
   letter-spacing: -0.02em;
 }
 .section__lead {
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   line-height: 1.8;
   color: var(--text-secondary);
   margin-bottom: 2rem;
+  max-width: 760px;
 }
 .section__body {
-  font-size: 1rem;
+  font-size: 1.02rem;
   line-height: 1.8;
   color: var(--text);
+}
+.section__body p {
+  max-width: 760px;
 }
 .section__body p + p {
   margin-top: 1.25em;
@@ -1199,9 +1204,10 @@ body:not(:has(.docs-root)) a:hover {
 
 /* ========== SUBSECTION HEADINGS ========== */
 .subsection-title {
-  font-size: 1.15rem;
+  font-size: 1.3rem;
   font-weight: 600;
-  margin: 2rem 0 1rem;
+  line-height: 1.35;
+  margin: 2.5rem 0 1.1rem;
   color: var(--text);
   letter-spacing: -0.01em;
 }

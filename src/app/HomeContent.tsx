@@ -532,7 +532,7 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
 
       {/* ABSTRACT */}
       <section className="abstract">
-        <div className="column">
+        <div className="column column--wide">
           <div className="abstract__label">{dict.abstract.label}</div>
           <p className="abstract__text" dangerouslySetInnerHTML={{ __html: dict.abstract.text }} />
           <div className="abstract__keywords">
@@ -543,7 +543,7 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
 
       {/* S1 THE PROBLEM */}
       <section className="section" id="problem">
-        <RevealSection className="column">
+        <RevealSection className="column column--wide">
           <span className="section__number">{dict.problem.number}</span>
           <h2 className="section__title">{dict.problem.title}</h2>
           <div className="section__body">
@@ -667,7 +667,7 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
 
       {/* S3 LIVING DYNAMICS */}
       <section className="section" id="dynamics">
-        <RevealSection className="column">
+        <RevealSection className="column column--wide">
           <span className="section__number">{dict.dynamics.number}</span>
           <h2 className="section__title">{dict.dynamics.title}</h2>
           <p className="section__lead">{dict.dynamics.lead}</p>
@@ -879,7 +879,7 @@ export default function HomeContent({ dict, locale }: { dict: Dictionary; locale
 
       {/* S5 QUICK START */}
       <section className="section" id="quickstart">
-        <RevealSection className="column">
+        <RevealSection className="column column--wide">
           <span className="section__number">{dict.quickStart.number}</span>
           <h2 className="section__title">{dict.quickStart.title}</h2>
           <p className="section__lead">{dict.quickStart.lead}</p>
@@ -967,7 +967,7 @@ target/release/<span class="fn">cerememory</span> mcp --server-url http://127.0.
 
       {/* S7 TECHNICAL */}
       <section className="section" id="technical">
-        <RevealSection className="column">
+        <RevealSection className="column column--wide">
           <span className="section__number">{dict.technical.number}</span>
           <h2 className="section__title">{dict.technical.title}</h2>
           <div className="section__body">
@@ -989,7 +989,7 @@ target/release/<span class="fn">cerememory</span> mcp --server-url http://127.0.
 
       {/* S8 PHILOSOPHY */}
       <section className="section section--alt" id="philosophy">
-        <RevealSection className="column">
+        <RevealSection className="column column--wide">
           <span className="section__number">{dict.philosophy.number}</span>
           <h2 className="section__title">{dict.philosophy.title}</h2>
 
@@ -1012,7 +1012,7 @@ target/release/<span class="fn">cerememory</span> mcp --server-url http://127.0.
 
       {/* CTA */}
       <section className="cta-section">
-        <div className="column">
+        <div className="column column--wide">
           <h2 className="cta__title">{dict.cta.title}</h2>
           <p className="cta__desc">{dict.cta.desc}</p>
           <div className="cta__buttons">
