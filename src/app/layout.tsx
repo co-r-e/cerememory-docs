@@ -114,10 +114,23 @@ export const metadata: Metadata = {
     description: siteConfig.description,
     // Image is supplied by src/app/twitter-image.tsx (and per-route variants).
   },
+  appleWebApp: {
+    capable: true,
+    title: siteConfig.name,
+    statusBarStyle: 'black-translucent',
+  },
+  formatDetection: {
+    telephone: false,
+    email: false,
+    address: false,
+  },
   robots: {
     index: true,
     follow: true,
     nocache: false,
+    'max-image-preview': 'large',
+    'max-snippet': -1,
+    'max-video-preview': -1,
     googleBot: {
       index: true,
       follow: true,

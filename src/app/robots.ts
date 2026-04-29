@@ -15,8 +15,12 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: ["Googlebot", "Bingbot", "DuckDuckBot", "Slurp"],
-        allow: publicSiteRoot,
-        disallow: [...crawlDisallow, withBasePath("/llms-full.txt")],
+        allow: [
+          publicSiteRoot,
+          withBasePath("/llms.txt"),
+          withBasePath("/llms-full.txt"),
+        ],
+        disallow: crawlDisallow,
       },
       {
         userAgent: "*",

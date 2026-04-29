@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { ja } from '@/i18n'
 import { absoluteUrl, siteConfig, withBasePath } from '@/lib/site'
 import HomeContent from '../HomeContent'
+import { HtmlLangSetter } from '@/components/lp/HtmlLangSetter'
 
 const title = siteConfig.japaneseTitle
 const description = siteConfig.japaneseDescription
@@ -77,11 +78,36 @@ export default function JaHome() {
     },
   }
 
+  const webPageJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: title,
+    description,
+    url: pageUrl,
+    inLanguage: 'ja',
+    primaryImageOfPage: {
+      '@type': 'ImageObject',
+      url: absoluteUrl('/ja/opengraph-image.png'),
+      width: 1200,
+      height: 630,
+    },
+    isPartOf: {
+      '@type': 'WebSite',
+      name: siteConfig.name,
+      url: absoluteUrl('/'),
+    },
+  }
+
   return (
     <>
+      <HtmlLangSetter lang="ja" />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareAppJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageJsonLd) }}
       />
       <HomeContent dict={ja} locale="ja" />
     </>

@@ -85,6 +85,26 @@ export default function Home() {
     },
   }
 
+  const webPageJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: siteConfig.title,
+    description: siteConfig.description,
+    url: homeUrl,
+    inLanguage: 'en',
+    primaryImageOfPage: {
+      '@type': 'ImageObject',
+      url: absoluteUrl('/opengraph-image.png'),
+      width: 1200,
+      height: 630,
+    },
+    isPartOf: {
+      '@type': 'WebSite',
+      name: siteConfig.name,
+      url: homeUrl,
+    },
+  }
+
   const orgJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
@@ -103,6 +123,10 @@ export default function Home() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageJsonLd) }}
       />
       <script
         type="application/ld+json"
