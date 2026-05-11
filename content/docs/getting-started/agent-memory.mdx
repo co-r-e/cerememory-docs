@@ -154,8 +154,21 @@ The MCP `export` tool requires an explicit `output_path`, writes the archive fil
 4. Run `consolidate` for episodic-to-semantic migration as memories mature.
 5. Use `export` for portable backups.
 
+## Optional: Automatic Recording
+
+Connecting an MCP client to `cerememory serve` does **not** automatically record what the agent and its tools observe. The MCP surface is explicit: the agent must call `store_raw`, `batch_store_raw`, or one of the curated `store` tools for a memory to land in Cerememory.
+
+For passive auto-recording, install the optional companion binary `cerememory-recorder`. It accepts Capture Event JSONL on stdin, redacts secrets, and writes the events to the raw journal via `POST /v1/encode/raw/batch`. A best-effort Codex hook helper is provided via `cerememory-recorder install-hook codex`, which generates a non-destructive script that emits Capture Events for `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, and `Stop`-class events. Existing Codex hook settings are not edited automatically - you opt in by referencing the generated command.
+
+<Callout type="info">
+The recorder lives outside the MCP path. MCP-only setups continue to record only what the agent explicitly stores; everything else is opt-in through the recorder plus a hook or adapter.
+</Callout>
+
+<LinkCard href="/docs/reference/recorder" title="Recorder Companion" description="Capture Event JSONL, ingest, spool & retry, Codex hook helper, safety defaults" />
+
 ## Next Steps
 
 <LinkCard href="/docs/reference/cli" title="CLI Reference" description="Complete command and subcommand reference" />
+<LinkCard href="/docs/reference/recorder" title="Recorder Companion" description="Optional auto-recording via cerememory-recorder" />
 <LinkCard href="/docs/protocol/overview" title="CMP Protocol" description="Understand how MCP fits into the full protocol model" />
 <LinkCard href="https://modelcontextprotocol.io/clients" title="MCP Client Directory" description="Browse the growing ecosystem of MCP-compatible clients" />

@@ -1,0 +1,186 @@
+---
+title: "Recorder Companion"
+description: "Optional cerememory-recorder companion binary that turns observed agent and tool events into Cerememory raw journal entries."
+---
+
+`cerememory-recorder` is an **optional, opt-in companion binary** that preserves observed agent and tool events in the Cerememory raw journal. The core database stays focused on memory storage; the recorder normalizes Capture Events, applies safety guards, and posts batches to the Cerememory HTTP API.
+
+It does **not** execute tools, plan work, run MCP clients, or promote raw material into semantic memory. Curation remains the job of `dream_tick`.
+
+<Callout type="warning">
+Connecting an MCP client to a `cerememory serve` process does **not** auto-record anything by itself. Auto-recording only happens when something - a Codex hook, an editor adapter, or your own integration - actually pipes Capture Event JSONL into `cerememory-recorder ingest`. The MCP tools (`store_raw`, `batch_store_raw`, etc.) remain the explicit, agent-driven path.
+</Callout>
+
+## What The Recorder Does
+
+| Stage | Behavior |
+|-------|----------|
+| Input | Capture Event JSONL on stdin (one JSON object per line) |
+| Normalize | Validate required fields, infer speaker, default visibility/secrecy |
+| Redact | Strip bearer/basic auth, API keys, cookies, private keys, common tokens |
+| Send | `POST /v1/encode/raw/batch` to a Cerememory HTTP server |
+| Persist | Server writes a raw journal entry; dream_tick may later promote it |
+| Spool | Retryable failures are saved under `~/.cerememory/recorder/spool` for later retry |
+
+## Capture Event JSONL
+
+`ingest` reads one JSON object per line from stdin.
+
+**Required fields**
+
+| Field | Meaning |
+|-------|---------|
+| `session_id` | Stable session or conversation identifier |
+| `event_type` | One of the supported recorder event types |
+| `content` | Text or JSON payload to preserve verbatim |
+
+**Optional fields**
+
+| Field | Meaning |
+|-------|---------|
+| `turn_id` | Conversation turn identifier |
+| `topic_id` | Topic/thread grouping identifier forwarded to the raw journal |
+| `action_id` | Tool or action identifier |
+| `source` | Client or adapter name, stored as metadata |
+| `speaker` | `user`, `assistant`, `tool`, or `system`; otherwise inferred from `event_type` |
+| `timestamp` | RFC3339 observation timestamp, stored as metadata |
+| `visibility` | `normal`, `private_scratch`, or `sealed`; default `normal` |
+| `secrecy_level` | `public`, `sensitive`, or `secret`; default `sensitive` |
+| `metadata` | Caller-supplied metadata, recursively redacted |
+| `meta` | Caller-supplied MetaMemory, forwarded only when present and after redaction |
+
+**Supported `event_type` values**
+
+- `user_message`
+- `assistant_message`
+- `tool_call`
+- `tool_result`
+- `command`
+- `file_change`
+- `session_summary`
+- `error`
+
+<Terminal title="Example: Minimal Capture Event">
+```json
+{"session_id":"codex-2026-04-28","event_type":"user_message","content":"Investigate the failing recorder test","source":"codex","metadata":{"cwd":"/repo"}}
+```
+</Terminal>
+
+## ingest
+
+Start a Cerememory HTTP server first, then pipe Capture Event JSONL into the recorder.
+
+<Terminal title="Example: Pipe a single Capture Event">
+```bash
+cerememory serve --port 8420
+
+printf '%s\n' '{"session_id":"demo","event_type":"user_message","content":"hello recorder"}' \
+  | cerememory-recorder ingest --server-url http://127.0.0.1:8420
+```
+</Terminal>
+
+If the server requires HTTP auth, set the API key through the environment so it never appears in `ps` output or shell history:
+
+```bash
+export CEREMEMORY_SERVER_API_KEY='...'
+```
+
+<Callout type="warning">
+The recorder refuses non-loopback `http://` URLs so raw capture payloads are not sent over the network in plaintext. For remote servers use `https://`. Local development can use `http://localhost`, `http://127.0.0.1`, or `http://[::1]`.
+</Callout>
+
+### Spool And Retry
+
+`ingest` posts to `/v1/encode/raw/batch`. Failed batches are written as recorder-owned `batch-*.jsonl` files under `~/.cerememory/recorder/spool` after redaction has been applied.
+
+| Failure | Behavior | Exit |
+|---------|----------|------|
+| Network error | Spool, retry on next run | continue |
+| HTTP 429 | Spool, retry on next run | continue |
+| HTTP 5xx | Spool, retry on next run | continue |
+| HTTP 401 (auth) | Spool, **error exit** | non-zero |
+| Malformed spool file | Quarantine to `*.bad-*`, continue with other files | continue |
+
+On Unix the spool directory is created with `0700` and spool files with `0600`. The recorder refuses to chmod an arbitrary pre-existing directory - it must already be private. A subsequent `ingest` run flushes any pending recorder-owned spool files before reading new stdin.
+
+## Codex Hook Helper
+
+`install-hook codex` generates a non-destructive helper script and example config so a Codex CLI session can stream events into the recorder.
+
+<Terminal title="Example: Install the Codex hook helper">
+```bash
+cerememory-recorder install-hook codex --server-url http://127.0.0.1:8420
+```
+</Terminal>
+
+The command writes:
+
+- `.codex/hooks/cerememory-recorder-codex-hook.py`
+- `.codex/hooks/cerememory-recorder.example.json`
+
+It checks both target paths before writing either file and refuses symlink targets (including with `--force`). Existing files are not overwritten unless `--force` is passed. **The installer does not edit your existing Codex hook settings** - copy the generated command into the hook configuration you choose to use and provide `CEREMEMORY_SERVER_API_KEY` through the shell or hook environment if upstream auth is enabled.
+
+**Event mapping in the generated hook**
+
+| Codex hook | Recorder `event_type` |
+|------------|------------------------|
+| `UserPromptSubmit` | `user_message` |
+| `PreToolUse` | `tool_call` |
+| `PostToolUse` | `tool_result` |
+| `Stop`, `SubagentStop`, `Notification` | `session_summary` |
+
+<Callout type="info">
+The generated hook is **best-effort**. If the recorder binary is missing, exits with an error, or does not return within 15 seconds, the hook prints a diagnostic to stderr and lets the Codex session continue. It preserves common tool payload fields (`tool_name`, `tool_call_id`, `tool_input`, `tool_result`, `exit_code`, `cwd`, `transcript_path`) in Capture Event metadata when present.
+</Callout>
+
+## doctor
+
+Run diagnostics against the HTTP server.
+
+<Terminal title="Example: Doctor with raw ingest probe">
+```bash
+cerememory-recorder doctor --server-url http://127.0.0.1:8420
+```
+</Terminal>
+
+`doctor` checks:
+
+- `GET /health`
+- `GET /readiness`
+- spool directory writability
+- authenticated raw batch ingest
+
+The raw ingest check writes a small `private_scratch` probe record so it can distinguish connectivity, auth, rate-limit, and server failures. Use `--skip-raw-ingest-probe` when a non-mutating check is required - in that mode the recorder verifies auth with a `limit=0` raw recall probe instead of writing a raw journal record.
+
+<Terminal title="Example: Non-mutating doctor probe">
+```bash
+cerememory-recorder doctor --server-url http://127.0.0.1:8420 --skip-raw-ingest-probe
+```
+</Terminal>
+
+## Safety Defaults
+
+- `visibility` defaults to `normal`.
+- `secrecy_level` defaults to `sensitive`.
+- JSONL lines larger than 256 KiB are rejected before parsing, including surrounding whitespace.
+- Recent duplicate events are dropped only when they carry an explicit `turn_id`, `action_id`, or `timestamp` identity **and** the same content.
+- Obvious bearer/basic auth headers, API keys, tokens, cookies, client secrets, private-key blocks, passwords, and common token shapes are redacted from text, `metadata`, and caller-supplied `meta` before sending or spooling.
+- Caller-supplied `meta` is forwarded only when present; the recorder does not invent MetaMemory intent or rationale.
+
+<Callout type="warning">
+Redaction is a best-effort safety net, not a guarantee. Treat raw journal entries as `sensitive` by default and rely on `secrecy_level` plus dream-tick redaction policies for stronger isolation. Use `visibility = "private_scratch"` or `"sealed"` for material that must not surface through normal recall.
+</Callout>
+
+## Mental Model
+
+1. **MCP connection alone records nothing.** The proxy only forwards explicit tool calls.
+2. **A hook (or adapter) emits Capture Events** in JSONL and pipes them to `cerememory-recorder ingest`.
+3. **The recorder redacts, normalizes, and POSTs** them to `/v1/encode/raw/batch`.
+4. **The server writes raw journal entries.** These are *not* curated memories yet.
+5. **`dream_tick` later promotes** appropriate raw entries into episodic and semantic memory, respecting `secrecy_level`.
+
+## Next Steps
+
+<LinkCard href="/docs/getting-started/agent-memory" title="MCP & Agent Setup" description="Run the shared HTTP server and point MCP clients at it" />
+<LinkCard href="/docs/reference/cli" title="CLI Reference" description="Complete cerememory CLI command reference" />
+<LinkCard href="/docs/protocol/encode" title="Encode Operations" description="Underlying /v1/encode/raw/batch contract used by the recorder" />
